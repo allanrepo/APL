@@ -1,0 +1,12 @@
+
+ L T X                         list_maps                          L T X
+ 
+ NAME
+	list_maps - Lists all the currently available bin maps.
+
+ SYNOPSIS
+	list_maps
+
+	The commands list_maps prints out a list of all the bin maps
+        which are currently available.
+

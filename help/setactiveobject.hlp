@@ -1,0 +1,15 @@
+
+ L T X                     set_active_object                      L T X
+ 
+ NAME
+	set_active_object - Activates the given object.
+
+ SYNOPSIS
+	set_active_object <object name> <object type>
+
+	The command set_active_obj activates an object of the selected 
+	type, with the given name. The name must be a currently available 
+	object. 
+
+	The five types of objects are: board, map, flow, trigger, wafer.
+

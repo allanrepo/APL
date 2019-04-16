@@ -1,0 +1,27 @@
+
+ L T X                     nic_build_version                      L T X
+ 
+ NAME
+        nic_build_version - output the LTX OS version of the NIC
+ 
+ SYNOPSIS
+        nic_build_version [-s]
+
+ DESCRIPTION        
+        The nic_build_version command outputs the LTX OS version of the 
+        NIC to standard output.  Note that this may differ from the 
+        output of the following command:
+
+            % rsh <nic-node-name> /ltx/service/build_version
+
+        if the /ltx link of the NIC node has been changed since the last
+        time the tester's NIC processes have been restarted (as with the
+        command /ltx/com/restart_tester ).  To find the LTX OS version of
+        the workstation, invoke /ltx/service/build_version directly:
+
+            % /ltx/service/build_version
+
+ OPTIONS
+        -s  In addition to the default information, display the Build 
+             number for the OS
+ 

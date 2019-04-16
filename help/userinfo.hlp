@@ -1,0 +1,19 @@
+
+ L T X                         user_info                          L T X
+ 
+ NAME
+        user_info - displays the user's info
+ 
+ SYNOPSIS
+               user_info [-all | -display |  -program_name | 
+			  -start_time | -user_id]
+        
+        The user_info command prints out the current status 
+	information for the following categories:
+        
+                -all                print all information
+                -display            prints out the display
+                -program_name       prints out the program name
+                -start_time         gives the start time
+                -user_id            prints out the ID of the user
+

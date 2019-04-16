@@ -1,0 +1,34 @@
+
+ L T X                       set_lot_info                       L T X
+ 
+ NAME
+    set_lot_info - Modify test program Lot Information.
+
+ SYNOPSIS
+    set_lot_info <identifier> <string>
+
+    The set_lot_info command will modify a field of the Lot
+    Information with a specified string based on a specified
+    field identifier. The string can be multiple words. If no
+    string follows the identifier, a blank string will be sent
+    to the test program.
+    The supported lot information identifiers are:
+
+        Identifier
+        ---------------
+        Operator
+        Shift
+        DeviceName
+        NextSerial
+        LotID
+        SublotID
+        ProductID
+        WaferID
+        FabricationID
+        ProberHandlerID
+        Status
+        Description
+
+     Note: The User and StartTime identifiers are read only fields
+           and thus not available for modification.
+

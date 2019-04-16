@@ -1,0 +1,16 @@
+ 
+ L T X                         get_exp                            L T X
+ 
+ NAME
+        get_exp - This command returns the given expression of the
+		  display mode configuration.
+ 
+ SYNOPSIS
+        get_exp <expression> <display mode>
+
+	The command get_exp will return the display mode value of
+	the given expression. This command works for system and all
+	other expressions, except for operator expressions.
+
+	Possible display modes are:
+	  expression, value, multi_value, and multi_range.

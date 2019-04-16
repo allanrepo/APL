@@ -1,0 +1,13 @@
+ 
+ L T X                         save                               L T X
+ 
+ NAME
+        save - Save the specified program from the tester
+ 
+ SYNOPSIS
+        save
+        
+        The command save, saves the current file from the tester with 
+	the same file name. If the file is unsuccessfully saved, an 
+	error message results. 
+ 

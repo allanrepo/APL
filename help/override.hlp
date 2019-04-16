@@ -1,0 +1,19 @@
+
+ L T X                         override                           L T X
+ 
+ NAME
+	override - Allows test failures to be bypassed.
+
+ SYNOPSIS
+	override [<options>]
+
+	The override command allows the user to bypass test failures. 
+	
+	The following options are available:
+		on      - All RTLS override actions are turned on 
+			  and will return true regardless of their 
+			  normal execution.
+		off     - All override actions are turned off.
+		trigger - Override only on events selected by the 
+			  Trigger tool.
+

@@ -1,0 +1,28 @@
+
+ L T X                         nic_kill                                L T X
+ 
+ NAME
+        nic_kill  - kill a running NIC process
+ 
+ SYNOPSIS
+        
+        nic_kill [-all | -devif | -dlog_srvr | -dspif | -tcif]
+        
+        The   nic_kill  command  kills  the  specified  NIC  process  or
+        processes.  The process does not attempt to restart itself. 
+        
+        NIC processes are specified by the following options:
+                -all            all NIC processes
+                -devif          the devif process
+                -dlog_srvr      the dlog server process
+                -dspif          the dspif process
+                -tcif           the tcif process
+                
+ SEE ALSO
+ 
+        nic_restart (cex command)
+        
+ FILES
+ 
+        /ltx/service/cmd/nic_kill
+

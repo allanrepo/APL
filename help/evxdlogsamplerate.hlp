@@ -1,0 +1,23 @@
+ 
+ L T X                       evx_dlog_sample_rate                        L T X
+ 
+ NAME
+        evx_dlog_sample_rate - directs the specified enVision datalog formatting 
+                               method to only log tests results for every n'th device.
+ 
+ SYNOPSIS
+        evx_dlog_sample_rate [-m <method> | -n <index> ] <n>
+
+        <method> is the name of the datalog formatting method to which the sample rate
+        will be applied. If a method is specified, the dlog induces will be searched 
+        in order for that method and the first matching index found will be used.
+
+        <index> is used when the user would like to specify the particular datalog
+        index to which the sample rate will be applied.
+
+        The <n> argument must be a positive integer value.
+        
+        - The user MUST specify either a method OR a dlog index to modify
+        - A dlog index must already have a method associated with it to be modified
+        - Valid dlog induces are from (0-9).
+   

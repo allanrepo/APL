@@ -1,0 +1,49 @@
+ 
+ L T X                         evx_dfilter                        L T X
+ 
+ NAME
+        evx_dfilter - Sets or prints the current dlog filter.
+ 
+ SYNOPSIS
+        evx_dfilter [-m <method> | -n <index> ] [<filter>]
+        
+        The evx_dfilter command is used for changing or printing
+        the current envision datalog filter.
+
+        Attributes:
+        - If no filter is specified, the current filter will be printed.
+        - If neither the method or index is specified, the user will be 
+          printing or setting the global dlog filter.
+        - The user can specify either a datalogging method OR a particular 
+          index. If a method is specified, the dlog induces will be searched
+          in order for that method and the first index found will be 
+          queried/modified.
+        - A dlog index must already have a method associated with it to be 
+          modified.
+        - Valid dlog induces are from (0-9).
+   
+
+	The <filter> options are:
+
+	    on        - enable datalogging for all results
+            off       - disable datalogging 
+            failonly  - log only failing results
+
+            For each method/index only:
+                
+            default   - use the global filter setting
+
+        
+        Examples:
+        
+        1. Print out the global (default) filter setting:           
+             cex -c evx_dfilter
+        2. Print out the filter setting for enVision_AsciiDL:           
+             cex -c evx_dfilter -m enVision_AsciiDL
+        3. Change the global filter setting to "Fails Only":       
+             cex -c evx_dfilter failonly
+        4. Force the STDFV4_BinaryDL filter setting to "On":       
+             cex -c evx_dfilter -m STDFV4_BinaryDL on
+        5. Force the STDFV4_BinaryDL filter setting to "Default"
+           (ie. use global setting):       
+             cex -c evx_dfilter -m STDFV4_BinaryDL default

@@ -1,0 +1,42 @@
+
+ L T X                    evx_dlog_file_freq                           L T X
+ 
+ NAME
+        evx_dlog_file_freq - Modifies the file creation frequency for a
+                             given dlog method object or index.
+
+ SYNOPSIS
+       evx_dlog_file_freq [-m <method> | -n <dlog_index> ] <file freq>
+
+        This command will modify the file creation frequency for a
+        particular dlog method or index.        
+        
+        The <dlog_method_name> must be a valid datalogging method 
+        (ex. enVision_AsciiDL, STDFV4_BinaryDL), which has already
+        been set up in the test program. The <dlog_index> (if specified) 
+        must already reference an installed datalog method.
+
+        File Frequency Options (<file_freq>):
+        
+        "Lot" (default): Create a new datalog file after each "Final/Lot"
+                         summary event.
+        "SubLot"       : Create a new datalog file after each "Final/Sublot"
+                         summary event.
+        "Wafer"        : Create a new datalog file after each "EndOfWafer"
+                         event.
+        "Session"      : Create a single datalog file for the entire session.                         
+                    
+Examples:
+
+        1. To create a new ascii output file after every "Final/Lot" Summary event:
+
+        cex -c evx_dlog_file_freq -m enVision_AsciiDL Lot
+
+        2. To create a binary STDF file after each "EndOfWafer" event:
+
+        cex -c evx_dlog_file_freq -m STDFV4_BinaryDL Wafer
+
+        3. To create a single ascii output file for the entire session:
+
+        cex -c evx_dlog_file_freq -m enVision_AsciiDL Session
+

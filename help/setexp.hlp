@@ -1,0 +1,20 @@
+ 
+ L T X                         set_exp                            L T X
+ 
+ NAME
+        set_exp - This command sets an expression to a given value
+ 
+ SYNOPSIS
+        set_exp <expression> <value> [<expression> <value> ...]
+
+        The command set_exp will set the given value to the given 
+        expression. Multiple expressions and their matching values
+        may be declared. This command works for system and all other
+        expressions, except for operator expressions.
+ 
+        If the value is a string, it must be enclosed in apostrophes
+        within quotes. This is required so EnVision knows to interpret
+        the value as a string and not a symbol name. The quotes are
+        stripped off by the shell. For example:
+
+              cex -c set_exp TestProgData.LotId "'foo'"

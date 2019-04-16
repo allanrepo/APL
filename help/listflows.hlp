@@ -1,0 +1,12 @@
+
+ L T X                         list_flows                         L T X
+ 
+ NAME
+	list_flows - Lists all the currently available flows.
+
+ SYNOPSIS
+	list_flows
+
+	The commands list_flows prints out a list of all the flows
+        which are currently available.
+

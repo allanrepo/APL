@@ -1,0 +1,14 @@
+
+ L T X                    get_skip_pattern_load                   L T X
+
+ NAME
+       get_skip_pattern_load - Get the current skip pattern load setting
+
+ SYNOPSIS
+       get_skip_pattern_load
+
+       The command returns the current skip pattern load setting. If the
+       user has set to skip(or override) pattern load, it returns 'yes',
+       otherwise it returns 'no'. The return result can help user to tell
+       if pattern load is skipped and use set_skip_pattern_load command
+       to change the setting.

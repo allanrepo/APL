@@ -1,0 +1,12 @@
+ 
+ L T X                         save_as                            L T X
+ 
+ NAME
+        save_as - Saves the current program under a different name.
+ 
+ SYNOPSIS
+        save_as <programname>
+        
+        The command save_as, saves the current file from the tester 
+	to a new file with the given programname. If the file is 
+	unsuccessfully saved, an error message results. 

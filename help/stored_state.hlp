@@ -1,0 +1,14 @@
+
+ L T X                       stored_state                       L T X
+ 
+ NAME
+    stored_state - enable or disable stored state
+
+ SYNOPSIS
+    stored_state [on|off]
+
+    The stored_state command enables (on) or disable (off) the stored state.
+
+    Running the command with no arguments prints the current setting.
+
+

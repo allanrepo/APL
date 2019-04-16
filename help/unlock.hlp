@@ -1,0 +1,19 @@
+
+ L T X                         unlock                             L T X
+ 
+ NAME
+        unlock - unlock the tester
+ 
+ SYNOPSIS
+               unlock
+
+        THIS COMMAND IS OBSOLETE BEGINNING IN LTX OS 5.0!
+
+        IMPORTANT NOTE: this command is always forced!
+        
+        Unlock  the  tester.  This  command  should  be used only when a
+        tester remains locked  by a process that has  crashed.  This  is
+        not  a  command  to be used lightly, thus  you should be sure of
+        its impact and that you wish to do this..  Use the  status   -tc
+        command to determine if the tester is actually locked. 
+

@@ -1,0 +1,12 @@
+
+ L T X                         list_boards                        L T X
+ 
+ NAME
+	list_boards - Lists all the currently available adapter boards.
+
+ SYNOPSIS
+	list_boards
+
+	The commands list_boards prints out a list of all the adapter
+        boards which are currently available.
+

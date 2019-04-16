@@ -1,0 +1,44 @@
+
+ L T X                    evx_dlog_file_destination                     L T X
+ 
+ NAME
+        evx_dlog_file_destination - Adds a file destination to a particular
+                                    dlog method object.
+
+ SYNOPSIS
+       evx_dlog_file_destination <dlog_method_name> <file name>
+
+        This command will add a file destination to the datalog object 
+        for a particular dlog method. This object is stored as part of 
+        the test program, and can be saved in the eva file if 
+        desired. 
+
+        The file client will be created and managed by the datalog object, 
+        allowing the output file name to change based on the state of 
+        certain expressions in the file name.
+
+        The <dlog_method_name> must be a valid datalogging method 
+        (ex. enVision_AsciiDL, STDFV4_BinaryDL). If the method has not 
+        been set up in the test program when this command is called, 
+        the method is set up automatically.
+
+        The <file name> string can contain the special delimiter set "${ }". 
+        Any string contained within this delimiter set will be automatically
+        translated at file creation time by the datalogger. If the string
+        found is a TestProgData object expression, the current value of the 
+        corresponding expression will be used in it's place. If the string
+        is not a TestProgData expression, it will be assumed to be an 
+        environment variable and translated accordingly. The "''" characters 
+        must surround this delimiter set on the command line to prevent the 
+        shell from interpreting the special characters itself. 
+
+Examples:
+
+        1. To create a text file containing ascii datalogger output:
+
+        cex -c evx_dlog_file_destination enVision_AsciiDL /user/dlog/'${Operator}'.txt
+
+        2. To create a binary STDF file with a custom filename:
+
+        cex -c evx_dlog_file_destination STDFV4_BinaryDL '${LTXHOME}'/testers/'${LTX_TESTER}'/dlog/'${ObjName}'_'${LotId}'_'${SublotId}'_'${WaferId}'_'${DlogSetupTime}'.std
+

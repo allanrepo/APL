@@ -1,0 +1,12 @@
+
+ L T X                    list_active_objects                     L T X
+ 
+ NAME
+	list_active_objects - Lists all the currently active objects.
+
+ SYNOPSIS
+	list_active_objects
+
+	The commands list_active_objects prints out a list of all 
+        the objects which are currently available.
+

@@ -1,0 +1,19 @@
+
+ L T X                         trace                              L T X
+ 
+ NAME
+	trace - Trace information during execution of programs.
+
+ SYNOPSIS
+	trace [<options>]
+
+	The trace command is for tracing information during the 
+	program execution. 
+
+	The following options are available:
+		on	- Trace all traceable events.
+		off	- Trace disabled.
+		fail	- Trace only failed tests.
+		trigger - Trace only on events selected by the 
+			  Trigger tool.
+

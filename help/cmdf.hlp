@@ -1,0 +1,100 @@
+
+ L T X                         cmdf                               L T X
+ 
+ NAME
+        cmdf - execute a command file of CEX commands
+ 
+ SYNOPSIS
+        cmdf [<command  file  name>]  [-debug] ...
+             ... [-prompt  <prompt string>]
+        
+        Execute cex commands.  The  commands  are  read  from  the  file
+        specified  as  <command  file name> or from standard input if no
+        file is specified.  If <command file   name>  is  specified  and
+        not  found in the current working directory, the directories  in
+        the shell's search PATH environment variable are searched. 
+        
+        Note that AEGIS shells do not have  a  search  PATH  environment
+        variable  set  by   default but the user may set one if desired.
+        All Unix shells do have a search  PATH environment variable. 
+        
+        If -debug is  specified  the  lines  in  the  command  file  are
+        printed  to standard  error along with their line numbers before
+        being executed. In addition, the  value of search PATH  and  the
+        full  pathname  of  the  file being executed are printed  if the
+        file is not in the current working directory. 
+        
+        When reading commands from standard input  no  prompt  is  given
+        unless  -prompt   <prompt  string>  is  specified.  No  space is
+        printed after the prompt. To include  a space after the  prompt,
+        quote  the  prompt  string  including the trailing space.  As an
+        example:
+        
+                cmdf -prompt "cex> "
+        
+        The -prompt  option  is  ignored  if  a  command  file  name  is
+        specified, but no warning  message is issued. 
+        
+        Interactive  mode  cex: by typing "cmdf" at the shell prompt you
+        enter an interactive  mode that allows  you  to  type  unlimited
+        cex  commands.  Input  is  terminated by  typing quit or exit or
+        with the End-Of-File character (usually <CTRL/Z> in   AEGIS  and
+        <CTRL/D>  in  Unix).  No  prompt  is  issued  unless  -prompt is
+        specified.  Additional commands recognized in  interactive  mode
+        are  help  (gives  usage help  for all cex commands) and version
+        (prints version information). To get full  help on a  particular
+        command without executing that command, type:
+        
+                <command> -help
+        
+        Error  handling:  Any  non-cex command or a cex command with any
+        sort of error  aborts the execution of a  command  file.  If  in
+        interactive mode and -prompt 
+         has been  specified errors cause an error message to be printed
+        but execution  continues  by  outputting  the  next  prompt  and
+        waiting  for  more  input.  If  -prompt   has not been specified
+        errors cause interactive mode to abort just as in file  mode. 
+        
+        Nesting command files: only one command  file  name  is  allowed
+        with  the  cmdf   command,  but cex command files may call other
+        cex command files. 
+        Comments in command files: are designated by the '--'  character.
+        Everything  on a line after -- is considered comment text. 
+        
+        Using  "here-documents"  to supply input: One of the benefits of
+        using cmdf is  that one connection to the  tester  is  made  for
+        the  execution  of  multiple  commands.   For  some commands the
+        connection to the tester takes the majority of execution   time.
+        When  writing  shell  scripts  that  execute  a  series  of  cex
+        commands it may  be more efficient to use  cmdf.  In  this  case
+        the  commands  may either be taken  from another file, or from a
+        "here-document" in the body of the script  itself.   An  example
+        of  a  typical  Korn  shell  script  that  sets  up  the  proper
+        environment  variables and search path and uses cmdf  once  with
+        a file and once with a here-document  follows. 
+        
+        #!/bin/ksh
+        # Example Korn shell that uses cex cmdf along side Unix commands.
+        
+        # Set the TESTER environment variable to the first 
+        # parameter if it is passed in, otherwise the default is sim
+        if [ ! -z "$1" ] ; then
+            TESTER=$1
+            export $TESTER
+        fi
+        
+        # Add /ltx/cmd to the existing PATH
+        PATH=$PATH:/ltx/cmd
+        
+        # Let them know the date
+        date
+        
+        # Execute cex commands that are stored in a file
+        cmdf some_command_file
+        
+        # Execute commands in the "here-document" delimited by "<<END" and "END"
+        cmdf <<END
+        list
+        freemem     -- comment: this shows the TC's memory usage
+        END
+

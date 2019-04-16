@@ -1,0 +1,29 @@
+
+ L T X                    evx_dlog_clear_methods                          L T X
+
+ NAME
+        evx_dlog_clear_methods - Clear the specified enVision datalog method 
+                                 for the specified dlog index
+                                 
+
+ SYNOPSIS
+       evx_dlog_clear_methods [ <dlog index> ]
+
+        <dlog_index> is a positive integer number in 0-9 that specifies the 
+        particular datalog index the datalog method will be cleared from. 
+
+        If no index is specified, the datalog methods for all index (0-9) 
+        will be cleared.
+
+        If the specified dlog index is not used by the test program, this
+        command will do nothing.
+
+        NOTE: It is the user's responsibility to make sure that all I/O 
+              clients using this dlog index are closed with "close_output". 
+              All I/O clients added through I/O Streams are not automatically 
+              deleted when the corresponding method is cleared.
+
+        This command is most useful in scripts to clear any datalog settings
+        that have may have been saved with the test program.
+
+

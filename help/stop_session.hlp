@@ -1,0 +1,20 @@
+ L T X                         stop_session                             L T X
+ 
+ NAME
+        stop_session - terminates the current program session
+ 
+ SYNOPSIS
+               stop_session [-wait <seconds>]
+        
+        stop_session attempts to terminate the currently active program session
+        if one exits.  If a program is being loaded, stop_session will try
+        to abort the load.  If a program is already loaded in the tester,
+        stop_session will try to unload the test program without saving.
+
+        Note: when a test program is loaded, stop_session is similar to 
+        "unload -wait <seconds> -dontSave".
+
+        The minimum allowable wait time is 10 seconds.  The default wait time is
+        60 seconds if none is specified.
+
+        stop_session might wait up to x seconds for abort/unload to finish.

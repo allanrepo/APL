@@ -1,0 +1,11 @@
+
+ L T X                         list_extintf_objects                   L T X
+ 
+ NAME
+	list_extintf_objects - prints all available External Interface objects.
+
+ SYNOPSIS
+	list_extintf_objects
+
+	Gives a list of all currently available External Interface objects.
+

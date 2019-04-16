@@ -1,0 +1,15 @@
+
+ L T X                         set_stream                         L T X
+ 
+ NAME
+	set_stream - sets a clients stream list to the given streams.
+
+ SYNOPSIS
+	set_stream <client name> [<stream name>...]
+
+	The command set_stream sets the given clients list based on 
+	the stream list. Note that this will remove the current client 
+	stream list and create a new one. The client name must be 
+	currently active. To get a list of current clients, use the 
+	command list_clients.
+

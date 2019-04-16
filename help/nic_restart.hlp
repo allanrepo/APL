@@ -1,0 +1,31 @@
+
+ L T X                         nic_restart                                L T X
+ 
+ NAME
+        nic_restart  - restart a running NIC process
+ 
+ SYNOPSIS
+        
+        nic_restart [-all | -devif | -dlog_srvr | -dspif | -tcif]
+        
+        The  nic_restart command will cause the NIC process or processes
+        specified to exit and  restart.   NOTE:   the  process  must  be
+        running  when  this  command  is  issued.  If the process is not
+        already running the error message  "object  is  unavailable"  is
+        generated and the process must be restarted by other means. 
+        
+        NIC processes are specified by the following options:
+                -all            all NIC processes
+                -devif          the devif process
+                -dlog_srvr      the dlog server process
+                -dspif          the dspif process
+                -tcif           the tcif process
+                
+ SEE ALSO
+ 
+        nic_kill (cex command)
+        
+ FILES
+ 
+        /ltx/service/cmd/nic_restart
+

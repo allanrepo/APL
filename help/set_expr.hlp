@@ -1,0 +1,24 @@
+
+ L T X                       set_expr                       L T X
+ 
+ NAME
+    set_expr - This command sets an expression to a given input value
+
+ SYNOPSIS
+    set_expr <expression> <input value>
+
+    The set_expr command will set the given input value to the given
+    expression.  Only one expression and corresponding input value can
+    be given at a time.  The command works for all named expressions.
+
+    Treat the input value just like a single argument to a command.
+    If the input value contains a space, a double quote is required.
+
+        cex -c set_expr Op1 "35 + ( 3 * 5 )"
+
+    If the input value is an expression string, the system requires
+    the input value to be within single quotes, surroundde by double
+    quotes, as follows:
+
+        cex -c set_expr TestProgData.LotId     "'foo'"
+        cex -c set_expr TestProgData.UserText  "'Help for set_expr'"

@@ -1,0 +1,28 @@
+
+ L T X                         user_p                                L T X
+ 
+ NAME
+        user_p  - specify the tcif user_pwr_up file
+ 
+ SYNOPSIS
+ 
+        user_p  <file name>
+        
+        Specify  the  tcif  user_pwr_up  file.   If  the file name is an
+        absolute pathname (that is it begins with a slash '/') the  name
+        is  used  as  is.  If the file is a relative pathname (leafname)
+        it     is      searched      for      in      the      directory
+        /ltx/testers/<tester_name>/pwrup. 
+        
+ SEE ALSO
+ 
+        The following cex commands:
+        reboot_tc  -  reboot  the  tc  so the new file setting will take
+        effect
+        status -command_file(-cf) - displays current setting
+        sys_p <file name> - set the tcif sys_pwr_up file
+        
+ FILES
+        
+        /ltx/service/cmd/user_p
+

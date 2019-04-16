@@ -1,0 +1,10 @@
+
+ L T X                       tester_health_dump                       L T X
+ 
+ NAME
+    tester_health_dump - display the contents of the tester health shared memory.
+
+ SYNOPSIS
+    tester_health_dump
+
+    The tester_health_dump command displays the contents of the tester health shared memory.

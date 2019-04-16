@@ -1,0 +1,12 @@
+
+ L T X                       processes_hung                       L T X
+ 
+ NAME
+    processes_hung - display "yes" if any of the tester processes are hung
+                     otherwise "no".
+
+ SYNOPSIS
+    processes_hung
+
+    The processes_hung command prints out the condition of the tester processes
+    hung.

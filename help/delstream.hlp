@@ -1,0 +1,21 @@
+
+
+ L T X                         del_stream                         L T X
+ 
+ NAME
+	del_stream - removes a stream from the current list of streams 
+		     directed to the given client.
+
+ SYNOPSIS
+        del_stream <client name> <stream name>
+
+        The del_stream command removes a stream from the current list 
+	of streams that are directed to the given client. The client 
+	name must be currently active. To get a list of current clients, 
+	use the command list_clients. 
+        
+        The stream name must be one of the following options:  bootup, 
+	character, dlist, evdlog, hwtool, ocsout, stderr, stdin, 
+	stdout, sum, wmap, dluser0 ... dluser9. Detailed 
+	descriptions can be found in the users manual.
+

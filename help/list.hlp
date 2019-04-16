@@ -1,0 +1,12 @@
+
+ L T X                         list                               L T X
+ 
+ NAME
+        list - list the loaded program
+ 
+ SYNOPSIS
+        list
+        
+        The  command  list  prints  the pathname of the currently loaded
+        Test Program. 
+

@@ -1,0 +1,12 @@
+
+ L T X                         list_wafers                        L T X
+ 
+ NAME
+	list_wafers - Lists all the currently available wafers.
+
+ SYNOPSIS
+	list_wafers
+
+	The commands list_wafers prints out a list of all the 
+	wafers which are currently available.
+

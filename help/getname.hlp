@@ -1,0 +1,12 @@
+ 
+ L T X                         get_name                           L T X
+ 
+ NAME
+        get_name - get_name prints the name of the current tester.
+ 
+ SYNOPSIS
+        get_name
+        
+        The command get_name prints the name of the tester that is 
+	currently being used.  
+ 

@@ -1,0 +1,40 @@
+ L T X                         skipping                                L T X
+ 
+ NAME
+        skipping  - Enable/disable of test skipping
+ 
+ SYNOPSIS
+        
+        skipping off | on  [ -tnum <test number> ]
+        
+        Test skipping is managed through the following controls:
+	- Global enable flag accessible through the Flow Control dialog in the Operator Tool and
+	through this syntax when the test number is not specified. This setting is on by default and
+	is not persistent between test sessions.
+
+	- Enable flag in the header of the active limit table, accessible through the limit table editor
+	and a CSV file if one is linked to the limit table. This setting is saved with the test program/
+	CSV file.
+
+	- Enable flag on a per limit struct basis, accessible through the limit table editor
+	and a CSV file if one is linked to the limit table. This setting is saved with the test program/
+	CSV file.
+
+	- On/off flag on a per limit struct basis, accessible through this syntax.
+
+	In order for a test to be skipped, an external client must set the on/off flag to on and the 
+	three enable flags must be on. 
+	Setting the on/off flag for a given test to off will disable the skipping for that test and the 
+	test will be executed as per the test flow.
+	Setting any of the enable flags to off will disable the skipping for all tests and they will be
+	executed as per the test flow. 
+
+	The test program executive will skip a test block if it reports at least one test to the Datalog,
+	and it reports no mandatory tests, and the skipping or the sampling is enabled, and all test 
+	have been deactivated due to sampling or skipping in effect. Otherwise the user needs to call the
+	appropriate limit struct object access syntax to determine if a particular test is activated and
+	only perform the test if that is true.
+	
+ FILES
+ 
+        /ltx/service/cmd/skipping

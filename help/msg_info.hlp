@@ -1,0 +1,33 @@
+
+ L T X                         msg_info                                L T X
+ 
+ NAME
+        msg_info  - turn NIC process IPC debugging messages on or off
+ 
+ SYNOPSIS
+        
+        msg_info on | off [-all | -dspif | -tcif]
+        
+        The  msg_info  command  causes  the  specified  NIC  process  or
+        processes to turn interprocess communication debugging  messages
+        on  or  off.   The  messages  are  written  to  stderr, which is
+        generally   redirected   to   the   process    log    file    in
+        /ltx/testers/<tester_name>/log/<process>_log.    These  messages
+        are intended to aid LTX engineers  during  software  development
+        or troubleshooting. 
+        
+        "on" or "off" must be specified as the first parameter. 
+        
+        NIC processes are specified by the following options:
+                -all            all NIC processes
+                -dspif          the dspif process
+                -tcif           the tcif process
+                
+ SEE ALSO
+ 
+        proc_info (cex command)
+        
+ FILES
+ 
+        /ltx/service/cmd/msg_info
+

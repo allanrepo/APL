@@ -1,0 +1,148 @@
+
+ L T X                         evx_summary                             L T X
+
+ NAME
+        evx_summary - Generates enVision summary reports
+
+ SYNOPSIS
+
+        evx_summary
+        evx_summary details
+        evx_summary site [on||off]
+        exa_summary [clearpartial || clearfinal]
+        evx_summary partial [full [on||off]] [clear [on||off]]
+        evx_summary final clear [on||off]
+        evx_summary output [sublot|lot] [partial|final]
+        evx_summary type [prod|ilqa]
+
+
+ GENERAL OVERVIEW
+
+        The evx_summary commands can be used to display enVision summary
+        reports, to set or to display the current settings of various
+        summary options, or to clear lot and/or sublot bin counters. The
+        command to cause the summary to be displayed is: 
+
+            evx_summary details
+            evx_summary output
+            
+        The other evx_summary commands have to do with controlling the lot
+        and sublot counters when the summary is printed out, as detailed
+        below.
+
+
+ COMMAND DETAILS
+
+        evx_summary:
+
+            When invoked with no arguments, the evx_summary command
+            displays the current settings for all enVision summary options.
+            It does not produce any summaries.
+            
+
+        evx_summary details:
+
+            The evx_summary details command outputs enVision sublot and lot
+            summary reports. The reports are printed to any I/O Stream
+            destinations which have the Summary I/O Stream turned ON. The
+            I/O Streams are set up using the OperatorTool Setup -> I/O
+            Streams dialog. The setups are saved as part of the loaded
+            program. If final clear is set on, issuing this command closes
+            any open datalog files.
+
+
+        evx_summary clearpartial:
+
+            The evx_summary clearpartial command clears the sublot bin
+            counters. It also causes the output of a sublot summary. Note
+            that the counters are cleared without the counts getting added
+            to the lot count.
+
+
+        evx_summary clearfinal:
+
+            This command clears the sublot and lot bin counters. It also
+            causes the output of a sublot summary. It will also cause the
+            datalog file to be closed, if one is open, after the next lot
+            summary is generated.
+
+
+        evx_summary site [| on  |]:
+                          | off |
+
+            When the site option is enabled, enVision lot and sublot
+            summary reports include per-site breakdowns of all statistics. 
+            The option will be set to the specified state (on or off) or,
+            if no state is specified, the option's current state will be
+            toggled.
+
+
+        evx_summary partial and evx_summary final commands:
+
+            The evx_summary partial and evx_summary final commands are used
+            to set additional options for sublot and lot summary reports. 
+            Each report option will be set to the specified state (on or
+            off) or, if no state is specified, the options' current state
+            will be toggled. These commands only set the state, they do not
+            cause a summary report to be generated.
+
+            evx_summary partial [ full [ on | off ]] [ clear [ on | off ]]:
+            
+                The evx_summary partial command requires one or both of its
+                options be specified.
+
+                full [| on  |]:
+                      | off |
+
+                    When enabled, this option will cause the sublot bin
+                    counters to be added to the lot bin counters whenever a
+                    sublot summary report is generated.
+
+                clear [| on  |]:
+                       | off |
+                       
+                    When enabled, this option will cause the sublot bin
+                    counters to be cleared immediately after a sublot
+                    summary report is generated. If the full option is also
+                    enabled, the lot bin counters will be updated before
+                    the sublot counters are cleared.
+
+                NOTE: In normal use, the "full" and "clear" options should
+                both be set to the same state. When both are off, the
+                summaries generated do not effect any counters. Both would
+                normally be turned on to produce a final sublot summary,
+                causing the lot count to include the devices in the sublot,
+                and clearing the sublot count for the next sublot.
+
+
+            evx_summary final clear [| on  |]:
+                                     | off |
+                                     
+                    When enabled, evx_summary final clear will cause the
+                    lot bin counters to be cleared each time a lot summary
+                    report is generated. It will also cause the datalog
+                    file to be closed, if one is open, after the next lot
+                    summary is generated.
+
+
+        evx_summary output [| sublot |]  [| partial |]:
+                                |  lot   |    |  final  |
+
+            The evx_summary output command output enVision sublot or
+            lot summary reports according to the current settings.  
+            The reports are printed to any I/O Stream destinations which
+            have the Summary I/O Stream turned ON.  The sublot or lot
+            options are for the summary reports to be displayed. The 
+            partial or final options are used to set additional options
+            for sublot and lot summary reports.
+
+        evx_summary type [prod|ilqa]:
+            
+            The evx_summary type command sets what type of summary an
+            evx_summary output command will return. The argument is optional,
+            if none is specified evx_summary output will produce a combined
+            ILQA and production type summary. Otherwise if ilqa is specified
+            an ILQA summary will be output the next time evx_summary output
+            is called and if prod is specified only a Production type summary
+            will be output.
+

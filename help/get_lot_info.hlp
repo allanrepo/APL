@@ -1,0 +1,31 @@
+
+ L T X                       get_lot_info                       L T X
+ 
+ NAME
+    get_lot_info - Read Lot Information from test program.
+
+ SYNOPSIS
+    get_lot_info <identifier | all>
+
+    The get_lot_info command will read a field of the Lot
+    Information based on a specified lot identifier. Optionally
+    all of the fields can be read by using the "all" identifier.
+    The supported lot information identifiers are:
+
+        Identifier
+        ---------------
+        User
+        Operator
+        StartTime
+        Shift
+        DeviceName
+        NextSerial
+        LotID
+        SublotID
+        ProductID
+        WaferID
+        FabricationID
+        ProberHandlerID
+        Status
+        Description
+

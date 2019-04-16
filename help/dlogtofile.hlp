@@ -1,0 +1,27 @@
+
+ L T X                         dlog_to_file                     L T X
+ 
+ NAME
+        dlog_to_file - Direct the datalogging streams to a file.
+
+ SYNOPSIS
+        dlog_to_file <dlog_method_name> <file name>
+
+        This command will add a file client to the evxio routing table. 
+        It is the user's responsibility to ensure that the full path to 
+        the file exists and that the directory has the proper write 
+        permissions set.
+
+        The <dlog_method_name> must be a valid datalogging method 
+        (ex. enVision_AsciiDL, STDFV4_BinaryDL). If the method has not yet 
+        been set up in the test program, it will be set up automatically 
+        before adding the file client.
+
+        The file client must be managed by the user, and can be removed from
+        the routing table using the "close_output" cex command.
+
+  Examples:    
+        
+     cex -c dlog_to_file enVision_AsciiDL ${LTXHOME}/testers/${LTX_TESTER}/dlog/myfile.txt
+
+     cex -c dlog_to_file STDFV4_BinaryDL ${LTXHOME}/testers/${LTX_TESTER}/dlog/myfile.std

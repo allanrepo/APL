@@ -1,0 +1,25 @@
+
+ L T X                         unload                             L T X
+ 
+ NAME
+        unload - unload the loaded program
+ 
+ SYNOPSIS
+               unload [-wait <seconds> | -nowait] [-dontsave]
+        
+        unload  removes  the  currently  loaded  Test Program, if one is
+        loaded, running  its on_unload procedure if it has one. 
+
+        The default syntax is "unload" with no arguments, which performs
+        the unload, prompts to save the Cadence program if necessary, and
+        waits forever until the unload is finished.
+
+        The "-wait" flag allows the user to specify the number of seconds
+        to wait for the program unload before timing out. If this flag is 
+        not specified, the program defaults to wait mode with no timeout.
+
+        The "-nowait" flag can be used to force the process to return 
+        without waiting for the unload command to complete.
+
+        The "-dontsave" flag disables the prompt for saving the Cadence 
+        program if it has changed since the last save.

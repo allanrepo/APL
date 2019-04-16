@@ -1,0 +1,42 @@
+
+ L T X                       start_profiler                       L T X
+ 
+ NAME
+        start_profiler - enable the AutoProfiler, run the test program,
+                         and disable the AutoProfiler
+ 
+ SYNOPSIS
+        start_profiler [<pathname>] [-program] [-nowfc] [-level] [-html]
+        
+        start_profiler  enables the AutoProfiler, runs the test program,
+	collects  the  data,  places the  result in the  path given, and
+	disables the AutoProfiler.  The optional -program  specifies the
+	AutoProfiler  to  collect  the  data  of  the whole test program
+	instead of individual test object.
+
+	The collected data are saved in the timestamp  sub-directory  of
+	the path given.  The AutoProfiler generates  3  files associated
+	with each execution of the test object -- sorted by time, sorted
+	by call  and  the waveform capture object.  In the AutoProfiling
+	of individual  test object mode,  the AutoProfiler generates two
+	additional  files,  AutoProfilerSummary,  containing the name of
+	all the test executed  and their execution time -- one sorted by
+	name,  other sorted by time.  In the AutoProfiling of  the whole
+	test program mode, only	three files are generated -- time, call,
+	and waveform.
+
+        If no pathname is specified /tmp/default_profiler_dir is used.
+
+	The optional -nowfc specifies  the AutoProfiler  not to generate
+	the waveform capture object.
+
+	The optional -level specifies  the AutoProfiler  to  generate an
+	ascii version of the waveform capture object.
+
+	The optional -html  specifies  the AutoProfiler  to generate the
+	HTML of the AutoProfilerSummary, sorted by time.
+
+ NOTES
+   When the AutoProfiler is on, there will be an overhead associated
+   with the time displayed, comparing to time in BinTool, TestTool
+   or FlowTool.

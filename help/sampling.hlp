@@ -1,0 +1,44 @@
+
+ L T X                         sampling                                L T X
+ 
+ NAME
+        sampling  - Enable/disable of test sampling
+ 
+ SYNOPSIS
+        
+        sampling off | on   [ -tnum <test number> [ -start_after <int> -interval <int> ] ]
+        
+        Test sampling is managed through the following controls:
+	- Global enable flag accessible through the Flow Control dialog in the Operator Tool and
+	through this syntax when the test number is not specified. This setting is on by default and
+	is not persistent between test sessions.
+
+	- Enable flag in the header of the active limit table, accessible through the limit table editor
+	and a CSV file if one is linked to the limit table. This setting is saved with the test program/
+	CSV file.
+
+	- Enable flag on a per limit struct basis, accessible through the limit table editor
+	and a CSV file if one is linked to the limit table. This setting is saved with the test program/
+	CSV file.
+
+	- Start After and Interval settings on a per limit struct basis, accessible through this syntax, 
+	the limit table editor, and a CSV file if one is linked to the limit table. 
+	These settings are saved with the test program/CSV file. Start After specifies the number
+	of executions the test should be active before the sampling starts. Interval specifies the
+	sampling rate (e.g. 10 means activating the test once every 10 executions)
+
+	Setting the enable flag for a given test to off will disable the sampling for that test and the 
+	test will be executed as per the test flow.
+	Setting any of the enable flags to off will disable the sampling for all tests and they will be
+	executed as per the test flow. 	   
+
+	The test program executive will skip a test block if it reports at least one test to the Datalog,
+	and it reports no mandatory tests, and the skipping or the sampling is enabled, and all test 
+	have been deactivated due to sampling or skipping in effect. Otherwise the user needs to call the
+	appropriate limit struct object access syntax to determine if a particular test is activated and
+	only perform the test if that is true.
+	
+ FILES
+ 
+        /ltx/service/cmd/sampling
+

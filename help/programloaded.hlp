@@ -1,0 +1,13 @@
+ 
+ L T X                         program_loaded                     L T X
+ 
+ NAME
+        program_loaded - Prompts whether or not a program is loaded
+ 
+ SYNOPSIS
+        program_loaded
+        
+        The command program_loaded sends a message saying if a program
+	is currently loaded. If one is, the name of the program is also
+	printed.
+ 

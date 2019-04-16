@@ -1,0 +1,20 @@
+
+ L T X                          add_stream                        L T X
+ 
+ NAME
+	add_stream - adds a stream to the current list of streams to 
+	             be directed to the given client.
+
+ SYNOPSIS
+        add_stream <client name> <stream name>
+
+        The add_stream command adds a stream to the current list of 
+	streams to be directed to the given client. The client name 
+	must be currently active. To get a list of current clients, 
+	use the command list_clients. 
+        
+        The stream name must be one of the following options:  
+	bootup, character, dlist, evdlog, hwtool, ocsout, stderr, 
+	stdin, stdout, sum, wmap, dluser0 ... dluser9. 
+	Detailed descriptions can be found in the users manual.
+

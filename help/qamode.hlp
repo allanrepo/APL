@@ -1,0 +1,20 @@
+
+ L T X                         qa_mode                                L T X
+ 
+ NAME
+        qa_mode  - set the QA mode
+ 
+ SYNOPSIS
+        
+        qa_mode off | inline | 100pct
+        
+        The qa_mode command is used to configure the QA mode.
+        It is the master flag to control the QA mode.
+        The options are off, inline, or 100pct and the default is inline.
+        If it's set to 100pct, the entire lot will be run as a QA sample
+        at 100% test.
+        
+ FILES
+ 
+        /ltx/service/cmd/qa_mode
+

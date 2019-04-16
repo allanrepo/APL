@@ -1,0 +1,21 @@
+
+ L T X                     output_to_printer                      L T X
+ 
+ NAME
+	output_to_printer - Choose the streams to be directed to a printer.
+
+ SYNOPSIS
+	output_to_printer <printer name> -f <flush type> -s [<stream name>...]
+
+	The command output_to_printer will add a printer client to the 
+	evxio routing table, along with the specified flush type and 
+	streams. The user will able to define which flush type and 
+	streams they wish to be directed to the printer. If no flush 
+	type or streams are specified, the default end of test flush 
+	and the sum, and evdlog streams will be used as defaults.
+
+	The stream name must be one of the following options:  
+	bootup, character, evdlog, hwtool, ocsout, stderr, 
+	stdin, stdout, sum, wmap, dluser0 ... dluser9. 
+	Detailed descriptions can be found in the users manual.
+

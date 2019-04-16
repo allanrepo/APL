@@ -1,0 +1,21 @@
+
+ L T X                         close_output                       L T X
+ 
+ NAME
+	close_output - removes a client from the routing table.
+
+ SYNOPSIS
+	close_output <client name>
+
+	This command closes all the stream output to a given client 
+	by removing the client from the evxio routing table.
+
+        Passing the "-all_files" flag instead of a client name will 
+        close and remove all file clients in the evxio routing table.
+
+        Passing the "-all_printers" flag instead of a client name 
+        will close and remove all printer clients.
+
+        Passing the "-all_sockets" flag instead of a client name 
+        will close and remove all socket clients.
+

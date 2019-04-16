@@ -1,0 +1,12 @@
+ 
+ L T X                         head_powered                       L T X
+ 
+ NAME
+        head_powered - Prompts whether or not the head is powered
+ 
+ SYNOPSIS
+        head_powered
+        
+        The command head_powered sends a message saying whether or not 
+	the current head has power. 
+ 

@@ -1,0 +1,10 @@
+
+ L T X                       tester_state                       L T X
+ 
+ NAME
+    program_state - display the current tester state
+
+ SYNOPSIS
+    tester_state
+
+    The tester_state command prints out the current tester state information.

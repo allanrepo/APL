@@ -1,0 +1,16 @@
+
+ L T X                    set_skip_pattern_load                   L T X
+
+ NAME
+       set_skip_pattern_load - Change the current skip pattern load setting
+
+ SYNOPSIS
+       set_skip_pattern_load <yes|no>
+
+       The command changes the skip pattern load setting to 'yes' or 'no'.
+       User can use this command before loading test program or after the
+       program is loaded. If set to 'yes', then the VX250 pattern load is
+       skipped(or overridden), this can make the program run much faster if
+       the pattern is very big. If set to 'no', then the VX250 pattern will
+       be loaded when testing. User can use get_skip_pattern_load command
+       to get the current setting.

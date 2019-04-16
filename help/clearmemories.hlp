@@ -1,0 +1,17 @@
+
+ L T X                         clear_memories                     L T X
+ 
+ NAME
+	clear_memories - Clears memory patterns.
+
+ SYNOPSIS
+	clear_memories [<options>]
+
+	The command clear_memories will clear the specified pattern 
+	memories. There are four valid options:
+
+		control	 - Control Pattern memory
+		waveform - Waveform control memory
+		data	 - Data pattern memory
+		all	 - Control, waveform and data memory
+

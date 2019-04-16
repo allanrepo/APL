@@ -1,0 +1,13 @@
+
+ L T X                         set_extintf_object                     L T X
+ 
+ NAME
+	set_extintf_object - selects the given external Interface as current.
+
+ SYNOPSIS
+	set_extintf_object <extintf object name>
+
+	This command lets you chose whichever external interface 
+	module you want to connect with. To get a list of all 
+	available external interface objects, use the command list_extintf_objects.
+

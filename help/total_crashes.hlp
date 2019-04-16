@@ -1,0 +1,11 @@
+
+ L T X                       total_crashes                       L T X
+ 
+ NAME
+    total_crashes - display the number of processes crashes in a session.
+
+ SYNOPSIS
+    total_crashes
+
+    The total_crashes command prints out the number of critical process crashes 
+    and the number of non critical process crashes within the current session.

@@ -1,0 +1,11 @@
+
+ L T X                       set_end_of_wafer                       L T X
+ 
+ NAME
+    set_end_of_wafer - Send endOfWafer to the test program.
+
+ SYNOPSIS
+    set_end_of_wafer
+
+    The set_end_of_wafer command will send the endOfWafer 
+    command to the test program.  

@@ -1,0 +1,11 @@
+
+ L T X                       set_end_of_lot                       L T X
+ 
+ NAME
+    set_end_of_lot - Send endOfLot to the test program.
+
+ SYNOPSIS
+    set_end_of_lot
+
+    The set_end_of_lot command will send the endOfLot 
+    command to the test program.  

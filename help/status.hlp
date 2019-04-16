@@ -1,0 +1,25 @@
+
+ L T X                         status                             L T X
+ 
+ NAME
+        status - display tester status
+ 
+ SYNOPSIS
+               status [-all |-command_file(-cf) | -debug |
+                       -printer | -tc | -timeout(-to)]
+        
+        The  status  command  prints  out the current status information
+        for the following  categories:
+        
+                -all                print all information
+                -command_file(-cf)  TCIF Command Files
+                -debug              status about attached debugger if any
+                -printer            Tester and Site printer assignments
+                -tc                 Tester Controller information, this
+                                    is the default if no options specified
+                -timeout(-to)       Tester Controller timeout information
+        
+        Regardless of  the  order  in  which  they  are  specified,  the
+        display  is  in  the   order:  tc,  timeout,  cf, printer, debug.
+        Specifying -all prints out all  information. 
+

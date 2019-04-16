@@ -1,0 +1,13 @@
+ 
+ L T X                         get_head                           L T X
+ 
+ NAME
+        get_head - get_head prints the number of the head currently 
+		   in use.
+ 
+ SYNOPSIS
+        get_head
+        
+        The command get_head prints the head number that the tester 
+	is currently using. 
+ 

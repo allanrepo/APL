@@ -1,0 +1,20 @@
+
+ L T X                         overlay                            L T X
+ 
+ NAME
+	overlay - Allows a program to be loaded over another.
+
+ SYNOPSIS
+	overlay <program name> [-compile] [-cadence_bin] [-no_external_ref]
+
+	The command overlay takes the given file and overlays the 
+	previously loaded program.
+
+        The optional -compile specifies the auto-compilation for any
+        evso found in the program.
+
+        The optional -cadence_bin specifies the auto creation of the 
+        Cadence Bins.
+
+        The optional -no_external_ref specifies that after overlay, no
+        ExternalRef will be created for the program loaded.

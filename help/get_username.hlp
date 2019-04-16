@@ -1,0 +1,12 @@
+
+ L T X                         get_username                          L T X
+ 
+ NAME
+        get_username - get_username prints the current session owner.
+ 
+ 
+ SYNOPSIS
+        get_username
+        
+        The command get_username prints the current session owner identified
+        by the login name.

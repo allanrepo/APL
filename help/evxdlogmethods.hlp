@@ -1,0 +1,15 @@
+ 
+ L T X                         evx_dlog_methods                       L T X
+ 
+ NAME
+        evx_dlog_methods - Get the specified enVision datalog method name
+
+ SYNOPSIS
+        evx_dlog_methods [ <dlog_index> ]
+
+        <dlog_index> is a positive integer number in 0-9 that specifies the 
+        particular datalog index the datalog method will return. If no index
+        is specified, the datalog methods for all index (0-9) will return.
+
+        If the specified dlog index is not used by the test program, an error
+        message will return, otherwise the datalog method will be printed out.

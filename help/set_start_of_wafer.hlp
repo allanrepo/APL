@@ -1,0 +1,13 @@
+
+ L T X                       set_start_of_lot                       L T X
+ 
+ NAME
+    set_start_of_wafer - Send startOfWafer to the test program.
+
+ SYNOPSIS
+    set_start_of_wafer [wafer_id]
+
+    The set_start_of_wafer command will send the startOfWafer 
+    command to the test program.  If wafer_id is given then
+    that will update the Lot Information.
+

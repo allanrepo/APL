@@ -1,0 +1,11 @@
+
+ L T X                       process_status                       L T X
+ 
+ NAME
+    process_status - display "good" if all the processes are running 
+                     otherwise "bad"
+
+ SYNOPSIS
+    process_status
+
+    The process_status command prints out the condition of the processes.

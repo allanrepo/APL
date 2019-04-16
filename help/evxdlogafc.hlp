@@ -1,0 +1,17 @@
+
+ L T X                   evx_dlog_after_failcount                   L T X
+
+ NAME
+       evx_dlog_after_failcount - Directs enVision datalogging to log 
+                                  results for the specified number of 
+                                  vectors following the first failing
+                                  vector encountered.
+
+ SYNOPSIS
+       evx_dlog_after_failcount <n>
+
+       The <n> argument must be a non-negative integer value. If a negative or zero 
+       integer is specified by mistake, the argument will default to 1.
+
+
+

@@ -1,0 +1,17 @@
+ L T X                         qa_retest_count                                L T X
+ 
+ NAME
+        qa_retest_count  - Overrides the active LimitTable's QA Retest Count in
+	the LimitTable Header.
+ 
+ SYNOPSIS
+        
+        qa_retest_count <unisgned>
+        
+        When set to greater than 0, the QA sub-flow is re-executed together with the 
+	OnInit and OnPowerDown sub-flows until it passes or the retest count is reached. The bin stats are
+	updated only for the last run. 
+	
+ FILES
+ 
+        /ltx/service/cmd/qa_retest_count

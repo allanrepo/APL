@@ -1,0 +1,129 @@
+
+LTX CEX usage:
+ cex [-tester <tester name>] [-head(-hd) <head num>]
+     [-timeout] <seconds>
+     [-debug] [-dm] [-version] [-syntax_check] [-help]
+     [-command <command> <arg1> <arg2> ... <argN>]
+
+Any unambiguous abbreviations are allowed for options to the  cex command
+itself as well as the commands listed below.
+As an example you may specify: -c, -co, -com ... -command.
+
+The following environment variables are recognized to specify
+the tester environment:                  
+    LTX_TESTER=<tester name>   - specify tester
+    HEAD=<head num>        	 - specify head
+    LTX_CEX_DEBUG          	 - if set causes debugging info to be printed
+    LTX_CEX_VERSION        	 - if set causes version info to be printed
+    LTX_CEX_SYNTAX_CHECK   	 - if set causes syntax to be check, commands are NOT executed
+    LTX_CEX_TIMEOUT=<secs> 	 - if set causes all readback from the tester 
+                                 to fail after waiting <secs> seconds.
+                                 <secs> <= 0 is ignored.
+
+LTX CEX commands:
+    (all commands will accept the options -help, -? to get help)
+add_stream <client name> <stream name>
+cex_help
+cex_version
+clear_memories <options>
+close_output <client name>
+cmdf <command file name> [-debug] [-prompt <prompt string>]
+del_stream <client name> <stream name>
+dlog_to_file <dlog_method_name> <file name>
+dlog_to_printer <dlog_method_name> <printer name> -f <flush type>
+evx_dfilter [-m <method> | -n <dlog_index>] [<filter>]
+evx_dlog_after_failcount <n>
+evx_dlog_before_failcount <n>
+evx_dlog_clear_methods [ <dlog_index> ]
+evx_dlog_failcount <n>
+evx_dlog_file_destination <dlog_method_name> <file name>
+evx_dlog_file_freq [-m <method> | -n <dlog_index> ] <file freq> 
+evx_dlog_methods [ <dlog_index> ]
+evx_dlog_sample_rate [-m <method> | -n <dlog_index>] <n>
+evx_dlog_testID [-m <method> | -n <dlog_index>] <string>
+evx_dlog_type [-m <method> | -n <dlog_index> ] <type> 
+evx_summary || 
+evx_summary details || 
+evx_summary [clearpartial || clearfinal] ||
+evx_summary site [on|off] || 
+evx_summary partial [full [on|off]] [clear [on|off]] || 
+evx_summary final clear [on|off] 
+evx_summary output [sublot|lot] [partial|final]
+evx_summary type [prod|ilqa]
+execute_flow <type> [-nowait|-wait <seconds>]]
+get_exp <expression> <display mode>
+get_head
+get_lot_info < identifier | all >
+get_name
+get_username
+get_nic_ltxhome
+get_skip_pattern_load
+get_stream <client name>
+get_tester_type
+head_powered
+list
+list_active_objects
+list_boards
+list_clients
+list_extintf_objects
+list_flows
+list_maps
+list_wafers
+load <program name> [-display]
+ltxenv
+nic_build_version
+output_to_file <file name> [ <stream name> ... ] 
+output_to_printer <printer name> -f <flush type> -s [ <stream name> ... ] 
+overlay <program name> [-compile] [-cadence_bin] [-no_external_ref]
+override
+power_hdwr [-crate [-crt #] | -testhead | -inv]
+printer [<printer name> | [-site]
+program_loaded
+program_load_done
+program_state
+process_status
+processes_hung
+qa_mode off | inline | 100pct
+qa_retest_count <value>
+reset_program
+reset_tester <options>
+restart
+sampling on | off [-tnum <test number> [-start_after <int> -interval <int>]]
+save
+save_as <program name>
+send_cmd <destination(integer)> <command(string)> <status(string)> [-verbose] [-data]
+              count <count value(s)>
+              done
+              double <double value(s)>
+              file <data file name>
+              float <float value(s)>
+              hex <bytes of hex data>
+              lcount <lcount value(s)>
+              string <string or quoted string)>
+              tm <tm by name>
+              cmd <known command>
+set_active_object <object name> <object type>
+set_extintf_object <object>
+set_exp <expression> <value> [ <expression> <value> ... ] 
+set_expr <expression> <value>
+set_lot_info <identifier> <string>
+set_start_of_lot [lot_id]
+set_end_of_lot
+set_start_of_wafer [wafer_id]
+set_end_of_wafer
+set_skip_pattern_load <yes|no>
+set_stream <client name> [ <stream name> ... ] 
+skipping on | off  [-tnum <test number>] 
+start [-ntimes <loop count> [-wait <seconds>]]
+      [-nowait]
+start_profiler [<pathname>] [-program] [-level] [-nowfc] [-html]
+status [-all | -command_file(-cf) | -debug | -printer | -tc | -timeout(-to)]]
+tester_health_dump
+tester_state
+stop_session [-wait <seconds>]
+stored_state [on|off]
+timeout [N]
+total_crashes
+trace <options>
+user_info [-all | -display | -program_name | -start_time | -user_id]
+unload [-wait <seconds> | -nowait] [-dontsave]

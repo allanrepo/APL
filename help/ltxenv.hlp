@@ -1,0 +1,18 @@
+
+ L T X                         ltxenv                             L T X
+ 
+ NAME
+        ltxenv - display LTX environment variables
+ 
+ SYNOPSIS
+        ltxenv
+        
+        Print  the  values  of  all  LTX  related environment variables.
+        This includes all variables beginning with the letters "LTX", 
+        "CEX", and "HEAD=". 
+    
+        Examples: 
+           LTX_TESTER, HEAD, LTXHOME, LTXPATH, LTX_UICPATH, etc.
+
+        This  command executes even when syntax checking only is  
+        turned on. 

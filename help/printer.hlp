@@ -1,0 +1,35 @@
+
+ L T X                         printer                            L T X
+ 
+ NAME
+        printer - setup printer links
+ 
+ SYNOPSIS
+        printer [<printer name> | -site]
+        
+        The printer command establishes to which printer a tester will
+        send immediate mode dlist and dlog summary printouts.  (Other
+        tools, such as TIF, LWF and the plotter choose the printer in 
+        other ways.)  Legal printer names are selected from entries by
+        the command "lpstat -v". 
+        
+        By default, dlist and summaries are queued to the tester printer,
+        designated by the text of the link
+        /ltx/testers/<tester>/user_data/default_printer.   If this link
+        does not exist the site printer is used.  The site printer is
+        designated by the text of the link /ltx/site/default_printer.  
+        
+        To change the text of the tester printer link use this command
+        with a  printer name, as in:
+        
+            printer <printer name>
+
+        where <printer name> is in list of "lpstat -v".  This name will be in 
+        effect until specifically reset.  To specify that the site printer 
+        should be used issue the command:
+        
+            printer -site
+
+        When -site is specified, the tester printer link will be deleted.  
+        Again, this will remain in effect until specifically reset. 
+

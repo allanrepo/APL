@@ -1,0 +1,17 @@
+
+ L T X                         load                               L T X
+ 
+ NAME
+        load - load the specified program into the tester
+ 
+ SYNOPSIS
+        load <pathname> [-display]
+        
+        The load command sends the indicated file to the tester to be
+        loaded as a Cadence test program. If the file cannot be  opened
+        or  loaded,  or  has an incorrect "VTI  Version" stamp, an error
+        message results. 
+
+        If "-display" is given, Cex will display all the applicable windows 
+        with the load including errorTool, tpa_server, led, and binTool.
+        By default, only the errorTool icon will be visible.

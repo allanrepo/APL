@@ -1,0 +1,24 @@
+
+ L T X                         dlog_to_printer                     L T X
+ 
+ NAME
+        dlog_to_printer - Direct datalog stream output to a printer.
+
+ SYNOPSIS
+        dlog_to_printer <dlog_method_name> <printer name>
+
+        The command dlog_to_printer will add a printer client to the evxio 
+        routing table. The output will flush at the end of test. 
+
+        The dlog_method_name must be a valid ascii datalogging method 
+        (ex. enVision_AsciiDL). If the method has not yet been set up 
+        in the test program, it will be set up automatically before 
+        adding the printer client.
+
+ Example: 
+ 
+      cex -c dlog_to_printer enVision_AsciiDL myPrinterName        
+
+
+
+

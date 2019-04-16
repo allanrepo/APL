@@ -1,0 +1,13 @@
+ 
+ L T X                         program_loaded_done                   L T X
+ 
+ NAME
+        program_load_done - Prompts whether or not a program completed loading.
+ 
+ SYNOPSIS
+        program_load_done
+        
+        The command program_load_done sends a message saying if a program
+	is done loading. If one is, the name of the program is also
+	printed.
+ 

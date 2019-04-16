@@ -1,0 +1,44 @@
+
+ L T X                         start                              L T X
+ 
+ NAME
+        start - run the test program beginning with the on_start procedure
+ 
+ SYNOPSIS
+        start [-ntimes <loop count> [-wait<seconds>]]
+              [-nowait]
+        
+        start  begins execution of the loaded program with the procedure
+        on_start. The  optional -ntimes <loop count> specifies how  many
+        times  the  program  is  to be  executed. If -wait is specified,
+        cex waits the specified number of seconds   before  issuing  the
+        next  start.  Here  the  looping  is  done  by  cex,  not by the
+        tester. cex waits for the  program  to  be  started  loop  count
+        times  before  terminating.   If  -nowait is specified, cex puts
+        the  request  to  run  into  the  tester's  command   queue  and
+        terminates,  freeing  the  shell  for  use.  Note  that  -nowait
+        cannot be used with -ntimes. 
+
+        Example 1: Start the test program run without waiting for a response
+
+             cex -t <tester> -c start -nowait
+
+        Example 2: Run the test program for 10 loops, waiting 2 seconds 
+                   between runs
+
+             cex -t <tester> -c start -ntimes 10 -wait 2
+
+        Example 3:
+
+        If you would like to use -ntimes but still be able to work in 
+        the same shell, run the cex command in the background with the  
+        ampersand symbol "&". For example:
+        
+             cex -t <tester> -c start -ntimes 2000 -wait 4 &
+        
+        The above command runs the currently loaded program 2000  times,
+        waiting  4  seconds   between  runs. This occurs as a background
+        process and the  shell  prompt  returns   immediately.  See  the
+        manual  for  your specific shell regarding control of background
+        processes. 
+

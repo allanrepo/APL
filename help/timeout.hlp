@@ -1,0 +1,30 @@
+
+ L T X                        timeout                             L T X
+
+ NAME
+        timeout - set or display timeout in seconds
+ 
+ SYNOPSIS
+        timeout [N]
+
+        timeout will set the InterProcess Communication (IPC) timeout 
+        period to N seconds if N is provided, or will display the
+        current setting if N is omitted.
+
+        By default, timeouts are disabled, meaning that CEX commands
+        will never time out, and will wait indefinitely for the 
+        tester to respond. By setting the timeout period to a certain
+        number of seconds, one can ensure that CEX commands will always
+        return, even if the tester is not responding.  If the tester 
+        connection does not respond within the timeout period the command 
+        exits with a connection timed out error. If the tester eventually 
+        does respond to the command the data will be discarded.
+
+                                     NOTE
+
+            This command, which is identical to the LTX_CEX_TIMEOUT
+            environment variable and the -timeout <N> switch to the
+            cex command itself, should be used with caution. Setting 
+            the timeout to too short an interval will cause commands 
+            to timeout during long program runs. Also, this command 
+            is useful only within an interactive CEX session.

@@ -1,0 +1,20 @@
+
+ L T X                         output_to_file                     L T X
+ 
+ NAME
+	output_to_file - Choose the streams to be directed to a file.
+
+ SYNOPSIS
+        output_to_file <file name> [<stream name>...]
+
+	The command output_to_file will add a file client to the evxio 
+	routing table, along with the specified streams. The user will 
+        able to define which streams they wish to be directed to the 
+        file. If no streams are specified, the default stderr stream 
+	will be used.
+
+	The stream name must be one of the following options:  
+	bootup, character, evdlog, hwtool, ocsout, stderr, 
+	stdin, stdout, sum, wmap, dluser0 ... dluser9. 
+	Detailed descriptions can be found in the users manual.
+

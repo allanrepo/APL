@@ -1,0 +1,19 @@
+
+ L T X                         reset_tester                       L T X
+ 
+ NAME
+	reset_tester - Resets given subsytem.
+
+ SYNOPSIS
+	reset_tester [<options>]
+
+	The command reset_tester will reset the specified subsystem. 
+	There are five valid options:
+
+		analog	 - Analog subsystem
+		testhead - Test head subsystem
+		timing	 - Timing subsystem
+		waveform - Waveform digitizer
+		all	 - Analog, test head, timing and 
+			   waveform subsystems.
+

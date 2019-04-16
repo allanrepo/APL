@@ -1,0 +1,14 @@
+
+ L T X                         list_clients                       L T X
+ 
+ NAME
+	list_clients - will list all the current client information.
+
+ SYNOPSIS
+	list_clients
+
+	The command list_clients will list all the current active 
+	client information. The printed information will include the 
+	name of the client, io type, flush type, and all current 
+	streams directed to that client.
+

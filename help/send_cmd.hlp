@@ -1,0 +1,42 @@
+
+ L T X                         send_cmd                           L T X
+ 
+ NAME
+        send_cmd - send specified command to specified destination
+ 
+ SYNOPSIS
+        send_cmd <destination> <command> <status> [-data] [-verbose]
+        
+        Send  raw  LTX internal commands to the tester or NIC processes.
+        Note that  this   command  is  intended  for  LTX  personnel  or
+        extremely   experienced  users.  This   manual  alone  does  not
+        include enough information to use send_cmd.  Arbitrary   use  of
+        this command could lead to disastrous results. 
+        
+        The  <destination>  is  an  integer  that specifies the intended
+        recipient of the   command,  the  <command>   and  <status>  are
+        strings   specifying   the   command  and   status  to  be  sent
+        respectively. The -data option causes send_cmd  to  prompt   for
+        data  input  lines. Each data input line begins with a word that
+        indicates  the type of data that will follow. Values are:
+        
+                count <count value(s)>
+                done indicates that there is no more data
+                double <double value(s)>
+                file <file name(s) containing raw binary data>
+                float <float value(s)>
+                hex <byte(s) of hexadecimal data>
+                lcount <lcount value(s)>
+                string <string value(s)> NOTE: to include spaces in
+                                   a string quote the entire string
+                tm <tm by name>
+                cmd <command name>
+        
+        To end data input use done. If -verbose is specified the  actual
+        data  being  sent and received are printed in hexadecimal. There
+        is no output on successful  execution.
+        
+        Note  that  these are purely theoretical examples and in no way
+        are meant to  encourage the use of send_cmd  for  routine  tasks
+        that are covered by other cex  commands. 
+

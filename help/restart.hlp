@@ -1,0 +1,14 @@
+
+ L T X                         restart                            L T X
+ 
+ NAME
+         restart - run the test program beginning with the on_restart procedure
+ 
+ SYNOPSIS
+        restart
+        
+        The  restart  command  executes  the loaded program beginning in
+        the  procedure   on_restart,  if  one  exists,   and   continues
+        execution  with  on_start. This is usually  used if a part fails
+        and some external alarm might have been the cause. 
+

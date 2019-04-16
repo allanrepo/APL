@@ -1,0 +1,11 @@
+
+ L T X                          power_hdwr                        L T X
+ 
+ NAME
+	power_hdwr - Power_hdwr will repower the required hardware.
+
+ SYNOPSIS
+	power_hdwr [-crate || -testhead]
+
+	The command power_hdwr will repower the given hardware. The
+        options are to repower the crate or testhead.

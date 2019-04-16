@@ -1,0 +1,11 @@
+
+ L T X                         cex_version                        L T X
+ 
+ NAME
+        cex_version - print version information
+ 
+ SYNOPSIS
+        cex_version
+        
+        Print the version information. 
+

@@ -1,0 +1,13 @@
+
+ L T X                         get_stream                         L T X
+ 
+ NAME
+	get_stream - displays the list of streams for a given client.
+
+ SYNOPSIS
+	get_stream <client name>
+
+	This command will display the list of streams the given client 
+	has registered. The client name must be currently active. To 
+	get a list of current clients, use the command list_clients.
+

@@ -1,0 +1,13 @@
+
+ L T X                         reset_program                       L T X
+ 
+ NAME
+	reset_program - Resets the current loaded program
+
+ SYNOPSIS
+	reset_program
+
+	The command reset_program will reset the current loaded program
+        on the current tester and current head. It is useful when there
+        is error encountered while the program is running and user wants
+        the system to be back in normal state.
