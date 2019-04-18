@@ -1,22 +1,24 @@
 #include "tester.h"
-
+ 
 /* ------------------------------------------------------------------------------------------
 constructor
 ------------------------------------------------------------------------------------------ */
-CTester::CTester():CArg("-tester")
-{
-	addChild( new CArg("connect") );
+CTester::CTester()
+{ 
+	// play safe. initialize pointers to null
+	m_pTester = 0;
+	m_pTestHead = 0;
+	m_pProgCtrl = 0;
+	m_pState = 0;
+	m_pEvxio = 0;
 
-	// initialize tester flags lags
-	m_nHead = 1; // set head to default
- 
 	// configure loggers
 	m_Log.immediate = true;
 	m_Log.enable = true; 
 	m_Log.silent = false;
-	m_Debug.immediate = true;
-	m_Debug.enable = true; 
-	m_Debug.silent = false;
+
+	// default
+	m_nHead = 1;
 }
 
 
@@ -40,26 +42,28 @@ bool CTester::connect(const std::string& strTesterName, int nAttempts)
   	while(nAttempts--) 
 	{
 		disconnect();
-		m_Debug << "[DEBUG] Attempting to connect to tester <" << strTesterName.c_str() << ">..." << CUtil::CLog::endl;
+
+		m_Log << "Creating EVXA objects..." << CUtil::CLog::endl;
+
 		// connect to tester
-    		m_pTester = new TesterConnection(strTesterName.c_str());
-    		if(m_pTester->getStatus() != EVXA::OK){ m_Debug << "[DEBUG] ERROR TesterConnection constructor" << CUtil::CLog::endl; continue; }
-		m_Debug << "[DEBUG] TesterConnection object created..." << CUtil::CLog::endl;
+    		m_pTester = new TesterConnection(strTesterName.c_str());	
+    		if(m_pTester->getStatus() != EVXA::OK) continue;
+		else m_Log << "TesterConnection object created..." << CUtil::CLog::endl;
 		
 		// connect to test head
-    		m_pConn = new TestheadConnection(strTesterName.c_str(), m_nHead);
-    		if(m_pConn->getStatus() !=  EVXA::OK){ m_Debug << "[DEBUG] ERROR in TestheadConnection constructor" << CUtil::CLog::endl; continue; }
-		m_Debug << "[DEBUG] TestheadConnection object created..." << CUtil::CLog::endl;
+    		m_pTestHead = new TestheadConnection(strTesterName.c_str(), m_nHead);
+    		if(m_pTestHead->getStatus() !=  EVXA::OK) continue; 
+		else m_Log << "TestheadConnection object created..." << CUtil::CLog::endl;
 
 		// create program control object, does not check if program is loaded
-    		m_pProgCtrl = new ProgramControl(*m_pConn);
-    		if(m_pProgCtrl->getStatus() !=  EVXA::OK){ m_Debug << "[DEBUG] ERROR in Program constructor" << CUtil::CLog::endl; continue; }
-		m_Debug << "[DEBUG] ProgramControl object created..." << CUtil::CLog::endl;
+    		m_pProgCtrl = new ProgramControl(*m_pTestHead);
+    		if(m_pProgCtrl->getStatus() !=  EVXA::OK) continue;
+		else m_Log << "ProgramControl object created..." << CUtil::CLog::endl;
 
 		// create notification object
-    		m_pState = new CStateNotification(*m_pConn);
-    		if(m_pState->getStatus() !=  EVXA::OK) { m_Debug << "[DEBUG] ERROR in statePtr constructor" << CUtil::CLog::endl; continue; }
-		m_Debug << "[DEBUG] CStateNotification object created..." << CUtil::CLog::endl;
+    		m_pState = new CStateNotification(*m_pTestHead);
+    		if(m_pState->getStatus() !=  EVXA::OK) continue; 
+		m_Log << "CStateNotification object created..." << CUtil::CLog::endl;
 
 		// lets convert our tester name from std::string to crappy old C style string because the stupid software team 
 		// who designed EVXA libraries sucks so bad and too lazy to set string arguments as constants...
@@ -68,8 +72,8 @@ bool CTester::connect(const std::string& strTesterName, int nAttempts)
 
 		// create stream client
     		m_pEvxio = new CEvxioStreamClient(szTesterName, m_nHead);
-    		if(m_pEvxio->getStatus() != EVXA::OK){ m_Debug << "[DEBUG] ERROR in EvxioStreamClient constructor" << CUtil::CLog::endl; continue; }
-		m_Debug << "[DEBUG] CEvxioStreamClient object created..." << CUtil::CLog::endl;
+    		if(m_pEvxio->getStatus() != EVXA::OK) continue; 
+		else m_Log << "CEvxioStreamClient object created..." << CUtil::CLog::endl;
 
 		// if we reached this point, we are able connect to tester. let's connect to evx stream now...
 		// same issue here... i could have used stringstream but forced to use C style string because the damn EVXA class
@@ -77,15 +81,17 @@ bool CTester::connect(const std::string& strTesterName, int nAttempts)
 		char szPid[1024] = "";
 		sprintf(szPid, "client_%d", getpid());
 
-    		if(m_pEvxio->ConnectEvxioStreams(m_pConn, szPid) != EVXA::OK){ m_Debug << "[DEBUG] ERROR Connecting to evxio" << CUtil::CLog::endl; continue; }
+		m_Log << "Connecting to " << strTesterName << "..." << CUtil::CLog::endl;
+    		if(m_pEvxio->ConnectEvxioStreams(m_pTestHead, szPid) != EVXA::OK) continue;
     		else
 		{
 			// once the tester objects are created, let's wait until tester is ready
-		  	while(!m_pTester->isTesterReady(m_nHead)) 
+		  	while(!m_pTester->isTesterReady(m_nHead))
 			{
-				m_Debug << "[DEBUG] Tester NOT yet ready..." << CUtil::CLog::endl;
+				m_Log << "Tester NOT yet ready..." << CUtil::CLog::endl; 
+				sleep(1);
 			}
-			m_Debug << "[DEBUG] Tester ready for use." << CUtil::CLog::endl;
+			m_Log << "Tester ready for use." << CUtil::CLog::endl;
 		  	return true; 	 
 		}
   	}
@@ -101,11 +107,11 @@ destroys the EVXA tester objects
 ------------------------------------------------------------------------------------------ */
 void CTester::disconnect()
 {
-	SAFE_DELETE( m_pTester );
-	SAFE_DELETE( m_pConn );
-	SAFE_DELETE( m_pProgCtrl );
-	SAFE_DELETE( m_pState );
-	SAFE_DELETE( m_pEvxio );
+	delete(m_pTester); m_pTester = 0;
+	delete(m_pTestHead); m_pTestHead = 0;
+	delete(m_pProgCtrl); m_pProgCtrl = 0;
+	delete(m_pState); m_pState = 0;
+	delete(m_pEvxio); m_pEvxio = 0;
 } 
 
 /* ------------------------------------------------------------------------------------------
@@ -113,6 +119,42 @@ application's loop
 ------------------------------------------------------------------------------------------ */
 void CTester::loop()
 {
+	while(true)
+	{
+
+		// let's get the file descriptor of state notification, evxio messages, end evxio error stream. we're listening to these
+		int fdState = m_pState->getSocketId();
+		int fdEvxio = m_pEvxio->getEvxioSocketId();
+		int fdError = m_pEvxio->getErrorSocketId();		
+
+		// create our fd_set and add our file descriptors to it
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(fdState, &fds);
+		FD_SET(fdEvxio, &fds);
+		FD_SET(fdError, &fds);
+
+		// get the max file descriptor number. needed for select()
+		int nMaxFd = fdState;
+		nMaxFd = fdEvxio > nMaxFd? fdEvxio : nMaxFd;
+		nMaxFd = fdError > nMaxFd? fdError : nMaxFd;
+
+		// wait here now for io operations from any of the fd's
+		fd_set rdy = fds;
+		if( select(nMaxFd, &rdy, NULL, NULL, NULL) < 0 ) perror("select() failed ");
+
+		// handle io operations from state notifications.
+		if((fdState > 0) && (FD_ISSET(fdState, &rdy))) 
+		{
+    			if (m_pState->respond(fdState) != EVXA::OK) 
+			{
+		      		const char *errbuf = m_pState->getStatusBuffer();
+				m_Log << "Error occured on state notification IO operation: " << errbuf << CUtil::CLog::endl;
+			      	return;
+    			}  
+  		}			
+	}
+/*
 	while(true)
 	{
 		fd_set read_fd;
@@ -130,12 +172,12 @@ void CTester::loop()
 		num_fds = ((num_fds > errorSockId) ? num_fds + 1 : errorSockId +1);
 			
 		
-
-		int num_ready;
+ 
+		int num_ready; 
 		if((num_ready = select(num_fds, &read_fd, NULL, NULL, NULL)) < 0) 
 		{
 			perror("main_serverLoop select failed ");
-		}
+		} 
 
 		// handle requests from stdin
 		if(FD_ISSET(fileno(stdin), &read_fd)) 
@@ -178,12 +220,8 @@ void CTester::loop()
 			}
 		}
 	}
+*/
 }
 
-ProgramControl* const ProgCtrl()
-{
-	CTester& T = CTester::instance();
-	return T.ProgCtrl();
-}
 
 

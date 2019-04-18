@@ -6,7 +6,6 @@
 #include <evxa/EvxioStreamsClient.hxx>
 #include <utility.h>
 #include <unistd.h>
-#include <arg.h>
 
 #define SAFE_DELETE(p){ delete(p); p = 0; }
 
@@ -35,55 +34,73 @@ tester class
 	to use this loggers exclusively. they just have to make reference to them
 -	2 loggers. 1 for common print display, another for debug display
 ------------------------------------------------------------------------------------------ */
-class CTester: public CArg
+class CTester
 {
-private:
-	// make these private to turn this class into singleton	
-	CTester(); // private so we can't instantiate	
-	virtual ~CTester(); // private so we can't destroy
-	CTester(const CTester&){} // make copy constructor private so we can't copy                    
-	const CTester& operator=(const CTester&){} // make = operator private so we can't copy
-
+protected:
 	// tester objects
   	TesterConnection *m_pTester;
-  	TestheadConnection *m_pConn;
+  	TestheadConnection *m_pTestHead;
 	ProgramControl *m_pProgCtrl;
   	CStateNotification *m_pState;
   	CEvxioStreamClient *m_pEvxio;
-	int m_nHead;
+	int m_nHead;	
 
-public:
-	// loggers
+	// logger
 	CUtil::CLog m_Log;
-	CUtil::CLog m_Debug;
 
 public:
-	// you can't instantiate yourself so this is how u get a reference to the singleton object
-	static CTester& instance()
-	{
-		static CTester inst;
-		return inst;
-	}
+	// constructors, operator
+	CTester(); 
+	virtual ~CTester(); 
+	CTester(const CTester&){}                    
+	const CTester& operator=(const CTester&){} 
 
 	// tester functions
 	bool connect(const std::string& strTesterName, int nAttempts = 1);
 	void disconnect();
 	void loop();
 
-	// accessors to tester objects
-	TesterConnection* Tester(){ return m_pTester; }
-	TestheadConnection* TestHead(){ return m_pConn; }
-	ProgramControl* ProgCtrl(){ return m_pProgCtrl; }
-	CStateNotification* StateNotify(){ return m_pState; }
-	CEvxioStreamClient* StreamClient(){ return m_pEvxio; }
+};
 
-	// tester properties
-	int getHead(){ return m_nHead; }
+class event
+{
+public:
+	void doThis()
+	{
+		CUtil::CLog Log;
+		Log << "hello event class" << CUtil::CLog::endl;
+	}
 };
 
 
-ProgramControl* const ProgCtrl();
+
+class foo
+{
 
 
+public:
+	void (event::* eventPtr)();
+	void (*doThisPtr)();
+
+	foo()
+	{
+		doThisPtr = 0;
+		eventPtr = 0;
+	}
+	virtual ~ foo(){}
+	
+	void doThisEvent(event& e)
+	{
+		if (!eventPtr) return;
+		else (e.*eventPtr)();
+	}
+
+	void doThis()
+	{
+		if (!doThisPtr) return;
+		else doThisPtr();
+	}
+
+};
 
 #endif
