@@ -14,7 +14,7 @@ int main(int argc, char **argv)
 	
 	while(1)
 	{	
-		Tester.connect("localuser_sim");
+		Tester.connect("localuser_sim", 1, -1);
 		Tester.loop();
 		Tester.disconnect();
 	}

@@ -56,7 +56,7 @@ public:
 	const CTester& operator=(const CTester&){} 
 
 	// tester functions
-	bool connect(const std::string& strTesterName, int nAttempts = 1);
+	bool connect(const std::string& strTesterName, int nSleep = 0, int nAttempts = 1);
 	void disconnect();
 	void loop();
 
