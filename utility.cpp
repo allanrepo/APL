@@ -75,3 +75,4 @@ bool CUtil::isInteger(const std::string& n)
 
 	return true;
 }
+

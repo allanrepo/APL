@@ -1,6 +1,9 @@
 #include <sstream>
 #include <utility.h>
 #include <tester.h>  
+#include <fd.h>
+#include <notify.h>
+
 
 void doThis()
 {
@@ -10,6 +13,16 @@ void doThis()
 
 int main(int argc, char **argv)  
 {
+	CFileDescriptorManager fdm;
+	CNotifyFileDescriptor fdNotify("/home/localuser/Desktop/APL");
+	CUtil::CLog Log;
+
+	fdm.add( fdNotify );
+
+	while (1) fdm.select();
+
+	return 0;
+
 	CTester Tester;
 	
 	while(1)
