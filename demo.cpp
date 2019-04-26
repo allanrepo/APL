@@ -3,6 +3,7 @@
 #include <tester.h>  
 #include <fd.h>
 #include <notify.h>
+#include <app.h>
 
 
 void doThis()
@@ -13,15 +14,19 @@ void doThis()
 
 int main(int argc, char **argv)  
 {
+#if 1
+	CApp App;
+	return 0;
+#endif
+#if 0 // test notify
 	CFileDescriptorManager fdm;
 	CNotifyFileDescriptor fdNotify("/home/localuser/Desktop/APL");
 	CUtil::CLog Log;
-
 	fdm.add( fdNotify );
-
 	while (1) fdm.select();
 
 	return 0;
+#endif
 
 	CTester Tester;
 	

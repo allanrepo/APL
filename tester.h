@@ -7,10 +7,12 @@
 #include <utility.h>
 #include <unistd.h>
 
+
 #define SAFE_DELETE(p){ delete(p); p = 0; }
 
 class CStateNotification: public StateNotification
 {
+protected:
 public:
   	CStateNotification(const TestheadConnection &thc):StateNotification(thc){}
 	virtual ~CStateNotification(){}
@@ -60,7 +62,31 @@ public:
 	void disconnect();
 	void loop();
 
+	bool isReady()
+	{
+		if (!m_pTester) return false;
+		return m_pTester->isTesterReady(m_nHead);
+	}
+
+	// handle event when state notification occurs from unison
+	bool onStateNotification(int fd)
+	{
+		// quick bail if we're not connected
+		if (!isReady()) return false;
+
+		if (m_pState->respond(fd) != EVXA::OK) 
+		{
+	      		const char *errbuf = m_pState->getStatusBuffer();
+			m_Log << "Error occured on state notification IO operation: " << errbuf << CUtil::CLog::endl;
+		      	return false;
+		}  		
+		else return true;
+	}
+
+	int getStateFileDesc(){ return m_pState? m_pState->getSocketId(): -1; }
 };
+
+
 
 class event
 {

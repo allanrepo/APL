@@ -87,7 +87,7 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
 		sprintf(szPid, "client_%d", getpid());
 
 		m_Log << "Connecting to " << strTesterName << "..." << CUtil::CLog::endl;
-    		if(m_pEvxio->ConnectEvxioStreams(m_pTestHead, szPid) != EVXA::OK) continue;
+    		if(m_pEvxio->ConnectEvxioStreams(m_pTestHead, szPid) != EVXA::OK) { if(nSleep) sleep(nSleep); continue; } 
     		else
 		{
 			// once the tester objects are created, let's wait until tester is ready
