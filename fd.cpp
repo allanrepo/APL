@@ -21,7 +21,7 @@ add file descriptor at the back of the list
 ------------------------------------------------------------------------------------------ */
 bool CFileDescriptorManager::add( CFileDescriptor& fd )
 {
-	m_FDs.push_back( &fd );
+	m_FDs.push_front( &fd );
 	m_Log << "file descriptor '" << (*m_FDs.begin())->get() << "' added." << CUtil::CLog::endl;
 	return true;
 }

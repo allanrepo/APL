@@ -28,6 +28,7 @@ int main(int argc, char **argv)
 	return 0;
 #endif
 
+#if 0
 	CTester Tester;
 	
 	while(1)
@@ -36,16 +37,18 @@ int main(int argc, char **argv)
 		Tester.loop();
 		Tester.disconnect();
 	}
-/*
-	foo f;
-	f.doThisPtr = &doThis;
+#endif
+ 
+#if 0
+	foo f(doThis);
+	//f.doThisPtr = &doThis;
 	f.doThis();
 	f.eventPtr = &event::doThis;
 
 	event e;
 	f.doThisEvent(e);
 
-*/
+#endif
 	return 0;
 }
 

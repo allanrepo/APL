@@ -102,15 +102,18 @@ public:
 
 class foo
 {
-
-
+	typedef void (*PDOTHIS)();
+	//PDOTHIS m_doThisPtr;
+	
 public:
+
 	void (event::* eventPtr)();
 	void (*doThisPtr)();
+	
 
-	foo()
+	foo(void(*p)())
 	{
-		doThisPtr = 0;
+		doThisPtr = p;
 		eventPtr = 0;
 	}
 	virtual ~ foo(){}

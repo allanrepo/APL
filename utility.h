@@ -13,22 +13,6 @@
 
 namespace CUtil
 {
-	class CSingleton
-	{
-	private:
-		CSingleton(){}  // private so we can't instantiate
-		virtual ~CSingleton(){} // private so we can't destroy
-		CSingleton(const CSingleton&){} // make copy constructor private so we can't copy                    
-		const CSingleton& operator=(const CSingleton&){} // make = operator private so we can't copy
-
-	public:
-		static CSingleton& instance()
-		{
-			static CSingleton inst;
-			return inst;
-		}
-	};
-
 	// standard class version
 	class CLog
 	{
