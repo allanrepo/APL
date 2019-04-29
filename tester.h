@@ -62,28 +62,16 @@ public:
 	void disconnect();
 	void loop();
 
+	// check if tester is ready
 	bool isReady()
 	{
 		if (!m_pTester) return false;
 		return m_pTester->isTesterReady(m_nHead);
 	}
 
-	// handle event when state notification occurs from unison
-	bool onStateNotification(int fd)
-	{
-		// quick bail if we're not connected
-		if (!isReady()) return false;
-
-		if (m_pState->respond(fd) != EVXA::OK) 
-		{
-	      		const char *errbuf = m_pState->getStatusBuffer();
-			m_Log << "Error occured on state notification IO operation: " << errbuf << CUtil::CLog::endl;
-		      	return false;
-		}  		
-		else return true;
-	}
-
-	int getStateFileDesc(){ return m_pState? m_pState->getSocketId(): -1; }
+	// load program
+	bool load(const std::string& name, bool bDisplay = false);
+	bool unload(bool bWait = true, int nWait = 0);
 };
 
 

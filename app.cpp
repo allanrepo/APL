@@ -1,8 +1,5 @@
 #include <app.h>
 
-//void CHandleNotify::onFileCreate( const std::string& name ){ m_App.onReceiveFile(name); }	
-//void CHandleNotify::onFileMoveTo( const std::string& name ){ }//m_App.onReceiveFile(name); }
-
 /* ------------------------------------------------------------------------------------------
 constructor
 ------------------------------------------------------------------------------------------ */
@@ -49,6 +46,9 @@ CApp::CApp()
 	}
 }
 
+/* ------------------------------------------------------------------------------------------
+destructor
+------------------------------------------------------------------------------------------ */
 CApp::~CApp()
 {
 	
@@ -65,6 +65,16 @@ void CApp::onReceiveFile(const std::string& name)
 		m_Log << "File received but is not what we're waiting for: " << name << CUtil::CLog::endl;
 		return;
 	}
+
+	// parse lotinfo.txt file
+	parse(name);
+
+	// do we have the 'PROGRAM' field and its value from lotinfo.txt?
+
+	// try to load program 
+	std::string t("/tmp/prog/BinChecker_R01P02/Program/BinChecker.una");
+	m_Log << "loading " << t << "..." << CUtil::CLog::endl;
+	load(t);
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -106,3 +116,42 @@ void CApp::onErrorResponse(int fd)
 	}  		
 }
 
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+bool CApp::parse(const std::string& name)
+{
+	// open file and transfer content to string
+	std::fstream fs;
+	fs.open(name.c_str(), std::ios::in);
+	std::stringstream ss;
+	ss << fs.rdbuf();
+	std::string s = ss.str();
+	fs.close();
+
+
+	while(s.size())
+	{
+		// find next \n
+		size_t pos = s.find_first_of('\n');
+
+		// get current line
+		std::string l = s.substr(0, pos);
+
+		// remove current line from the file		
+		s = s.substr(pos + 1);
+
+		// print stuff
+		m_Log << ">> '" << l << "'" << CUtil::CLog::endl;
+		
+		// found last line
+		if (pos == std::string::npos)
+		{
+			break;
+		}		
+	}	
+
+	m_Log << s << CUtil::CLog::endl;
+
+	return true;
+}

@@ -32,8 +32,8 @@ public:
 
 	// process the incoming file from the monitored path
 	void onReceiveFile(const std::string& name);
-
-	void onNewLotFileInfo();
+	
+	bool parse(const std::string& name);
 };
 
 
@@ -72,7 +72,7 @@ public:
 	}
 
 	virtual	void onFileCreate( const std::string& name ){ m_App.onReceiveFile(name); }	
-	virtual	void onFileMoveTo( const std::string& name ){m_App.onReceiveFile(name); }
+	virtual	void onFileMoveTo( const std::string& name ){ m_App.onReceiveFile(name); }
 };
 
 

@@ -1,9 +1,6 @@
 #include "tester.h"
 #include <sys/inotify.h>
 
-#define EVENT_SIZE  ( sizeof (struct inotify_event) )
-#define BUF_LEN     ( 1024 * ( EVENT_SIZE + 255 ) )
-
  
 /* ------------------------------------------------------------------------------------------
 constructor
@@ -124,26 +121,6 @@ application's loop
 ------------------------------------------------------------------------------------------ */
 void CTester::loop()
 {
-
-	char buffer[BUF_LEN];
-	int length, i = 0; 
-	int fdNotify; 
-	int wd;
-
-	// create file descriptor for inotify
-	fdNotify = inotify_init();
-	if ( fdNotify < 0 ) perror( "inotify_init" );
-
-	// let's watch the specified path
-	wd = inotify_add_watch( fdNotify, "/tmp", IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM);
-	if (wd == -1)
-	{
-		m_Log << "ERROR: Something went wrong in trying to watch " << "/tmp" << ". Check the path again if it's valid. " << CUtil::CLog::endl;
-		return ;
-	}
-
-
-
 	// let's get the file descriptor of state notification, evxio messages, end evxio error stream. we're listening to these
 	int fdState = m_pState->getSocketId();
 	int fdEvxio = m_pEvxio->getEvxioSocketId();
@@ -155,13 +132,11 @@ void CTester::loop()
 	FD_SET(fdState, &fds);
 	FD_SET(fdEvxio, &fds);
 	FD_SET(fdError, &fds);
-	FD_SET(fdNotify, &fds);
 
 	// get the max file descriptor number. needed for select()
 	int nMaxFd = fdState;
 	nMaxFd = fdEvxio > nMaxFd? fdEvxio : nMaxFd;
 	nMaxFd = fdError > nMaxFd? fdError : nMaxFd;
-	nMaxFd = fdNotify > nMaxFd? fdNotify : nMaxFd;
 
 	while(true)
 	{
@@ -180,83 +155,6 @@ void CTester::loop()
     			}  
   		}
 
-		if((fdNotify > 0) && (FD_ISSET(fdNotify, &rdy)))
-		{
-			i = 0;
-			memset(buffer, 0, sizeof(buffer)); 
-			length = read( fdNotify, buffer, BUF_LEN );  
-			if ( length < 0 ) perror( "read" );
- 
-			while ( i < length )   
-			{
-				struct inotify_event *event = ( struct inotify_event * ) &buffer[ i ];
-
-				if (!event->len) continue;
-
-				//std::cout << "mask --- " << std::hex << event->mask << ", " << event->len <<  std::endl;
-
-
-				if ( event->mask & IN_CREATE ) 
-				{
-					if ( event->mask & IN_ISDIR ) printf( "The directory %s was created.\n", event->name );       
-					else printf( "The file %s was created.\n", event->name );
-				}
-				else if ( event->mask & IN_DELETE ) 
-				{
-					if ( event->mask & IN_ISDIR ) printf( "The directory %s was deleted.\n", event->name );       
-					else printf( "The file %s was deleted.\n", event->name );
-				}
-				else if ( event->mask & IN_MODIFY ) 
-				{
-					if ( event->mask & IN_ISDIR ) printf( "The directory %s was modified.\n", event->name );
-					else printf( "The file %s was modified.\n", event->name );
-				}
-				else if ( event->mask & IN_ACCESS ) 
-				{
-					if ( event->mask & IN_ISDIR ) printf( "The directory %s was accessed.\n", event->name );
-					else printf( "The file %s was accessed.\n", event->name ); 
-				} 
-				else if ( event->mask & IN_ATTRIB ) 
-				{
-					if ( event->mask & IN_ISDIR ) printf( "The directory %s attribute changed.\n", event->name );
-					else printf( "The file %s attribute changed.\n", event->name ); 
-				}
-				else if ( event->mask & IN_CLOSE_WRITE ) 
-				{
-					if ( event->mask & IN_ISDIR ) printf( "The directory %s opened for writing was closed.\n", event->name );
-					else printf( "The file %s opened for writing was closed.\n", event->name ); 
-				}
-				else if ( event->mask & IN_CLOSE_NOWRITE ) 
-				{
-					if ( event->mask & IN_ISDIR ) printf( "The directory %s not opened for writing was closed.\n", event->name );
-					else printf( "The file %s not opened for writing was closed.\n", event->name ); 
-				} 
-				else if ( event->mask & IN_DELETE_SELF ) 
-				{
-					if ( event->mask & IN_ISDIR ) printf( "The directory %s, a watched directory is itself deleted.\n", event->name );
-					else printf( "The file %s, a watched directory is itself deleted.\n", event->name ); 
-				}
-				else if ( event->mask & IN_MOVED_FROM ) 
-				{
-					if ( event->mask & IN_ISDIR ) printf( "The directory %s is moved from.\n", event->name );       
-					else printf( "The file %s is moved from.\n", event->name );
-				}
-				else if ( event->mask & IN_MOVED_TO ) 
-				{
-					if ( event->mask & IN_ISDIR ) printf( "The directory %s is moved to.\n", event->name );       
-					else printf( "The file %s is moved to.\n", event->name );
-				}
-				else if ( event->mask & IN_OPEN ) 
-				{
-					if ( event->mask & IN_ISDIR ) printf( "The directory %s is opened.\n", event->name );       
-					else printf( "The file %s is opened.\n", event->name );
-				}
-				i += EVENT_SIZE + event->len;
-			}
-
-		}
-			
-#if 0
 		// handle requests for evxio notifications
 		if((fdEvxio > 0) && (FD_ISSET(fdEvxio, &rdy))) 
 		{
@@ -278,12 +176,70 @@ void CTester::loop()
 			      	break;
 			}
 		}
-#endif
 	}
-
-	inotify_rm_watch( fdNotify, wd );
-	close( fdNotify );
 }
 
+/* ------------------------------------------------------------------------------------------
+unload program
+nWait (seconds) sets the wait time from unloading program before bailing out.
+this allows app to go ahead do other things while program is still unloading.
+if nWait = 0, we wait forever until test program is unloaded or error occurs
+------------------------------------------------------------------------------------------ */
+bool CTester::unload(bool bWait, int nWait)
+{
+	// is no program loaded?
+	if (!m_pProgCtrl->isProgramLoaded())
+	{
+		m_Log << "No program loaded. nothing to unload." << CUtil::CLog::endl;
+		return true;
+	}
 
+	// get program name to unload for logging later
+	std::string szLoadedProg(m_pProgCtrl->getProgramPath());
+
+	// unload program with evxa command
+	if (m_pProgCtrl->unload( bWait? EVXA::WAIT : EVXA::NO_WAIT, nWait ) != EVXA::OK)
+	{
+		m_Log << "Error occured unloading test program." << CUtil::CLog::endl;
+		return false;
+	}
+
+	// check if program is loaded succesfully
+	if (m_pProgCtrl->isProgramLoaded())
+	{
+		m_Log << "Error, program '" << m_pProgCtrl->getProgramPath() << "' is still loaded after an attempt to unload it." << CUtil::CLog::endl;
+		return false;
+	}
+	else m_Log << "Program '" << szLoadedProg << "' is unloaded successfully." << CUtil::CLog::endl;
+
+	return true;
+}
+
+/* ------------------------------------------------------------------------------------------
+load program
+-	we're not checking if existing program is loaded. we'll just unload without 
+	question 
+------------------------------------------------------------------------------------------ */
+bool CTester::load(const std::string& name, bool bDisplay)
+{
+	// is program already loaded? unload it.
+	if (!unload()) return false;
+
+	// load program with evxa command
+	if (m_pProgCtrl->load( name.c_str(), EVXA::WAIT, bDisplay? EVXA::DISPLAY : EVXA::NO_DISPLAY ) != EVXA::OK)
+	{
+		m_Log << "Error loading '" << name << "'." << CUtil::CLog::endl;
+		return false;
+	}	
+
+	// check if program is loaded succesfully
+	if (!m_pProgCtrl->isProgramLoaded())
+	{
+		m_Log << "Error, program '" << name << "' failed to load." << CUtil::CLog::endl;
+		return false;
+	}
+	else m_Log << "Program '" << m_pProgCtrl->getProgramPath() << "' is successfully loaded." << CUtil::CLog::endl;
+
+	return true;
+}
 
