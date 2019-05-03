@@ -27,8 +27,11 @@ CApp::CApp(int argc, char **argv)
 
 	// print out app info before proceeding. force this to be log
 	m_Log.silent = false;
+	m_Log << "Version: " << VERSION << CUtil::CLog::endl;
+	m_Log << "Developer: " << DEVELOPER << CUtil::CLog::endl;
 	m_Log << "Tester: " << m_szTesterName << CUtil::CLog::endl;
 	m_Log << "Path: " << m_szMonitorPath << CUtil::CLog::endl;
+	m_Log << "File: " << m_szMonitorFileName << CUtil::CLog::endl;
 
 	// flag used to request for tester reconnect, false by default
 	m_bReconnect = false;

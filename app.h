@@ -10,6 +10,8 @@ constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
 #define JOBFILE "JOBFILE"
+#define VERSION "alpha.1.0.20180404"
+#define DEVELOPER "allan asis / allan.asis@gmail.com"
 
 /* ------------------------------------------------------------------------------------------
 declarations
