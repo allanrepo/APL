@@ -1,6 +1,7 @@
 #ifndef __UTILITY__
 #define __UTILITY__
 
+// std C++ includes for string and file stuff
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -9,6 +10,8 @@
 #include <vector>
 #include <fstream>
 
+// linux specific include for access()
+#include <unistd.h>
 
 
 namespace CUtil
@@ -18,24 +21,19 @@ namespace CUtil
 	{
 	private:
 		std::stringstream m_stream;
-		std::string m_file;
+		static std::string m_file;
 
 	public:
-		CLog()
-		{
-			immediate = true;
-			enable = true;
-			silent = false;
-		}
+		CLog(){}
 		virtual ~CLog(){} 
 		
 		CLog(const CLog&){} // copy constructor                     
 		//const CLog& operator=(const CLog&){} // operator '='
 	public:
 		// properties
-		bool immediate;
-		bool enable;
-		bool silent;
+		static bool immediate;
+		static bool enable;
+		static bool silent;
 
 		void file(const std::string& file = ""){ m_file = file; }
 		void clear(){ m_stream.str(std::string()); }
@@ -57,7 +55,7 @@ namespace CUtil
 		{
 			if (enable)
 			{
-				if(immediate && !silent)
+				if(immediate)
 				{
 					if (!silent) std::cout << s;
 
@@ -84,6 +82,9 @@ namespace CUtil
 	long toLong(const std::string& num);
 	bool isNumber(const std::string& n);
 	bool isInteger(const std::string& n);
+	char toUpper(const char c);
+	const std::string removeLeadingTrailingSpace(const std::string& str);
+	bool isFileExist(const std::string& szFile);
 };
 
 

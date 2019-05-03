@@ -7,17 +7,17 @@ INCDIR=-I.  -I/ltx/customer/include -I/ltx/customer/include/evxa
 
 DEMO_PROGS= demo
 
-CEX_FILES= demo.cpp app.cpp utility.cpp tester.cpp arg.cpp fd.cpp notify.cpp
+APL_FILES= demo.cpp app.cpp utility.cpp tester.cpp fd.cpp notify.cpp
 
-CEX_OBJS = $(CEX_FILES:.cpp=.o)
+APL_OBJS = $(APL_FILES:.cpp=.o)
 
 all : $(DEMO_PROGS)
 
-demo.o : $(CEX_FILES)
-	$(CC) -c $(CFLAGS) $(INCDIR) $(CEX_FILES)
+demo.o : $(APL_FILES)
+	$(CC) -c $(CFLAGS) $(INCDIR) $(APL_FILES)
 
-demo : $(CEX_OBJS)
-	$(CC) -o _cex  $(CEX_OBJS) $(LIB_FILES) $(LFLAGS)
+demo : $(APL_OBJS)
+	$(CC) -o apl  $(APL_OBJS) $(LIB_FILES) $(LFLAGS)
 
 
 

@@ -8,14 +8,15 @@
 
 void doThis()
 {
-	CUtil::CLog Log;
+	CUtil::CLog Log; 
 	Log << "hello event function" << CUtil::CLog::endl;
 }
 
 int main(int argc, char **argv)  
 {
 #if 1
-	CApp App;
+	CUtil::CLog::silent = true; // logging silent by default
+	CApp App(argc, argv);
 	return 0;
 #endif
 #if 0 // test notify

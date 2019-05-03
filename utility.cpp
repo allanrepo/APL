@@ -1,6 +1,14 @@
 #include <utility.h>
 
 
+bool CUtil::CLog::enable = true;
+bool CUtil::CLog::immediate = true;
+bool CUtil::CLog::silent = false;
+std::string CUtil::CLog::m_file = "";
+
+/*-----------------------------------------------------------------------------------------
+convert a string containing a number into a long type variable
+-----------------------------------------------------------------------------------------*/
 long CUtil::toLong(const std::string& n)
 {
 	std::stringstream a(n);
@@ -9,6 +17,9 @@ long CUtil::toLong(const std::string& n)
 	return val;
 } 
 
+/*-----------------------------------------------------------------------------------------
+check if string is a number
+-----------------------------------------------------------------------------------------*/
 bool CUtil::isNumber(const std::string& n)
 {
 	bool bDigit = false;
@@ -47,6 +58,9 @@ bool CUtil::isNumber(const std::string& n)
 	return true;
 }
 
+/*-----------------------------------------------------------------------------------------
+check if string is a number
+-----------------------------------------------------------------------------------------*/
 bool CUtil::isInteger(const std::string& n)
 {
 	bool bDigit = false;
@@ -75,4 +89,46 @@ bool CUtil::isInteger(const std::string& n)
 
 	return true;
 }
+
+/*-----------------------------------------------------------------------------------------
+convert alphabet char into upper case
+-----------------------------------------------------------------------------------------*/
+char CUtil::toUpper(const char c)
+{
+	// only deal with english alphabet
+	if (c < 97 || c > 122) return c;
+
+	// shift  bit 5 to turn it int upper case
+	return c ^ 0x20;	
+}
+
+/*-----------------------------------------------------------------------------------------
+remove leading/trailing space in string
+-----------------------------------------------------------------------------------------*/
+const std::string CUtil::removeLeadingTrailingSpace(const std::string& str)
+{
+	std::string s = str;
+
+	// find the first non space character
+	size_t pos = s.find_first_not_of(" \n\t\f\v", 0, 5);
+
+	// remove characters before the first non space char
+	s = s.substr(pos);
+
+	// find the last non space character
+	pos = s.find_last_not_of(" \n\t\f\v", std::string::npos, 5);
+
+	return s.substr(0,pos + 1);
+}
+
+/*-----------------------------------------------------------------------------------------
+check if file exist
+-----------------------------------------------------------------------------------------*/
+bool CUtil::isFileExist(const std::string& szFile)
+{
+     	return (access(szFile.c_str(), F_OK) > -1)? true : false;
+} 
+
+
+
 

@@ -14,11 +14,6 @@ CTester::CTester()
 	m_pState = 0;
 	m_pEvxio = 0;
 
-	// configure loggers
-	m_Log.immediate = true;
-	m_Log.enable = true; 
-	m_Log.silent = false;
-
 	// default
 	m_nHead = 1;
 }
@@ -47,15 +42,17 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
 	{
 		disconnect();
 
+		// connect to test head
+    		m_pTestHead = new TestheadConnection(strTesterName.c_str(), m_nHead);
+    		if(m_pTestHead->getStatus() !=  EVXA::OK) { if(nSleep) sleep(nSleep); continue; } 
+		else m_Log << "TestheadConnection object created..." << CUtil::CLog::endl;
+
 		// connect to tester
     		m_pTester = new TesterConnection(strTesterName.c_str());	
     		if(m_pTester->getStatus() != EVXA::OK){ if(nSleep) sleep(nSleep); continue; }
 		else m_Log << "TesterConnection object created..." << CUtil::CLog::endl;
 		
-		// connect to test head
-    		m_pTestHead = new TestheadConnection(strTesterName.c_str(), m_nHead);
-    		if(m_pTestHead->getStatus() !=  EVXA::OK) { if(nSleep) sleep(nSleep); continue; } 
-		else m_Log << "TestheadConnection object created..." << CUtil::CLog::endl;
+
 
 		// create program control object, does not check if program is loaded
     		m_pProgCtrl = new ProgramControl(*m_pTestHead);
