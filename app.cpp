@@ -203,6 +203,9 @@ void CApp::onReceiveFile(const std::string& name)
 	//std::string t("/tmp/prog/BinChecker_R01P02/Program/BinChecker.una");
 	m_Log << "loading " << m_szProgramFullPathName << "..." << CUtil::CLog::endl;
 	load(m_szProgramFullPathName);
+
+	// delete the lotinfo.txt
+	unlink(m_szMonitorFileName.c_str());
 }
 
 /* ------------------------------------------------------------------------------------------
