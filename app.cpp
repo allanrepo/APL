@@ -19,6 +19,9 @@ CApp::CApp(int argc, char **argv)
 		m_szTesterName = ss.str();
 	}
 
+	//EVXA::endTester(m_szTesterName.c_str(), "-v");
+	if (m_bRestartTester) EVXA::restartTester(m_szTesterName.c_str(), "-v");
+
 	// if file name to monitor is not set, assign default
 	if (m_szMonitorFileName.empty()){ m_szMonitorFileName = "lotinfo.txt"; }
 
@@ -91,6 +94,7 @@ void CApp::init()
 	m_szMonitorPath = "";
 	m_szTesterName = "";
 	m_szMonitorFileName = "";
+	m_bRestartTester = false;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -155,7 +159,15 @@ bool CApp::scan(int argc, char **argv)
 				m_szMonitorFileName = *it;
 				continue;
 			}	
-		}		
+		}	
+		// this option will let the app restart tester on launch so there's something to connect to
+		s = "-restart_tester";
+		if (s.find(*it) == 0)
+		{
+			m_bRestartTester = true;
+			continue;
+		}
+	
 	}	
 	return true;
 }
@@ -175,37 +187,48 @@ const std::string CApp::getUserName() const
 }
 
 
-
+ 
 /* ------------------------------------------------------------------------------------------
 process the incoming file from the monitored path
 ------------------------------------------------------------------------------------------ */
 void CApp::onReceiveFile(const std::string& name)
 {
-	// is this file lotinfo.txt?
+	std::stringstream ssFullPathMonitorName;
+	ssFullPathMonitorName << m_szMonitorPath << "/" << name;
+
+	// is this file lotinfo.txt?  
 	if (name.compare(m_szMonitorFileName) != 0)
 	{
 		m_Log << "File received but is not what we're waiting for: " << name << CUtil::CLog::endl;
 		return;
 	}
+	else m_Log << name << " file received." << CUtil::CLog::endl;
 
 	// parse lotinfo.txt file
-	m_szProgramFullPathName = "";
-	parse(name);
+	m_szProgramFullPathName.clear();
+
+	int nTry = 30;
+	while (nTry--)
+	{ 		
+		m_Log <<"Parsing '" << ssFullPathMonitorName.str() << "' now..." << CUtil::CLog::endl;
+		if (parse(ssFullPathMonitorName.str())) break; 
+		sleep(1);
+	}
 
 	// do we have the 'PROGRAM' field and its value from lotinfo.txt?
 	if (m_szProgramFullPathName.empty()) 
 	{
-		m_Log << name << " file received but didn't find a value program path." << CUtil::CLog::endl;
-		return;
+		m_Log << ssFullPathMonitorName.str() << " file received but didn't find a value program path." << CUtil::CLog::endl;
+	}
+	else
+	{
+		// try to load program 
+		m_Log << "loading " << m_szProgramFullPathName << "..." << CUtil::CLog::endl;
+		load(m_szProgramFullPathName);
 	}
 
-	// try to load program 
-	//std::string t("/tmp/prog/BinChecker_R01P02/Program/BinChecker.una");
-	m_Log << "loading " << m_szProgramFullPathName << "..." << CUtil::CLog::endl;
-	load(m_szProgramFullPathName);
-
 	// delete the lotinfo.txt
-	unlink(m_szMonitorFileName.c_str());
+	unlink(ssFullPathMonitorName.str().c_str());
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -260,6 +283,16 @@ bool CApp::parse(const std::string& name)
 	std::string s = ss.str();
 	fs.close();
 
+	// return false if it finds an empty file to allow app to try again
+	if (s.empty()) return false;
+
+	// for debugging purpose, let's dump the contents of the file
+	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
+	m_Log << "Content extracted from " << name << "." << CUtil::CLog::endl;
+	m_Log << "It's file size is " << s.length() << ". Contents: " << CUtil::CLog::endl;
+	m_Log << s << CUtil::CLog::endl;
+	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
+
 	while(s.size())
 	{
 		// find next '\n' position 
@@ -279,18 +312,18 @@ bool CApp::parse(const std::string& name)
 			if (field.compare(JOBFILE) != 0) continue;
 
 			m_Log << "'" << field << "' : '"  << value << "'" << CUtil::CLog::endl;
-		}
 
-		// does the program/path in value refer to exising file?
-		if (!CUtil::isFileExist(value))
-		{
-			m_Log << "ERROR: '" << value << "' program cannot be accessed." << CUtil::CLog::endl;
-			continue;
-		}
-		else
-		{
-			m_Log << "'" << value << "' is exists. let's try to load it." << CUtil::CLog::endl;
-			m_szProgramFullPathName = value;			
+			// does the program/path in value refer to exising file?
+			if (!CUtil::isFileExist(value))
+			{
+				m_Log << "ERROR: '" << value << "' program cannot be accessed." << CUtil::CLog::endl;
+				continue;
+			}
+			else
+			{
+				m_Log << "'" << value << "' is exists. let's try to load it." << CUtil::CLog::endl;
+				m_szProgramFullPathName = value;			
+			}
 		}
 	
 		// if this is the last line then bail
@@ -298,7 +331,7 @@ bool CApp::parse(const std::string& name)
 	}	
 
 	return true;
-}
+} 
 
 /* ------------------------------------------------------------------------------------------
 get field/value pair string of a line from lotinfo.txt file content loaded into string
@@ -312,7 +345,7 @@ bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std:
 	// is there field/value pair? if not, bail
 	if (pos == std::string::npos)
 	{
-		m_Log << "ERROR: This line: '" << line << "' doesn't contain delimiter '" << delimiter << "'..." << CUtil::CLog::endl;
+		m_Log << "WARNING: This line: '" << line << "' doesn't contain delimiter '" << delimiter << "'..." << CUtil::CLog::endl;
 		return false;	
 	}
 
@@ -320,7 +353,7 @@ bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std:
 	value = line.substr(pos + 1);
 	if (value.empty())
 	{
-		m_Log << "ERROR: This line: '" << line << "' has empty value '" << CUtil::CLog::endl;
+		m_Log << "WARNING: This line: '" << line << "' has empty value '" << CUtil::CLog::endl;
 		return false;
 	}
 

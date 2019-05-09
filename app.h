@@ -4,13 +4,14 @@
 #include <tester.h>
 #include <notify.h>
 #include <pwd.h>
+#include <evxa/EVXA.hxx>
 
 /* ------------------------------------------------------------------------------------------
 constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
 #define JOBFILE "JOBFILE"
-#define VERSION "alpha.1.0.20180404"
+#define VERSION "alpha.1.0.20180509.1"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 
 /* ------------------------------------------------------------------------------------------
@@ -29,6 +30,7 @@ class CApp: public CTester
 protected:
 	CFileDescriptorManager m_FileDescMgr;
 	bool m_bReconnect;
+	bool m_bRestartTester;
 
 	// parameters
 	std::string m_szProgramFullPathName;
