@@ -62,7 +62,7 @@ public:
 	bool parse(const std::string& name);
 	bool getFieldValuePair(const std::string& line, const char delimiter, std::string& field, std::string& value);
 
-
+	bool launch(const std::string& tester, const std::string& program, bool bProd);
 };
 
 

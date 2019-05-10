@@ -31,10 +31,6 @@ public:
  
 /* ------------------------------------------------------------------------------------------
 tester class 
--	singleton class. we only need 1 tester for all.
--	contains loggers. this class being singleton, allows all other classes
-	to use this loggers exclusively. they just have to make reference to them
--	2 loggers. 1 for common print display, another for debug display
 ------------------------------------------------------------------------------------------ */
 class CTester
 {

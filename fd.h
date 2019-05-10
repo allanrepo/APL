@@ -29,6 +29,8 @@ protected:
 	std::list< CFileDescriptor* > m_FDs;
 	CUtil::CLog m_Log;
 
+	std::list< CFileDescriptor* > m_Adds;
+
 public:
 	CFileDescriptorManager(){}
 	virtual ~CFileDescriptorManager();

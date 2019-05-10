@@ -33,7 +33,7 @@ connects to tester by first creating EVXA tester objects and then hooking up to 
 bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempts)
 {
 	// always make sure we make at least 1 attempt
-	if (!nAttempts) nAttempts = 1;
+	if (nAttempts == 0) nAttempts = 1;
 
 	m_Log << "Creating EVXA objects..." << CUtil::CLog::endl;
 
@@ -52,8 +52,6 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
     		if(m_pTester->getStatus() != EVXA::OK){ if(nSleep) sleep(nSleep); continue; }
 		else m_Log << "TesterConnection object created..." << CUtil::CLog::endl;
 		
-
-
 		// create program control object, does not check if program is loaded
     		m_pProgCtrl = new ProgramControl(*m_pTestHead);
     		if(m_pProgCtrl->getStatus() !=  EVXA::OK) { if(nSleep) sleep(nSleep); continue; }

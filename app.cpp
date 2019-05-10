@@ -19,7 +19,7 @@ CApp::CApp(int argc, char **argv)
 		m_szTesterName = ss.str();
 	}
 
-	//EVXA::endTester(m_szTesterName.c_str(), "-v");
+//	EVXA::endTester(m_szTesterName.c_str(), "-v");
 	if (m_bRestartTester) EVXA::restartTester(m_szTesterName.c_str(), "-v");
 
 	// if file name to monitor is not set, assign default
@@ -36,9 +36,6 @@ CApp::CApp(int argc, char **argv)
 	m_Log << "Path: " << m_szMonitorPath << CUtil::CLog::endl;
 	m_Log << "File: " << m_szMonitorFileName << CUtil::CLog::endl;
 
-	// flag used to request for tester reconnect, false by default
-	m_bReconnect = false;
-
 	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
 	CHandleNotify NotifyFD(*this, m_szMonitorPath );
 	m_FileDescMgr.add( NotifyFD );
@@ -47,13 +44,13 @@ CApp::CApp(int argc, char **argv)
 	while(1) 
 	{
 		// connect to tester. set it such that it will keep trying to connect forever
-		connect(m_szTesterName, 1, -1);
+		//connect(m_szTesterName, 1, -1);
 
 		// get file descriptor of tester state notification and add to our fd manager		
-		CAppFileDesc StateNotifyFileDesc(&CApp::onStateNotificationResponse, *this, m_pState? m_pState->getSocketId(): -1);
-		m_FileDescMgr.add( StateNotifyFileDesc );
+		//CAppFileDesc StateNotifyFileDesc(&CApp::onStateNotificationResponse, *this, m_pState? m_pState->getSocketId(): -1);
+		//m_FileDescMgr.add( StateNotifyFileDesc );
 		
-#if 1 // i didn't wanna add these 2, not necessary i think...
+#if 0 // i didn't wanna add these 2, not necessary i think...
 		// get file descriptor of tester evxio stream and add to our fd manager		
 		CAppFileDesc StateEvxioStreamFileDesc(&CApp::onEvxioResponse, *this, m_pEvxio? m_pEvxio->getEvxioSocketId(): -1);
 		m_FileDescMgr.add( StateEvxioStreamFileDesc );
@@ -95,6 +92,9 @@ void CApp::init()
 	m_szTesterName = "";
 	m_szMonitorFileName = "";
 	m_bRestartTester = false;
+
+	// flag used to request for tester reconnect, false by default
+	m_bReconnect = false;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -224,7 +224,9 @@ void CApp::onReceiveFile(const std::string& name)
 	{
 		// try to load program 
 		m_Log << "loading " << m_szProgramFullPathName << "..." << CUtil::CLog::endl;
-		load(m_szProgramFullPathName);
+		// load(m_szProgramFullPathName);
+		launch(m_szTesterName, m_szProgramFullPathName, true);
+
 	}
 
 	// delete the lotinfo.txt
@@ -242,6 +244,32 @@ void CApp::onStateNotificationResponse(int fd)
 		m_Log << "State Notification Response Not OK: " << errbuf << CUtil::CLog::endl;
 		m_bReconnect = true;
 	}  		
+}
+
+/* ------------------------------------------------------------------------------------------
+launches unison (OICu or OpTool)
+------------------------------------------------------------------------------------------ */
+bool CApp::launch(const std::string& tester, const std::string& program, bool bProd)
+{
+	// kill the tester first. we don't want another tester object running while we launch our own
+	// ** 	FIX THIS: problem is the app doesn't wait until end tester is done. we we are sending launch command
+	//	in the middle of tester killing. we'll keep it this way for now but we will have to fix this before
+	//	release.
+	EVXA::endTester(m_szTesterName.c_str(), "");
+
+	std::stringstream ssCmd;
+	ssCmd << "launcher -nodisplay " << (bProd? "-prod " : "") << (program.empty()? "": "-load ") << (program.empty()? "" : program) << " -T " << m_szTesterName;
+	m_Log << "CMD: " << ssCmd.str() << CUtil::CLog::endl;
+	system(ssCmd.str().c_str());	
+
+	// connect to tester. set it such that it will keep trying to connect forever
+	connect(m_szTesterName, 1, -1);
+
+	// get file descriptor of tester state notification and add to our fd manager		
+	CAppFileDesc StateNotifyFileDesc(&CApp::onStateNotificationResponse, *this, m_pState? m_pState->getSocketId(): -1);
+	//m_FileDescMgr.add( StateNotifyFileDesc );
+
+	return true;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -321,7 +349,7 @@ bool CApp::parse(const std::string& name)
 			}
 			else
 			{
-				m_Log << "'" << value << "' is exists. let's try to load it." << CUtil::CLog::endl;
+				m_Log << "'" << value << "' exists. let's try to load it." << CUtil::CLog::endl;
 				m_szProgramFullPathName = value;			
 			}
 		}
