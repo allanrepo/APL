@@ -35,7 +35,7 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
 	// always make sure we make at least 1 attempt
 	if (nAttempts == 0) nAttempts = 1;
 
-	m_Log << "Creating EVXA objects..." << CUtil::CLog::endl;
+	//m_Log << "Creating EVXA objects..." << CUtil::CLog::endl;
 
 	// let's attempt n number of times to connect
   	while(nAttempts < 0 || nAttempts--) 
@@ -44,22 +44,42 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
 
 		// connect to test head
     		m_pTestHead = new TestheadConnection(strTesterName.c_str(), m_nHead);
-    		if(m_pTestHead->getStatus() !=  EVXA::OK) { if(nSleep) sleep(nSleep); continue; } 
+    		if(m_pTestHead->getStatus() !=  EVXA::OK) 
+		{ 
+			if(nSleep) sleep(nSleep); 
+			//m_Log << "Failed to create testheadConnection object." << CUtil::CLog::endl;
+			continue; 
+		} 
 		else m_Log << "TestheadConnection object created..." << CUtil::CLog::endl;
 
 		// connect to tester
     		m_pTester = new TesterConnection(strTesterName.c_str());	
-    		if(m_pTester->getStatus() != EVXA::OK){ if(nSleep) sleep(nSleep); continue; }
+    		if(m_pTester->getStatus() != EVXA::OK)
+		{ 
+			if(nSleep) sleep(nSleep); 
+			//m_Log << "Failed to create TesterConnection object." << CUtil::CLog::endl;
+			continue; 
+		}
 		else m_Log << "TesterConnection object created..." << CUtil::CLog::endl;
 		
 		// create program control object, does not check if program is loaded
     		m_pProgCtrl = new ProgramControl(*m_pTestHead);
-    		if(m_pProgCtrl->getStatus() !=  EVXA::OK) { if(nSleep) sleep(nSleep); continue; }
+    		if(m_pProgCtrl->getStatus() !=  EVXA::OK) 
+		{ 
+			if(nSleep) sleep(nSleep); 
+			//m_Log << "Failed to create ProgramControl object." << CUtil::CLog::endl;
+			continue; 
+		}
 		else m_Log << "ProgramControl object created..." << CUtil::CLog::endl;
 
 		// create notification object
     		m_pState = new CStateNotification(*m_pTestHead);
-    		if(m_pState->getStatus() !=  EVXA::OK) { if(nSleep) sleep(nSleep); continue; } 
+    		if(m_pState->getStatus() !=  EVXA::OK) 
+		{ 
+			if(nSleep) sleep(nSleep); 
+			//m_Log << "Failed to create CStateNotification object." << CUtil::CLog::endl;
+			continue; 
+		} 
 		m_Log << "CStateNotification object created..." << CUtil::CLog::endl;
 
 		// lets convert our tester name from std::string to crappy old C style string because the stupid software team 
@@ -69,7 +89,12 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
 
 		// create stream client
     		m_pEvxio = new CEvxioStreamClient(szTesterName, m_nHead);
-    		if(m_pEvxio->getStatus() != EVXA::OK) { if(nSleep) sleep(nSleep); continue; } 
+    		if(m_pEvxio->getStatus() != EVXA::OK) 
+		{ 
+			if(nSleep) sleep(nSleep); 
+			//m_Log << "Failed to create CEvxioStreamClient object." << CUtil::CLog::endl;
+			continue; 
+		} 
 		else m_Log << "CEvxioStreamClient object created..." << CUtil::CLog::endl;
 
 		// if we reached this point, we are able connect to tester. let's connect to evx stream now...
@@ -79,7 +104,12 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
 		sprintf(szPid, "client_%d", getpid());
 
 		m_Log << "Connecting to " << strTesterName << "..." << CUtil::CLog::endl;
-    		if(m_pEvxio->ConnectEvxioStreams(m_pTestHead, szPid) != EVXA::OK) { if(nSleep) sleep(nSleep); continue; } 
+    		if(m_pEvxio->ConnectEvxioStreams(m_pTestHead, szPid) != EVXA::OK) 
+		{ 
+			if(nSleep) sleep(nSleep); 
+			//m_Log << "Failed to connect to '" << strTesterName << "'." << CUtil::CLog::endl;
+			continue; 
+		} 
     		else
 		{
 			// once the tester objects are created, let's wait until tester is ready
@@ -94,7 +124,7 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
   	}
 
 	// if we reach this point, we failed to connect to tester after n number of attempts...
-	m_Log << "CEX Error: Can't connect to tester: Tester '" << strTesterName << "' does not exist." << CUtil::CLog::endl;//[print]
+	m_Log << "Error: Can't connect to tester: Tester '" << strTesterName << "' does not exist." << CUtil::CLog::endl;
   
 	return false; 	 
 }

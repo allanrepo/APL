@@ -20,10 +20,16 @@ class CNotifyFileDescriptor: public CFileDescriptorManager::CFileDescriptor
 protected:
 	int m_wd;
 	CUtil::CLog m_Log;
+	std::string m_szPath;
+	unsigned short m_nMask;
+
 public:
 	CNotifyFileDescriptor(const std::string& path, unsigned short mask = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM);
 	virtual ~CNotifyFileDescriptor();
 	virtual void onSelect();
+
+	void start();
+	void stop();
 
 	// event handlers
 	virtual	void onDirCreate( const std::string& name );

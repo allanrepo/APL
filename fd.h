@@ -20,8 +20,8 @@ public:
 	public:
 		CFileDescriptor(){}
 		virtual~ CFileDescriptor(){}
-		int get(){ return m_fd; }
-		void set(int fd){ m_fd = fd; }
+		virtual int get(){ return m_fd; }
+		virtual void set(int fd = -1){ m_fd = fd; }
 		virtual void onSelect() = 0;
 	};
 

@@ -3,13 +3,16 @@
 /* ------------------------------------------------------------------------------------------
 creates the file descriptor and sets the directory path to watch
 ------------------------------------------------------------------------------------------ */
-CNotifyFileDescriptor::CNotifyFileDescriptor(const std::string& path, unsigned short mask)
+CNotifyFileDescriptor::CNotifyFileDescriptor(const std::string& path, unsigned short mask): m_szPath(path), m_nMask(mask)
 {
 	// create file descriptor for inotify
 	m_fd = inotify_init();
 	if ( m_fd < 0 ) perror( "inotify_init" );
 	m_Log << "notify FD created with file descriptor of '" << m_fd << "'" << CUtil::CLog::endl;
 
+	start();
+
+/*
 	// let's watch the specified path
 	m_wd = inotify_add_watch( m_fd, path.c_str(), mask);
 	if (m_wd == -1)
@@ -18,6 +21,31 @@ CNotifyFileDescriptor::CNotifyFileDescriptor(const std::string& path, unsigned s
 		return;
 	}	
 	else m_Log << "Now watching '" << path << CUtil::CLog::endl;	
+*/
+}
+
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+void CNotifyFileDescriptor::start()
+{
+	// let's watch the specified path
+	m_wd = inotify_add_watch( m_fd, m_szPath.c_str(), m_nMask);
+	if (m_wd == -1)
+	{
+		m_Log << "ERROR: Something went wrong in trying to watch '" << m_szPath << "'. Check the path again if it's valid. " << CUtil::CLog::endl;
+		return;
+	}	
+	else m_Log << "Now watching '" << m_szPath << CUtil::CLog::endl;		
+}
+
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+void CNotifyFileDescriptor::stop()
+{
+	inotify_rm_watch( m_fd, m_wd );
+	m_Log << "Stopped watching '" << m_szPath << CUtil::CLog::endl;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -25,7 +53,8 @@ stop watching the directory path
 ------------------------------------------------------------------------------------------ */
 CNotifyFileDescriptor::~CNotifyFileDescriptor()
 {
-	inotify_rm_watch( m_fd, m_wd );
+	stop();
+	//inotify_rm_watch( m_fd, m_wd );
 	close( m_fd );
 }
 

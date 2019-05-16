@@ -11,15 +11,16 @@ constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
 #define JOBFILE "JOBFILE"
-#define VERSION "alpha.1.0.20180509.1"
+#define VERSION "alpha.1.0.20180516"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
+#define MAXCONNECT 20
 
 /* ------------------------------------------------------------------------------------------
 declarations
 ------------------------------------------------------------------------------------------ */
 class CApp;
 class CAppFileDesc;
-class CHandleNotify;
+class CMonitorFileDesc;
 
 /* ------------------------------------------------------------------------------------------
 app class. this is where stuff happens. 
@@ -37,6 +38,9 @@ protected:
 	std::string m_szMonitorPath;
 	std::string m_szTesterName;
 	std::string m_szMonitorFileName;
+
+	// file descriptor for inotify to monitor path where lotinfo.txt will be sent
+	CMonitorFileDesc* m_pMonitorFileDesc;
 
 	// initialize variabls, reset stuff
 	void init();
@@ -76,12 +80,15 @@ protected:
 	void (CApp::* m_onSelectPtr)(int);
 
 public:
-	CAppFileDesc(void (CApp::* p)(int), CApp& app, int fd): m_App(app)
+	CAppFileDesc(CApp& app, void (CApp::* p)(int) = 0, int fd = -1): m_App(app)
 	{
-		m_fd = fd;
 		m_onSelectPtr = p;
+		set(fd);
 	}	
-	virtual void onSelect(){ (m_App.*m_onSelectPtr)(m_fd);	}
+	virtual void onSelect()
+	{ 
+		if (m_onSelectPtr) (m_App.*m_onSelectPtr)(m_fd);	
+	}
 };
 
 
@@ -89,19 +96,17 @@ public:
 /* ------------------------------------------------------------------------------------------
 inherit notify file descriptor class and customize event handlers
 ------------------------------------------------------------------------------------------ */
-class CHandleNotify: public CNotifyFileDescriptor
+class CMonitorFileDesc: public CNotifyFileDescriptor
 {
 protected:
 	CApp& m_App;
 public:
-	CHandleNotify(CApp& app, const std::string& path, unsigned short mask = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM)
-	: CNotifyFileDescriptor(path, mask), m_App(app)
-	{
-		//m_Log.silent = true;
-	}
+	CMonitorFileDesc(CApp& app, const std::string& path, unsigned short mask = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM)
+	: CNotifyFileDescriptor(path, mask), m_App(app){}
 
 	virtual	void onFileCreate( const std::string& name ){ m_App.onReceiveFile(name); }	
 	virtual	void onFileMoveTo( const std::string& name ){ m_App.onReceiveFile(name); }
+	virtual	void onFileModify( const std::string& name ){ m_App.onReceiveFile(name); }
 };
 
 
