@@ -216,6 +216,33 @@ void CApp::onReceiveFile(const std::string& name)
 	}
 	else
 	{
+		// let's kill any OICu running right now
+		std::stringstream ssCmd;
+		ssCmd << "./" << KILLAPPCMD << " " << OICU;
+		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+
+		// let's kill any OpTool running right now
+		ssCmd.str(std::string());
+		ssCmd.clear();
+		ssCmd << "./" << KILLAPPCMD << " " << OPTOOL;
+		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+
+		// let's kill any dataviewer running right now
+		ssCmd.str(std::string());
+		ssCmd.clear();
+		ssCmd << "./" << KILLAPPCMD << " " << DATAVIEWER;
+		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+
+		// kill tester
+		ssCmd.str(std::string());
+		ssCmd.clear();
+		ssCmd << "./" << KILLTESTERCMD << " " << m_szTesterName;
+		m_Log << "END TESTER: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+
 		// launch OICu and load program
 		launch(m_szTesterName, m_szProgramFullPathName, true);
 	}
@@ -241,7 +268,7 @@ bool CApp::launch(const std::string& tester, const std::string& program, bool bP
 	// >launcher -nodisplay -prod -load <program> -T <tester> -qual
 	std::stringstream ssCmd;
 	ssCmd << "launcher -nodisplay " << (bProd? "-prod " : "") << (program.empty()? "": "-load ") << (program.empty()? "" : program) << " -qual " << " -T " << m_szTesterName ;
-	m_Log << "CMD: " << ssCmd.str() << CUtil::CLog::endl;
+	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
 	system(ssCmd.str().c_str());	
 
 	// let's try to connect to tester in our main loop

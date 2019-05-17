@@ -14,6 +14,12 @@ constants
 #define VERSION "alpha.1.0.20190516"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 #define MAXCONNECT 20
+#define KILLAPPCMD "kill.app.sh"
+#define KILLTESTERCMD "kill.tester.sh"
+#define OPTOOL "optool"
+#define OICU "oicu"
+#define DATAVIEWER "dataviewer"
+
 
 /* ------------------------------------------------------------------------------------------
 declarations
