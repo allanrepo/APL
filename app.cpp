@@ -32,7 +32,7 @@ CApp::CApp(int argc, char **argv)
 	m_Log.silent = false;
 	m_Log << "Version: " << VERSION << CUtil::CLog::endl;
 	m_Log << "Developer: " << DEVELOPER << CUtil::CLog::endl;
-	m_Log << "Tester: " << m_szTesterName << CUtil::CLog::endl;
+	m_Log << "Tester: " << m_szTesterName << CUtil::CLog::endl; 
 	m_Log << "Path: " << m_szMonitorPath << CUtil::CLog::endl;
 	m_Log << "File: " << m_szMonitorFileName << CUtil::CLog::endl;
 
