@@ -11,7 +11,7 @@ constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
 #define JOBFILE "JOBFILE"
-#define VERSION "alpha.1.0.20190516"
+#define VERSION "alpha.1.0.20190517"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"
@@ -27,6 +27,43 @@ declarations
 class CApp;
 class CAppFileDesc;
 class CMonitorFileDesc;
+class MIR;
+class SDR;
+
+
+class MIR
+{
+public:
+	MIR(){ clear(); }
+	bool clear()
+	{
+		OperNam.clear();
+		PartTyp.clear();
+		LotId.clear();
+		FamlyId.clear();
+		TestTmp.clear();
+	}
+
+	std::string OperNam;	// TestProgData.Operator
+	std::string PartTyp;	// TestProgData.Device
+	std::string LotId;		// TestProgData.LotId
+	std::string FamlyId;	// TestProgData.ProdId
+	std::string TestTmp;	// TestProgData.TestTemp
+};
+
+class SDR
+{
+public:
+	SDR(){ clear(); }
+	bool clear()
+	{
+		HandId.clear();
+		LoadId.clear();
+	}
+
+	std::string HandId; // TestProgData.HandlerType
+	std::string LoadId; // TestProgData.LoadboardId
+};
 
 /* ------------------------------------------------------------------------------------------
 app class. this is where stuff happens. 
@@ -47,6 +84,13 @@ protected:
 
 	// file descriptor for inotify to monitor path where lotinfo.txt will be sent
 	CMonitorFileDesc* m_pMonitorFileDesc;
+
+	// STDF field holders
+	MIR m_MIR;
+	SDR m_SDR;
+	void printSTDF();
+	void setSTDF();
+	bool m_bSTDF;
 
 	// initialize variabls, reset stuff
 	void init();
@@ -114,6 +158,8 @@ public:
 	virtual	void onFileMoveTo( const std::string& name ){ m_App.onReceiveFile(name); }
 	virtual	void onFileModify( const std::string& name ){ m_App.onReceiveFile(name); }
 };
+
+
 
 
 #endif

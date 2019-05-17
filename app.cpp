@@ -70,6 +70,16 @@ CApp::CApp(int argc, char **argv)
 
 		// proccess any file descriptor notification on select every second.
 		m_FileDescMgr.select(1000);
+
+		if (m_bSTDF)
+		{
+			if (!m_pProgCtrl) continue;
+			if (m_pProgCtrl->isProgramLoaded())
+			{
+				setSTDF();
+				m_bSTDF = false;
+			}
+		}
 	}
 }
 
@@ -91,6 +101,8 @@ void CApp::init()
 	m_szTesterName = "";
 	m_szMonitorFileName = "";
 	m_bRestartTester = false;
+	
+	m_bSTDF = false;
 
 	// flag used to request for tester reconnect, true by default so it tries to connect on launch
 	m_bReconnect = true;
@@ -195,7 +207,7 @@ void CApp::onReceiveFile(const std::string& name)
 	std::stringstream ssFullPathMonitorName;
 	ssFullPathMonitorName << m_szMonitorPath << "/" << name;
 
-	// is this file lotinfo.txt?  
+	// is this file lotinfo.txt?   
 	if (name.compare(m_szMonitorFileName) != 0)
 	{
 		m_Log << "File received but is not what we're waiting for: " << name << CUtil::CLog::endl;
@@ -203,10 +215,12 @@ void CApp::onReceiveFile(const std::string& name)
 	}
 	else m_Log << name << " file received." << CUtil::CLog::endl;
 
-
 	// parse lotinfo.txt file 
 	m_szProgramFullPathName.clear();
 	parse(ssFullPathMonitorName.str());
+
+	// for debug purposes, lets print out STDF stuff here
+	printSTDF();
 
 	// do we have the 'PROGRAM' field and its value from lotinfo.txt?
 	if (m_szProgramFullPathName.empty()) 
@@ -245,6 +259,9 @@ void CApp::onReceiveFile(const std::string& name)
 
 		// launch OICu and load program
 		launch(m_szTesterName, m_szProgramFullPathName, true);
+
+		// let app know we are setting STDF fields
+		m_bSTDF = true;
 	}
  
 	// delete the lotinfo.txt
@@ -332,6 +349,10 @@ bool CApp::parse(const std::string& name)
 	// return false if it finds an empty file to allow app to try again
 	if (s.empty()) return false;
 
+	// before parsing, let's reset STDF field variables
+	m_MIR.clear();
+	m_SDR.clear();
+
 	// for debugging purpose, let's dump the contents of the file
 	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
 	m_Log << "Content extracted from " << name << "." << CUtil::CLog::endl;
@@ -339,8 +360,8 @@ bool CApp::parse(const std::string& name)
 	m_Log << s << CUtil::CLog::endl;
 	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
 
-	while(s.size())
-	{
+	while(s.size())  
+	{ 
 		// find next '\n' position 
 		size_t pos = s.find_first_of('\n');
 
@@ -354,6 +375,15 @@ bool CApp::parse(const std::string& name)
 		std::string field, value;
 		if (getFieldValuePair(l, DELIMITER, field, value))
 		{
+			// extract STDF fields
+			if (field.compare("OPERATOR") == 0){ m_MIR.OperNam = value; continue; }
+			if (field.compare("DEVICE") == 0){ m_MIR.PartTyp = value; continue; }
+			if (field.compare("LOTID") == 0){ m_MIR.LotId = value; continue; }
+			if (field.compare("PRODUCTID") == 0){ m_MIR.FamlyId = value; continue; }
+			if (field.compare("TEMPERATURE") == 0){ m_MIR.TestTmp = value; continue; }
+			if (field.compare("PROBERHANDLERID") == 0){ m_SDR.HandId = value; continue; }
+			if (field.compare("BOARDID") == 0){ m_SDR.LoadId = value; continue; }
+
 			// we're looking for jobfile field only, ignore the rest (for now)
 			if (field.compare(JOBFILE) != 0) continue;
 
@@ -413,6 +443,37 @@ bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std:
 	return true;
 }
 
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+void CApp::printSTDF()
+{
+	m_Log << "OPERATOR: " << m_MIR.OperNam << CUtil::CLog::endl;
+	m_Log << "DEVICE: " << m_MIR.PartTyp << CUtil::CLog::endl;
+	m_Log << "LOTID: " << m_MIR.LotId << CUtil::CLog::endl;
+	m_Log << "PRODUCTID: " << m_MIR.FamlyId << CUtil::CLog::endl;
+	m_Log << "TEMP: " << m_MIR.TestTmp << CUtil::CLog::endl;
+	m_Log << "PROBERHANDLERID: " << m_SDR.HandId << CUtil::CLog::endl;
+	m_Log << "BOARDID: " << m_SDR.LoadId << CUtil::CLog::endl;
+}
+
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+void CApp::setSTDF()
+{
+	// make sure we have valid evxa object
+	if (!m_pProgCtrl) return;
+
+	m_pProgCtrl->setLotInformation(EVX_LotLotID, m_MIR.LotId.c_str());
+	m_pProgCtrl->setLotInformation(EVX_LotOperator, m_MIR.OperNam.c_str());
+	m_pProgCtrl->setLotInformation(EVX_LotDevice, m_MIR.PartTyp.c_str());
+	m_pProgCtrl->setLotInformation(EVX_LotProductID, m_MIR.FamlyId.c_str());
+	m_pProgCtrl->setLotInformation(EVX_LotTestTemp, m_MIR.TestTmp.c_str());
+
+	m_pProgCtrl->setLotInformation(EVX_LotProberHandlerID, m_SDR.HandId.c_str());
+	m_pProgCtrl->setLotInformation(EVX_LotLoadBrdId, m_SDR.LoadId.c_str());
+}
 
 #if 0
 		// strip the path from value and check if this exist. if not, move to next line
