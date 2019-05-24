@@ -6,6 +6,7 @@
 #include <pwd.h>
 #include <evxa/EVXA.hxx>
 #include <stdf.h>
+#include <socket.h>
 
 /* ------------------------------------------------------------------------------------------
 constants
@@ -38,8 +39,26 @@ inherited CTester class so as to make it a lot easier to access EVXA objects
 class CApp: public CTester
 {
 protected:
+	struct CONFIG
+	{
+		bool bSendBin;
+		bool bUseHardBin;
+		bool bWafer;
+
+		CONFIG()
+		{
+			bSendBin = false;
+			bUseHardBin = false;
+			bWafer = false;
+		}
+	};
+
+protected:
 	CFileDescriptorManager m_FileDescMgr;
 	bool m_bReconnect;
+
+	// config
+	CONFIG m_CONFIG;
 
 	// parameters
 	std::string m_szProgramFullPathName;

@@ -620,16 +620,16 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 			break;
 		case EVX_PROGRAM_UNLOADED: 
 		{
-			m_Log << "programChange: EVX_PROGRAM_UNLOADED" << CUtil::CLog::endl;
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_UNLOADED" << CUtil::CLog::endl;
 		    	EVXAStatus status = m_pProgCtrl->UnblockRobot();
 			if (status != EVXA::OK) m_Log << "Error PROGRAM_UNLAODED UnblockRobot(): status: " << status << " " << m_pProgCtrl->getStatusBuffer() << CUtil::CLog::endl;
 			break;
 		}
 		case EVX_PROGRAM_ABORT_LOAD:
-			m_Log << "programChange: EVX_PROGRAM_ABORT_LOAD" << CUtil::CLog::endl;
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_ABORT_LOAD" << CUtil::CLog::endl;
 			break;
 		case EVX_PROGRAM_READY:
-			m_Log << "programChange: EVX_PROGRAM_READY" << CUtil::CLog::endl;
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_READY" << CUtil::CLog::endl;
 			break;
 		default:
 			if(m_pProgCtrl->getStatus() !=  EVXA::OK) m_Log << "An Error occured[" << state << "]: " << m_pProgCtrl->getStatusBuffer() << CUtil::CLog::endl;
@@ -642,5 +642,61 @@ event handler for state notification EOT
 ------------------------------------------------------------------------------------------ */
 void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status)
 {
-	m_Log << "EOT" << CUtil::CLog::endl;
+	if (!m_CONFIG.bSendBin) return;
+/*
+	int nSelectedSites[ m_pProgCtrl->getNumberOfSelectedSites() ];
+	int* nSelectedSites = m_pProgCtrl->getSelectedSites();
+	for (int i = 1; i < m_pProgCtrl->getNumberOfSelectedSites(); i++)
+	{
+		m_Log << nSelectedSites[i] << (i == m_pProgCtrl->getNumberOfSelectedSites() - 1? "" : ", ");
+	}
+	m_Log << CUtil::CLog::endl;
+*/	
+
+
+	// set host/tester name
+	std::stringstream send;
+	send << m_szTesterName;
+
+	// let's find the first active site
+	int* nSelectedSites = m_pProgCtrl->getSelectedSites();
+	int nStartSite = -1;
+	for (int i = 1; i < m_pProgCtrl->getNumberOfSelectedSites(); i++)
+	{
+		if (nSelectedSites[i] == 1)
+		{ 
+			nStartSite = i; 
+			break;
+		}
+	}	
+	// wow we didn't find any active site in selected site list!!!
+	if(nStartSite == -1) return;
+
+	//let's put a filler on sites that we
+
+
+	// send bins 
+	bool bFound = false;
+	for (int i = 1; i < array_size; i++)
+	{
+		// is this site valid?
+		if (site[i] == 1)
+		{
+			send << (bFound? "":", ") << (m_CONFIG.bUseHardBin? hw_bin[i] : sw_bin[i]) << (i == array_size - 1? "" : ", ");
+			bFound = true;
+		}		
+	}
+
+	// set the asterisk as end string character
+	send << "*";
+
+	CClient c;
+	if (!c.connect()) 
+	{
+		m_Log << "ERROR: Failed to connect to server." << CUtil::CLog::endl;
+		return;
+	}
+	c.send(send.str());
+	c.disconnect();
+	//m_Log << "EOT" << CUtil::CLog::endl;
 }
