@@ -66,6 +66,9 @@ public:
 	// event handler for state notification program change
 	virtual void onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg){}
 
+	// event handler for state notification EOT
+	virtual void onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0){}
+
 	// let our state notification class access tester's members
 	friend class CStateNotification;
 };
@@ -84,5 +87,9 @@ public:
 	virtual void gemStateChange(const bool linkState, const bool controlState, const bool spoolState, const char *text_msg){}
 	virtual void programChange(const EVX_PROGRAM_STATE state, const char *text_msg){ m_Tester.onProgramChange(state, text_msg); }
 	virtual void gemTerminalMessage(const char *pcMessage){}
+	virtual void programRunDone(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0)
+	{
+		m_Tester.onEndOfTest(array_size, site, serial, sw_bin, hw_bin, pass, dsp_status);
+	}
 };
 #endif

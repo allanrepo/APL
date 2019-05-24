@@ -637,3 +637,10 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 	}
 }
 
+/* ------------------------------------------------------------------------------------------
+event handler for state notification EOT
+------------------------------------------------------------------------------------------ */
+void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status)
+{
+	m_Log << "EOT" << CUtil::CLog::endl;
+}
