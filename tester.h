@@ -9,18 +9,12 @@
 
 
 #define SAFE_DELETE(p){ delete(p); p = 0; }
-
-class CStateNotification: public StateNotification
-{
-protected:
-public:
-  	CStateNotification(const TestheadConnection &thc):StateNotification(thc){}
-	virtual ~CStateNotification(){}
-	virtual void gemStateChange(const bool linkState, const bool controlState, const bool spoolState, const char *text_msg){}
-	virtual void programChange(const EVX_PROGRAM_STATE state, const char *text_msg){}
-	virtual void gemTerminalMessage(const char *pcMessage){}
-};
-
+/* ------------------------------------------------------------------------------------------
+class declarations
+------------------------------------------------------------------------------------------ */
+class CTester;
+class CStateNotification;
+class CEvxioStreamClient;
 
 class CEvxioStreamClient: public EvxioStreamsClient
 {
@@ -68,52 +62,27 @@ public:
 	// load program
 	bool load(const std::string& name, bool bDisplay = false);
 	bool unload(bool bWait = true, int nWait = 0);
+
+	// event handler for state notification program change
+	virtual void onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg){}
+
+	// let our state notification class access tester's members
+	friend class CStateNotification;
 };
 
 
-
-class event
+/* ------------------------------------------------------------------------------------------
+state notification class 
+------------------------------------------------------------------------------------------ */
+class CStateNotification: public StateNotification
 {
+protected:
+	CTester& m_Tester;
 public:
-	void doThis()
-	{
-		CUtil::CLog Log;
-		Log << "hello event class" << CUtil::CLog::endl;
-	}
+  	CStateNotification(CTester& tester):StateNotification(*tester.m_pTestHead), m_Tester(tester){}
+	virtual ~CStateNotification(){}
+	virtual void gemStateChange(const bool linkState, const bool controlState, const bool spoolState, const char *text_msg){}
+	virtual void programChange(const EVX_PROGRAM_STATE state, const char *text_msg){ m_Tester.onProgramChange(state, text_msg); }
+	virtual void gemTerminalMessage(const char *pcMessage){}
 };
-
-
-
-class foo
-{
-	typedef void (*PDOTHIS)();
-	//PDOTHIS m_doThisPtr;
-	
-public:
-
-	void (event::* eventPtr)();
-	void (*doThisPtr)();
-	
-
-	foo(void(*p)())
-	{
-		doThisPtr = p;
-		eventPtr = 0;
-	}
-	virtual ~ foo(){}
-	
-	void doThisEvent(event& e)
-	{
-		if (!eventPtr) return;
-		else (e.*eventPtr)();
-	}
-
-	void doThis()
-	{
-		if (!doThisPtr) return;
-		else doThisPtr();
-	}
-
-};
-
 #endif

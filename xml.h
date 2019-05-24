@@ -94,7 +94,7 @@ tag          attr       vals
 #include <fstream>
 
 /* Basically a wrapper around basicxmlnode (bxmlnode.h) */
-class CXml
+class XML_Node
 {
  private:
     std::string tag;
@@ -103,7 +103,7 @@ class CXml
     std::vector<std::string> attr;
     std::vector<std::string> vals;
     // vector of children..
-    std::vector<CXml*> children;
+    std::vector<XML_Node*> children;
     
     // initialize node given a bmxlnode (will also init children..)
     void initNode(basicxmlnode *bxmlnode);
@@ -111,10 +111,10 @@ class CXml
     bool isValidText( const std::string &str ) const;
 
  public:
-    CXml(); // blank node
-    CXml( const std::string & file_name ); // create node from filename (root node)..
-    CXml(basicxmlnode *bxmlnode); // create node from basicxmlnode struct..
-    ~CXml(); // delete node and children..
+    XML_Node(); // blank node
+    XML_Node( const std::string & file_name ); // create node from filename (root node)..
+    XML_Node(basicxmlnode *bxmlnode); // create node from basicxmlnode struct..
+    ~XML_Node(); // delete node and children..
     
     // tag
     std::string fetchTag() const { return this->tag; }
@@ -135,9 +135,9 @@ class CXml
     
     // fetch children
     bool hasChild(const std::string & tag) const; // has child with tag
-    CXml * fetchChild( int index ); // fetch child by index (returns null if not found)
-    CXml * fetchChild( const std::string & tag, int index = 0 );  // returns first instance.. (returns null if not found)
-    std::vector<CXml*> fetchChildren( const std::string & tag ); // fetch children with tag name..
+    XML_Node * fetchChild( int index ); // fetch child by index (returns null if not found)
+    XML_Node * fetchChild( const std::string & tag, int index = 0 );  // returns first instance.. (returns null if not found)
+    std::vector<XML_Node*> fetchChildren( const std::string & tag ); // fetch children with tag name..
 
 };
 

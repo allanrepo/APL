@@ -5,13 +5,14 @@
 #include <notify.h>
 #include <pwd.h>
 #include <evxa/EVXA.hxx>
+#include <stdf.h>
 
 /* ------------------------------------------------------------------------------------------
 constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
 #define JOBFILE "JOBFILE"
-#define VERSION "alpha.1.0.20190517"
+#define VERSION "alpha.1.0.20190523"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"
@@ -27,43 +28,8 @@ declarations
 class CApp;
 class CAppFileDesc;
 class CMonitorFileDesc;
-class MIR;
-class SDR;
 
 
-class MIR
-{
-public:
-	MIR(){ clear(); }
-	bool clear()
-	{
-		OperNam.clear();
-		PartTyp.clear();
-		LotId.clear();
-		FamlyId.clear();
-		TestTmp.clear();
-	}
-
-	std::string OperNam;	// TestProgData.Operator
-	std::string PartTyp;	// TestProgData.Device
-	std::string LotId;		// TestProgData.LotId
-	std::string FamlyId;	// TestProgData.ProdId
-	std::string TestTmp;	// TestProgData.TestTemp
-};
-
-class SDR
-{
-public:
-	SDR(){ clear(); }
-	bool clear()
-	{
-		HandId.clear();
-		LoadId.clear();
-	}
-
-	std::string HandId; // TestProgData.HandlerType
-	std::string LoadId; // TestProgData.LoadboardId
-};
 
 /* ------------------------------------------------------------------------------------------
 app class. this is where stuff happens. 
@@ -74,13 +40,13 @@ class CApp: public CTester
 protected:
 	CFileDescriptorManager m_FileDescMgr;
 	bool m_bReconnect;
-	bool m_bRestartTester;
 
 	// parameters
 	std::string m_szProgramFullPathName;
 	std::string m_szMonitorPath;
 	std::string m_szTesterName;
 	std::string m_szMonitorFileName;
+	std::string m_szConfigFullPathName;
 
 	// file descriptor for inotify to monitor path where lotinfo.txt will be sent
 	CMonitorFileDesc* m_pMonitorFileDesc;
@@ -91,12 +57,16 @@ protected:
 	void printSTDF();
 	void setSTDF();
 	bool m_bSTDF;
+	bool setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce = false);
 
 	// initialize variabls, reset stuff
 	void init();
 
 	// utility function that acquire linux login username
 	const std::string getUserName() const;
+	
+	// launches OICu with option to load program using system command line
+	bool launch(const std::string& tester, const std::string& program, bool bProd);
 
 public:
 	CApp(int argc, char **argv);
@@ -116,7 +86,8 @@ public:
 	bool parse(const std::string& name);
 	bool getFieldValuePair(const std::string& line, const char delimiter, std::string& field, std::string& value);
 
-	bool launch(const std::string& tester, const std::string& program, bool bProd);
+	// event handler for state notification program change
+	virtual void onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg);
 };
 
 

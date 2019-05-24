@@ -20,13 +20,16 @@ CApp::CApp(int argc, char **argv)
 	}
 
 //	EVXA::endTester(m_szTesterName.c_str(), "-v");
-	if (m_bRestartTester) EVXA::restartTester(m_szTesterName.c_str(), "-v");
+//	if (m_bRestartTester) EVXA::restartTester(m_szTesterName.c_str(), "-v");
 
 	// if file name to monitor is not set, assign default
 	if (m_szMonitorFileName.empty()){ m_szMonitorFileName = "lotinfo.txt"; }
 
 	// if path to monitor is not set, assign default
 	if (m_szMonitorPath.empty()){ m_szMonitorPath = "/tmp"; }
+
+	// if config file is not set, assign default
+	if (m_szConfigFullPathName.empty()){ m_szConfigFullPathName = "./config.xml"; }
 
 	// print out app info before proceeding. force this to be log
 	m_Log.silent = false;
@@ -35,6 +38,7 @@ CApp::CApp(int argc, char **argv)
 	m_Log << "Tester: " << m_szTesterName << CUtil::CLog::endl; 
 	m_Log << "Path: " << m_szMonitorPath << CUtil::CLog::endl;
 	m_Log << "File: " << m_szMonitorFileName << CUtil::CLog::endl;
+	m_Log << "Config: " << m_szConfigFullPathName << CUtil::CLog::endl;
 
 	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, m_szMonitorPath);
@@ -76,6 +80,7 @@ CApp::CApp(int argc, char **argv)
 			if (!m_pProgCtrl) continue;
 			if (m_pProgCtrl->isProgramLoaded())
 			{
+				m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
 				setSTDF();
 				m_bSTDF = false;
 			}
@@ -97,11 +102,12 @@ initialize variables, reset params
 void CApp::init()
 {
 	m_szProgramFullPathName = "";
-	m_szMonitorPath = "";
+	m_szMonitorPath = "/tmp";
 	m_szTesterName = "";
-	m_szMonitorFileName = "";
-	m_bRestartTester = false;
+	m_szMonitorFileName = "lotinfo.txt";
+	m_szConfigFullPathName = "./config.xml";
 	
+	// used for telling this app that it's ready to set lotinfo params
 	m_bSTDF = false;
 
 	// flag used to request for tester reconnect, true by default so it tries to connect on launch
@@ -171,14 +177,23 @@ bool CApp::scan(int argc, char **argv)
 				continue;
 			}	
 		}	
-		// this option will let the app restart tester on launch so there's something to connect to
-		s = "-restart_tester";
+		// look for -config arg. if partial match is at first char, we found it
+		s = "-config";
 		if (s.find(*it) == 0)
 		{
-			m_bRestartTester = true;
-			continue;
-		}
-	
+			// expect the next arg (and it must exist) to be path/name of the config file
+			it++;
+			if (it == args.end())
+			{
+				m_Log << "ERROR: " << s << " argument found but option is missing." << CUtil::CLog::endl;
+				return false;
+			}
+			else
+			{
+				m_szConfigFullPathName = *it;
+				continue;
+			}	
+		}	
 	}	
 	return true;
 }
@@ -228,8 +243,25 @@ void CApp::onReceiveFile(const std::string& name)
 		m_Log << ssFullPathMonitorName.str() << " file received but didn't find a program to load.";
 		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field." << CUtil::CLog::endl;
 	}
+	// look's like we're good to launch OICu and load program. let's do it
 	else
 	{
+		// are we connected?
+		if (isReady())
+		{
+			m_Log << "We're connected and will try to disconnect. " << CUtil::CLog::endl;
+
+			// any program loaded? unload it
+			if (m_pProgCtrl->isProgramLoaded()) 
+			{
+				m_Log << "But first, we will unload current program loaded... " << CUtil::CLog::endl;
+				unload();
+			}
+		}
+
+		// in case we're connected from previous OICu load, let's make sure we're disconnected now.
+		disconnect();
+
 		// let's kill any OICu running right now
 		std::stringstream ssCmd;
 		ssCmd << "./" << KILLAPPCMD << " " << OICU;
@@ -270,16 +302,11 @@ void CApp::onReceiveFile(const std::string& name)
 
 /* ------------------------------------------------------------------------------------------
 launches unison (OICu or OpTool)
+- 	after sending launch command, we're also setting APL to try reconnecting to tester
 ------------------------------------------------------------------------------------------ */
 bool CApp::launch(const std::string& tester, const std::string& program, bool bProd)
 {
 	m_Log << "launching OICu and loading '" << program << "'..." << CUtil::CLog::endl;
-
-	// kill the tester first. we don't want another tester object running while we launch our own
-	// ** 	FIX THIS: problem is the app doesn't wait until end tester is done. we we are sending launch command
-	//	in the middle of tester killing. we'll keep it this way for now but we will have to fix this before
-	//	release.
-	//EVXA::endTester(m_szTesterName.c_str(), ""); 
 
 	// setup system command to launch OICu
 	// >launcher -nodisplay -prod -load <program> -T <tester> -qual
@@ -359,7 +386,7 @@ bool CApp::parse(const std::string& name)
 	m_Log << "It's file size is " << s.length() << " bytes. Contents: " << CUtil::CLog::endl;
 	m_Log << s << CUtil::CLog::endl;
 	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
-
+ 
 	while(s.size())  
 	{ 
 		// find next '\n' position 
@@ -377,11 +404,23 @@ bool CApp::parse(const std::string& name)
 		{
 			// extract STDF fields
 			if (field.compare("OPERATOR") == 0){ m_MIR.OperNam = value; continue; }
-			if (field.compare("DEVICE") == 0){ m_MIR.PartTyp = value; continue; }
 			if (field.compare("LOTID") == 0){ m_MIR.LotId = value; continue; }
+			if (field.compare("SUBLOTID") == 0){ m_MIR.SblotId = value; continue; }
+			if (field.compare("DEVICE") == 0){ m_MIR.PartTyp = value; continue; }
 			if (field.compare("PRODUCTID") == 0){ m_MIR.FamlyId = value; continue; }
-			if (field.compare("TEMPERATURE") == 0){ m_MIR.TestTmp = value; continue; }
+			if (field.compare("PACKAGE") == 0){ m_MIR.PkgTyp = value; continue; }
+			if (field.compare("FILENAMEREV") == 0){ m_MIR.JobRev = value; continue; }
+			if (field.compare("TESTMODE") == 0){ m_MIR.ModeCod = value; continue; }
+			if (field.compare("COMMANDMODE") == 0){ m_MIR.CmodCod = value; continue; }
+			if (field.compare("ACTIVEFLOWNAME") == 0){ m_MIR.FlowId = value; continue; }
+			if (field.compare("DATECODE") == 0){ m_MIR.DateCod = value; continue; }
+			if (field.compare("CONTACTORTYPE") == 0){ m_SDR.ContTyp = value; continue; }
+			if (field.compare("CONTACTORID") == 0){ m_SDR.ContId = value; continue; }
+			if (field.compare("FABRICATIONID") == 0){ m_MIR.ProcId = value; continue; }
+			if (field.compare("TESTFLOOR") == 0){ m_MIR.FloorId = value; continue; }
+			if (field.compare("TESTFACILITY") == 0){ m_MIR.FacilId = value; continue; }
 			if (field.compare("PROBERHANDLERID") == 0){ m_SDR.HandId = value; continue; }
+			if (field.compare("TEMPERATURE") == 0){ m_MIR.TestTmp = value; continue; }
 			if (field.compare("BOARDID") == 0){ m_SDR.LoadId = value; continue; }
 
 			// we're looking for jobfile field only, ignore the rest (for now)
@@ -458,6 +497,38 @@ void CApp::printSTDF()
 }
 
 /* ------------------------------------------------------------------------------------------
+wraps progctrl method to set lotinfo/stdf
+-	returns false if it fails to set, true otherwise
+------------------------------------------------------------------------------------------ */
+bool CApp::setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce)
+{
+	if (!m_pProgCtrl) return false;
+
+	// if field is empty, we won't set it, unless we're forced to, which clears the lot information instead
+   	if (!field.empty() || bForce) 
+	{
+		// set to unison
+		m_pProgCtrl->setLotInformation(type, field.c_str());
+
+		// check if successful
+		if (field.compare( m_pProgCtrl->getLotInformation(type) ) != 0)
+		{
+			m_Log << "ERROR: Failed to set Lot Information to '" << field << "'" << CUtil::CLog::endl;
+			return false;
+		}
+		// otherwise it's successful
+		m_Log << "Successfully set " << label << " to '" << m_pProgCtrl->getLotInformation(type) << "'" << CUtil::CLog::endl;
+		return true;
+   	}
+	// if field is empty from XTRF, let's leave this field with whatever its current value is
+	else
+	{ 
+		m_Log << "Field is empty. " << label << " will not be set." << CUtil::CLog::endl; 
+		return false;
+	}
+}
+
+/* ------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------------------ */
 void CApp::setSTDF()
@@ -465,26 +536,104 @@ void CApp::setSTDF()
 	// make sure we have valid evxa object
 	if (!m_pProgCtrl) return;
 
-	m_pProgCtrl->setLotInformation(EVX_LotLotID, m_MIR.LotId.c_str());
-	m_pProgCtrl->setLotInformation(EVX_LotOperator, m_MIR.OperNam.c_str());
-	m_pProgCtrl->setLotInformation(EVX_LotDevice, m_MIR.PartTyp.c_str());
-	m_pProgCtrl->setLotInformation(EVX_LotProductID, m_MIR.FamlyId.c_str());
-	m_pProgCtrl->setLotInformation(EVX_LotTestTemp, m_MIR.TestTmp.c_str());
+	// set MIR
+	setLotInformation(EVX_LotLotID, 		m_MIR.LotId, 	"MIR.LotLotID");
+	setLotInformation(EVX_LotCommandMode, 		m_MIR.CmodCod, 	"MIR.LotCommandMode");
+	setLotInformation(EVX_LotActiveFlowName, 	m_MIR.FlowId, 	"MIR.LotActiveFlowName");
+	setLotInformation(EVX_LotDesignRev, 		m_MIR.DsgnRev, 	"MIR.LotDesignRev");
+	setLotInformation(EVX_LotDateCode, 		m_MIR.DateCod, 	"MIR.LotDateCode");
+	setLotInformation(EVX_LotOperFreq, 		m_MIR.OperFrq, 	"MIR.LotOperFreq");
+	setLotInformation(EVX_LotOperator, 		m_MIR.OperNam, 	"MIR.LotOperator");
+	setLotInformation(EVX_LotTcName, 		m_MIR.NodeNam, 	"MIR.LotTcName");
+	setLotInformation(EVX_LotDevice, 		m_MIR.PartTyp, 	"MIR.LotDevice");
+	setLotInformation(EVX_LotEngrLotId, 		m_MIR.EngId, 	"MIR.LotEngrLotId");
+	setLotInformation(EVX_LotTestTemp, 		m_MIR.TestTmp, 	"MIR.LotTestTemp");
+	setLotInformation(EVX_LotTestFacility, 		m_MIR.FacilId, 	"MIR.LotTestFacility");
+	setLotInformation(EVX_LotTestFloor, 		m_MIR.FloorId, 	"MIR.LotTestFloor");
+	setLotInformation(EVX_LotHead, 			m_MIR.StatNum, 	"MIR.LotHead");
+	setLotInformation(EVX_LotFabricationID, 	m_MIR.ProcId, 	"MIR.LotFabricationID");
+	setLotInformation(EVX_LotTestMode, 		m_MIR.ModeCod, 	"MIR.LotTestMode");
+	setLotInformation(EVX_LotProductID, 		m_MIR.FamlyId,  "MIR.LotProductID");
+	setLotInformation(EVX_LotPackage, 		m_MIR.PkgTyp, 	"MIR.LotPackage");
+	setLotInformation(EVX_LotSublotID, 		m_MIR.SblotId, 	"MIR.LotSublotID");
+	setLotInformation(EVX_LotTestSetup, 		m_MIR.SetupId, 	"MIR.LotTestSetup");
+	setLotInformation(EVX_LotFileNameRev, 		m_MIR.JobRev, 	"MIR.LotFileNameRev");
+	setLotInformation(EVX_LotAuxDataFile, 		m_MIR.AuxFile, 	"MIR.LotAuxDataFile");
+	setLotInformation(EVX_LotTestPhase, 		m_MIR.TestCod, 	"MIR.LotTestPhase");
+	setLotInformation(EVX_LotUserText, 		m_MIR.UserText, "MIR.LotUserText");
+	setLotInformation(EVX_LotRomCode, 		m_MIR.RomCod, 	"MIR.LotRomCode");
+	setLotInformation(EVX_LotTesterSerNum, 		m_MIR.SerlNum, 	"MIR.LotTesterSerNum");
+	setLotInformation(EVX_LotTesterType, 		m_MIR.TstrTyp, 	"MIR.LotTesterType");
+	setLotInformation(EVX_LotSupervisor, 		m_MIR.SuprNam, 	"MIR.LotSupervisor");
+	setLotInformation(EVX_LotSystemName, 		m_MIR.ExecTyp, 	"MIR.LotSystemName");
+	setLotInformation(EVX_LotTargetName, 		m_MIR.ExecVer, 	"MIR.LotTargetName");
+	setLotInformation(EVX_LotTestSpecName, 		m_MIR.SpecNam, 	"MIR.LotTestSpecName");
+	setLotInformation(EVX_LotTestSpecRev, 		m_MIR.SpecVer, 	"MIR.LotTestSpecRev");
+	setLotInformation(EVX_LotProtectionCode, 	m_MIR.ProtCod, 	"MIR.LotProtectionCode");
 
-	m_pProgCtrl->setLotInformation(EVX_LotProberHandlerID, m_SDR.HandId.c_str());
-	m_pProgCtrl->setLotInformation(EVX_LotLoadBrdId, m_SDR.LoadId.c_str());
+	// set SDR
+	setLotInformation(EVX_LotHandlerType, 		m_SDR.HandTyp, 	"SDR.LotHandlerType");
+	setLotInformation(EVX_LotCardId, 		m_SDR.CardId, 	"SDR.LotCardId");
+	setLotInformation(EVX_LotLoadBrdId, 		m_SDR.LoadId, 	"SDR.LotLoadBrdId");
+	setLotInformation(EVX_LotProberHandlerID, 	m_SDR.HandId, 	"SDR.LotProberHandlerID");
+	setLotInformation(EVX_LotDIBType, 		m_SDR.DibTyp, 	"SDR.LotDIBType");
+	setLotInformation(EVX_LotIfCableId, 		m_SDR.CableId, 	"SDR.LotIfCableId");
+	setLotInformation(EVX_LotContactorType, 	m_SDR.ContTyp, 	"SDR.LotContactorType");
+	setLotInformation(EVX_LotLoadBrdType, 		m_SDR.LoadTyp, 	"SDR.LotLoadBrdType");
+	setLotInformation(EVX_LotContactorId, 		m_SDR.ContId, 	"SDR.LotContactorId");
+	setLotInformation(EVX_LotLaserType, 		m_SDR.LaserTyp, "SDR.LotLaserType");
+	setLotInformation(EVX_LotLaserId, 		m_SDR.LaserId, 	"SDR.LotLaserId");
+	setLotInformation(EVX_LotExtEquipType, 		m_SDR.ExtrTyp, 	"SDR.LotExtEquipType");
+	setLotInformation(EVX_LotExtEquipId, 		m_SDR.ExtrId, 	"SDR.LotExtEquipId");
+	setLotInformation(EVX_LotActiveLoadBrdName, 	m_SDR.DibId, 	"SDR.LotActiveLoadBrdName");
+	setLotInformation(EVX_LotCardType, 		m_SDR.CardTyp, 	"SDR.LotCardType");
+	setLotInformation(EVX_LotIfCableType, 		m_SDR.CableTyp, "SDR.LotIfCableType");
 }
 
-#if 0
-		// strip the path from value and check if this exist. if not, move to next line
-		//size_t n = value.find_last_of('/', std::string::npos);
-		//std::string path = n == std::string::npos? "" : value.substr(0, n);
-		
+/* ------------------------------------------------------------------------------------------
+event handler called by state notification class when something happens in test program
+------------------------------------------------------------------------------------------ */
+void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg)
+{
+	// make sure we have valid evxa object
+	if (!m_pProgCtrl) return;
 
-		// now check if value refers to file that exists. if not, move to next line
-		std::string prog = value.substr(n + 1);
+	switch(state)
+	{
+		case EVX_PROGRAM_LOADING:
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOADING" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_LOAD_FAILED:
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOAD_FAILED" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_LOADED:
+		    	m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOADED" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_START: 
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_START" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_RUNNING:
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_RUNNING" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_UNLOADING:
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_UNLOADING" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_UNLOADED: 
+		{
+			m_Log << "programChange: EVX_PROGRAM_UNLOADED" << CUtil::CLog::endl;
+		    	EVXAStatus status = m_pProgCtrl->UnblockRobot();
+			if (status != EVXA::OK) m_Log << "Error PROGRAM_UNLAODED UnblockRobot(): status: " << status << " " << m_pProgCtrl->getStatusBuffer() << CUtil::CLog::endl;
+			break;
+		}
+		case EVX_PROGRAM_ABORT_LOAD:
+			m_Log << "programChange: EVX_PROGRAM_ABORT_LOAD" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_READY:
+			m_Log << "programChange: EVX_PROGRAM_READY" << CUtil::CLog::endl;
+			break;
+		default:
+			if(m_pProgCtrl->getStatus() !=  EVXA::OK) m_Log << "An Error occured[" << state << "]: " << m_pProgCtrl->getStatusBuffer() << CUtil::CLog::endl;
+		break;
+	}
+}
 
-		m_Log << "path: '" << path << "'" << CUtil::CLog::endl;
-		m_Log << "prog: '" << prog << "'" << CUtil::CLog::endl;
-
-#endif

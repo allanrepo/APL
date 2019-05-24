@@ -73,7 +73,7 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
 		else m_Log << "ProgramControl object created..." << CUtil::CLog::endl;
 
 		// create notification object
-    		m_pState = new CStateNotification(*m_pTestHead);
+    		m_pState = new CStateNotification(*this);
     		if(m_pState->getStatus() !=  EVXA::OK) 
 		{ 
 			if(nSleep) sleep(nSleep); 
@@ -267,4 +267,6 @@ bool CTester::load(const std::string& name, bool bDisplay)
 
 	return true;
 }
+
+
 

@@ -235,23 +235,22 @@ struct basicxmlnode * readbasicxmlnode( FILE * fpi )
  /* <tag attr="value" ... attr="value" /> */
  /* allocate memory for a node */
  node = new nodetype; /*(nodetype*)malloc(so_n);*/
-	if (node) 	
-	{
-	   node->tag = node->text = 0;
-	   node->attrs = node->values = 0;
-	   node->children = 0;
-	   node->childreni = 0;
-	}
+ if (node) {
+   node->tag = node->text = 0;
+   node->attrs = node->values = 0;
+   node->children = 0;
+   node->childreni = 0;
+ }
 	if (!err) 
 	{
-	   	if (!node) 
+   		if (!node) 
 		{
-	     		err=5; /* out of memory */
-	   	} 
+     			err=5; /* out of memory */
+   		} 
 		else 
 		{
-	     		memset(node, 0, sizeof(&node));
-		} 
+     			memset(node, 0, sizeof(nodetype));
+   		} 
 	}
  /* put tag name into node */
  if (!err) {
@@ -442,13 +441,13 @@ struct basicxmlnode * readbasicxmlnode( FILE * fpi )
 #include <string>
 #include <list>
 
-CXml::CXml()
+XML_Node::XML_Node()
 {
   this->tag = std::string("");
   this->text = std::string("");
 }
 
-CXml::CXml( const std::string & file_name )
+XML_Node::XML_Node( const std::string & file_name )
 {
   // open file and read..
   FILE *fp = fopen(file_name.c_str(), "rt");
@@ -466,12 +465,12 @@ CXml::CXml( const std::string & file_name )
     }
 }
 
-CXml::CXml(basicxmlnode *bxmlnode)
+XML_Node::XML_Node(basicxmlnode *bxmlnode)
 {
   this->initNode(bxmlnode);
 }
 
-void CXml::initNode(basicxmlnode *bxmlnode)
+void XML_Node::initNode(basicxmlnode *bxmlnode)
 {
   // save tag/text
   this->tag = std::string(bxmlnode->tag);
@@ -492,18 +491,18 @@ void CXml::initNode(basicxmlnode *bxmlnode)
         
     // go thru each children and create a node..
     for (int ii=0; bxmlnode->children[ii]; ++ii) { 
-      this->children.push_back( new CXml(bxmlnode->children[ii]) );
+      this->children.push_back( new XML_Node(bxmlnode->children[ii]) );
     }
   }
 }
 
-bool CXml::isValidText( const std::string &str ) const
+bool XML_Node::isValidText( const std::string &str ) const
 {
   // if non-empty character not found..
   return str.find_first_not_of(" \t\n\r") != std::string::npos;
 }
 
-CXml::~CXml()
+XML_Node::~XML_Node()
 {
   // delete self and children..
   for (unsigned i = 0; i < this->children.size(); i++) {
@@ -511,10 +510,10 @@ CXml::~CXml()
   }
 }
 
-bool CXml::hasChild(const std::string & tag) const
+bool XML_Node::hasChild(const std::string & tag) const
 {
   for ( unsigned i = 0; i < this->children.size(); i++) {
-    CXml *current = this->children.at(i);
+    XML_Node *current = this->children.at(i);
         
     // if the tag matches..
     if ( current->fetchTag().compare(tag) == 0 ) return true;
@@ -523,7 +522,7 @@ bool CXml::hasChild(const std::string & tag) const
   return false;
 }
 
-CXml * CXml::fetchChild( int i )
+XML_Node * XML_Node::fetchChild( int i )
 {
   // if out of bounds..
   if ( i < 0 || i >= this->numChildren()) return NULL;
@@ -531,12 +530,12 @@ CXml * CXml::fetchChild( int i )
   return this->children.at(i);
 }
 
-CXml * CXml::fetchChild( const std::string & tag, int index )
+XML_Node * XML_Node::fetchChild( const std::string & tag, int index )
 {
   int index_count = -1;
     
   for ( unsigned i = 0; i < this->children.size(); i++) {
-    CXml *current = this->children.at(i);
+    XML_Node *current = this->children.at(i);
         
     // if the tag matches..
     if ( current->fetchTag().compare(tag) == 0 ) {
@@ -551,12 +550,12 @@ CXml * CXml::fetchChild( const std::string & tag, int index )
   return NULL;
 }
 
-std::vector<CXml*> CXml::fetchChildren( const std::string & tag )
+std::vector<XML_Node*> XML_Node::fetchChildren( const std::string & tag )
 {
-  std::vector<CXml*> nodes;
+  std::vector<XML_Node*> nodes;
     
   for ( unsigned i = 0; i < this->children.size(); i++) {
-    CXml *current = this->children.at(i);
+    XML_Node *current = this->children.at(i);
         
     // if the tag matches..
     if ( current->fetchTag().compare(tag) == 0 ) 
