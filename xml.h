@@ -129,8 +129,18 @@ class XML_Node
 
     int numAttr() const { return this->attr.size(); }
     int numVals() const { return this->vals.size(); }
-    std::string fetchAttr(int index) const { return this->attr[index]; }
-    std::string fetchVal(int index) const { return this->vals[index]; }
+
+	std::string fetchAttr(unsigned int index = 0) const 
+	{ 
+		return index < attr.size()? attr[index] : std::string();
+	}
+    
+	std::string fetchVal(unsigned int index = 0) const 
+	{ 
+		return index < vals.size()? vals[index] : std::string();
+	}
+
+	std::string fetchVal(const std::string& attr, int i = 0) const;
 
     
     // fetch children

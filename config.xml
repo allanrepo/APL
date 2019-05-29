@@ -1,37 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!--  -->
-
-
 <APL_CONF>
-	<CurrentSiteConfiguration ConfigurationName="Singapore"/>
+	<CurrentSiteConfiguration>Singapore</CurrentSiteConfiguration>
 
-	<SiteConfiguration ConfigurationName = "Singapore">
-		<stdf field = "MIR">
-			<field name = "LOT_ID">lotid<field>
-			<field name = "PART_TYP">device<field>
-			<field name = "OPER_NAM">operator<field>
-			<field name = "FAMLY_ID">productid<field>
-			<field name = "TST_TEMP">temperature<field>
-		</stdf>
-		<stdf field = "SDR">
-			<field name = "HAND_ID">proberhandlerid<field>
-			<field name = "LOAD_ID">boardid<field>
-		</stdf>
+	<SiteConfiguration name = "Singapore">
+		<LotInfo>
+			<File>b.txt</File>
+			<Path>/home/localuser/Desktop/APL</Path>
+		</LotInfo>
+		<Binning state = "true">
+			<BinType>soft</BinType> <!-- hard, soft -->	
+			<TestType>wafer</TestType> <!-- final, wafer -->		
+			<SocketType>tcp</SocketType>
+			<IP>127.0.0.1</IP>
+			<Port>54000</Port>
+		</Binning>
+		<Logging state = "true">
+			<Path>/home/localuser/Desktop/</Path>
+		</Logging>
+		<STDF field = "MIR">
+			<Field name = "LOT_ID">lotid</Field>
+			<Field name = "PART_TYP">device</Field>
+			<Field name = "OPER_NAM">operator</Field>
+			<Field name = "FAMLY_ID">productid</Field>
+			<Field name = "TST_TEMP">temperature</Field>
+		</STDF>
+		<STDF field = "SDR">
+			<Field name = "HAND_ID">proberhandlerid</Field>
+			<Field name = "LOAD_ID">boardid</Field>
+		</STDF>
 	</SiteConfiguration>
 
-	<SiteConfiguration ConfigurationName = "Korea">
-		<stdf field = "MIR">
-			<field name = "LOT_ID"><field>
-			<field name = "PART_TYP"><field>
-			<field name = "OPER_NAM"><field>
-			<field name = "FAMLY_ID"><field>
-			<field name = "TST_TEMP"><field>
-		</stdf>
-		<stdf field = "SDR">
-			<field name = "HAND_ID"><field>
-			<field name = "LOAD_ID"><field>
-		</stdf>
+	<SiteConfiguration name = "Amkor">
+		<LotInfo>
+			<File>lotinfo.txt</File>
+			<Path>/tmp</Path>
+		</LotInfo>
+		<Binning state = "true">
+			<BinType>soft</BinType> <!-- hard, soft -->	
+			<TestType>final</TestType> <!-- final, wafer -->		
+			<SocketType>udp</SocketType>
+			<IP>127.0.0.1</IP>
+			<Port>4000</Port>
+		</Binning>
+		<Logging state = "true">
+			<Path>/home/localuser/Desktop/</Path>
+		</Logging>
 	</SiteConfiguration>
 
 

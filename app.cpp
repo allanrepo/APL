@@ -19,9 +19,6 @@ CApp::CApp(int argc, char **argv)
 		m_szTesterName = ss.str();
 	}
 
-//	EVXA::endTester(m_szTesterName.c_str(), "-v");
-//	if (m_bRestartTester) EVXA::restartTester(m_szTesterName.c_str(), "-v");
-
 	// if file name to monitor is not set, assign default
 	if (m_szMonitorFileName.empty()){ m_szMonitorFileName = "lotinfo.txt"; }
 
@@ -31,14 +28,58 @@ CApp::CApp(int argc, char **argv)
 	// if config file is not set, assign default
 	if (m_szConfigFullPathName.empty()){ m_szConfigFullPathName = "./config.xml"; }
 
-	// print out app info before proceeding. force this to be log
+	// force logger to log everything from here onwards
 	m_Log.silent = false;
+
+	// parse xml config file. default is ./config.xml
+	config( m_szConfigFullPathName );
+
+	if (m_CONFIG.bLogToFile)
+	{
+		// get the host name
+		char szHostName[32];
+		gethostname(szHostName, 32);
+
+		// get date stamp
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		struct tm* tmNow = localtime(&tv.tv_sec);				
+
+		// set log file to <path>/apl.<hostname>.<yyyymmdd>.log
+		std::stringstream ssLogToFile;
+		ssLogToFile << m_CONFIG.szLogPath << "/apl." << szHostName << "." << (tmNow->tm_year + 1900) << (tmNow->tm_mon + 1) << tmNow->tm_mday << ".log";
+		m_Log.file(ssLogToFile.str());
+		m_Log << "Log is saved to " << ssLogToFile.str() << CUtil::CLog::endl;
+	}
+
+	// print out settings 
 	m_Log << "Version: " << VERSION << CUtil::CLog::endl;
 	m_Log << "Developer: " << DEVELOPER << CUtil::CLog::endl;
 	m_Log << "Tester: " << m_szTesterName << CUtil::CLog::endl; 
 	m_Log << "Path: " << m_szMonitorPath << CUtil::CLog::endl;
 	m_Log << "File: " << m_szMonitorFileName << CUtil::CLog::endl;
-	m_Log << "Config: " << m_szConfigFullPathName << CUtil::CLog::endl;
+	m_Log << "Config File: " << m_szConfigFullPathName << CUtil::CLog::endl;
+	m_Log << "Binning: " << (m_CONFIG.bSendBin? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Bin type (if binning enabled): " << (m_CONFIG.bUseHardBin? "hard" : "soft") << CUtil::CLog::endl;
+	m_Log << "Test type (if binning enabled): ";
+	switch (m_CONFIG.nTestType)
+	{
+		case CONFIG::APL_WAFER: m_Log << "wafer test" << CUtil::CLog::endl; break;
+		case CONFIG::APL_FINAL: m_Log << "final test" << CUtil::CLog::endl; break;
+		default: m_Log << "unknown" << CUtil::CLog::endl; break;
+	};
+	m_Log << "IP: " << m_CONFIG.IP << CUtil::CLog::endl;
+	m_Log << "Port: " << m_CONFIG.nPort << CUtil::CLog::endl;
+	m_Log << "Socket type (if binning enabled): ";
+	switch (m_CONFIG.nSocketType)
+	{
+		case SOCK_DGRAM: m_Log << "UDP" << CUtil::CLog::endl; break;
+		case SOCK_STREAM: m_Log << "TCP" << CUtil::CLog::endl; break;
+		case SOCK_RAW: m_Log << "RAW" << CUtil::CLog::endl; break;
+		default: m_Log << "unknown" << CUtil::CLog::endl; break;
+	};
+	m_Log << "Log To File: " << (m_CONFIG.bLogToFile? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Log Path (if enabled): " << m_CONFIG.szLogPath << CUtil::CLog::endl;
 
 	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, m_szMonitorPath);
@@ -46,7 +87,7 @@ CApp::CApp(int argc, char **argv)
 
 	// get file descriptor of tester state notification and add to our fd manager		
 	CAppFileDesc StateNotificationFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
-	m_FileDescMgr.add( StateNotificationFileDesc );
+ 	m_FileDescMgr.add( StateNotificationFileDesc );
 
 	// get file descriptor of tester evxio stream and add to our fd manager		
 	CAppFileDesc StateEvxioStreamFileDesc(*this, &CApp::onEvxioResponse, m_pEvxio? m_pEvxio->getEvxioSocketId(): -1);
@@ -112,6 +153,145 @@ void CApp::init()
 
 	// flag used to request for tester reconnect, true by default so it tries to connect on launch
 	m_bReconnect = true;
+
+	// binning @EOT is disabled by default
+	m_CONFIG.bSendBin = false;
+	m_CONFIG.bUseHardBin = false;
+	m_CONFIG.nTestType = CONFIG::APL_FINAL;
+	m_CONFIG.IP = "127.0.0.1";
+	m_CONFIG.nPort = 54000;	
+	m_CONFIG.nSocketType = SOCK_STREAM;
+	m_CONFIG.bLogToFile = false;
+	m_CONFIG.szLogPath = "/tmp";
+}
+ 
+/* ------------------------------------------------------------------------------------------
+parse config xml file
+------------------------------------------------------------------------------------------ */
+bool CApp::config(const std::string& file)
+{
+	m_Log << "Parsing " << file << "..." << CUtil::CLog::endl;
+
+	// open xml config file and try to extract root tag	
+	XML_Node *root = new XML_Node (file.c_str());
+	if (root)
+	{
+		std::string tag = CUtil::toUpper(root->fetchTag());
+		if (tag.compare("APL_CONF") != 0)
+		{
+			m_Log << "Error: Invalid root tag '" << root->fetchTag() << "' found. Please check your '" << file << "'." << CUtil::CLog::endl;
+			return false;
+		}
+		
+		// let's find <CurrentSiteConfiguration> on <APL_CONF>'s nodes 
+		XML_Node *pCurrSiteConfig = root->fetchChild( "CurrentSiteConfiguration" );
+		if ( !pCurrSiteConfig ) 
+		{
+			m_Log << "Error: did not find <CurrentSiteConfiguration> in '" << file << "'." << CUtil::CLog::endl;
+			return false;
+		}
+		else m_Log << "<CurrentSiteConfiguration> : '" << pCurrSiteConfig->fetchText() << "'" << CUtil::CLog::endl;
+
+		// let's find the <SiteConfiguration> that matches <CurrentSiteConfiguration>
+		XML_Node *pConfig = 0;
+		m_Log << "<SiteConfiguration> : ";
+		for( int i = 0; i < root->numChildren(); i++ )
+		{
+			// only <SiteConfiguration> is handled, we ignore everything else
+			if (!root->fetchChild(i)) continue;
+			if (root->fetchChild(i)->fetchTag().compare("SiteConfiguration") != 0) continue;
+
+			m_Log << "'" << root->fetchChild(i)->fetchVal("name") <<  "', ";
+
+			// we take only the first <CurrentSiteConfiguration> match, ignore succeeding ones
+			if ( root->fetchChild(i)->fetchVal("name").compare( pCurrSiteConfig->fetchText() ) == 0 ){ if (!pConfig) pConfig = root->fetchChild(i); }
+		}
+		m_Log << CUtil::CLog::endl;
+	
+		// bail out if we didn't find <SiteConfiguration> with <CurrentSiteConfiguration>
+		if (!pConfig)
+		{
+			m_Log << "Error: did not find <SiteConfiguration> with '" << pCurrSiteConfig->fetchText() << "' attribute." << CUtil::CLog::endl;
+			return false;
+		}	
+
+		// let's now find the <Binning> from <SiteConfiguration> 
+		XML_Node* pBinning = 0;
+		if (pConfig->fetchChild("Binning")){ if ( CUtil::toUpper( pConfig->fetchChild("Binning")->fetchVal("state") ).compare("TRUE") == 0) pBinning = pConfig->fetchChild("Binning"); }
+		else m_Log << "Warning: Didn't find <Binning>. " << CUtil::CLog::endl;
+
+		// check if <logging> is set
+		XML_Node* pLogging = 0;
+		if (pConfig->fetchChild("Logging")){ if ( CUtil::toUpper( pConfig->fetchChild("Logging")->fetchVal("state") ).compare("TRUE") == 0) pLogging = pConfig->fetchChild("Logging"); }
+		else m_Log << "Warning: Didn't find <Logging>. " << CUtil::CLog::endl;
+
+		// check if <LotInfo> is set
+		if (pConfig->fetchChild("LotInfo"))
+		{
+			if (pConfig->fetchChild("LotInfo")->fetchChild("File")){ m_szMonitorFileName = pConfig->fetchChild("LotInfo")->fetchChild("File")->fetchText(); }
+			if (pConfig->fetchChild("LotInfo")->fetchChild("Path")){ m_szMonitorPath = pConfig->fetchChild("LotInfo")->fetchChild("Path")->fetchText(); }		
+		}
+		else m_Log << "Warning: Didn't find <LotInfo>. " << CUtil::CLog::endl;
+
+
+		// for debug purposes, print out all the parameters of <Binning>
+		for (int i = 0; i < pBinning->numChildren(); i++)
+		{
+			if ( pBinning->fetchChild(i) ) { m_Log << "<" << pBinning->fetchChild(i)->fetchTag() << ">: '" << pBinning->fetchChild(i)->fetchText() << "'" << CUtil::CLog::endl; }
+		}
+
+		// lets extract STDF stuff
+		for (int i = 0; i < pConfig->numChildren(); i++)
+		{
+			if (!pConfig->fetchChild(i)) continue;
+			if (pConfig->fetchChild(i)->fetchTag().compare("STDF") != 0) continue;
+
+			XML_Node* pStdf = pConfig->fetchChild(i);
+			m_Log << "<STDF>: '" << pStdf->fetchVal("Field") << "'" << CUtil::CLog::endl;
+			for (int j = 0; j < pStdf->numChildren(); j++)
+			{
+				if (!pStdf->fetchChild(j)) continue;
+				if (pStdf->fetchChild(j)->fetchTag().compare("Field") != 0) continue;					
+				
+				m_Log << "	" << pStdf->fetchChild(j)->fetchVal("name") << ": " << pStdf->fetchChild(j)->fetchText() << CUtil::CLog::endl;
+			}			
+		}
+
+		// if we found binning node, it means <Binning> is in config which means binning@EOT is enabled
+		if (pBinning)
+		{
+			m_CONFIG.bSendBin = true;
+			if (pBinning->fetchChild("BinType"))
+			{
+				if (CUtil::toUpper(pBinning->fetchChild("BinType")->fetchText()).compare("HARD") == 0) m_CONFIG.bUseHardBin = true;
+				if (CUtil::toUpper(pBinning->fetchChild("BinType")->fetchText()).compare("SOFT") == 0) m_CONFIG.bUseHardBin = false;
+			}
+			if (pBinning->fetchChild("TestType"))
+			{
+				if (CUtil::toUpper(pBinning->fetchChild("TestType")->fetchText()).compare("WAFER") == 0) m_CONFIG.nTestType = CONFIG::APL_WAFER;
+				if (CUtil::toUpper(pBinning->fetchChild("TestType")->fetchText()).compare("FINAL") == 0) m_CONFIG.nTestType = CONFIG::APL_FINAL;
+			}
+			if (pBinning->fetchChild("SocketType"))
+			{
+				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("UDP") == 0) m_CONFIG.nSocketType = SOCK_DGRAM;
+				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("TCP") == 0) m_CONFIG.nSocketType = SOCK_STREAM;
+				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("RAW") == 0) m_CONFIG.nSocketType = SOCK_RAW;
+			}
+			if (pBinning->fetchChild("IP")){ m_CONFIG.IP = pBinning->fetchChild("IP")->fetchText(); }	
+			if (pBinning->fetchChild("Port")){ m_CONFIG.nPort = CUtil::toLong(pBinning->fetchChild("Port")->fetchText()); }	
+		}
+
+		// if <logging> was set, let's see if logging is enabled and file path is specified
+		if (pLogging)
+		{
+			m_CONFIG.bLogToFile = true;
+			if (pLogging->fetchChild("Path")){ m_CONFIG.szLogPath = pLogging->fetchChild("Path")->fetchText(); }
+		}
+
+	}	
+
+	if (root) delete root;
+	return true;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -142,7 +322,8 @@ bool CApp::scan(int argc, char **argv)
 				m_szTesterName = *it;
 				continue;
 			}
-		}		
+		}	
+#if 0	
 		// look for -path arg. if partial match is at first char, we found it
 		s = "-path";
 		if (s.find(*it) == 0)
@@ -177,6 +358,16 @@ bool CApp::scan(int argc, char **argv)
 				continue;
 			}	
 		}	
+	
+		// look for -binning arg. if partial match is at first char, we found it
+		s = "-binning";
+		if (s.find(*it) == 0)
+		{
+			// if this flag is used, binning@EOT is enabled
+			m_CONFIG.bSendBin = true;
+			continue;
+		}	
+#endif
 		// look for -config arg. if partial match is at first char, we found it
 		s = "-config";
 		if (s.find(*it) == 0)
@@ -193,7 +384,7 @@ bool CApp::scan(int argc, char **argv)
 				m_szConfigFullPathName = *it;
 				continue;
 			}	
-		}	
+		}
 	}	
 	return true;
 }
@@ -255,7 +446,7 @@ void CApp::onReceiveFile(const std::string& name)
 			if (m_pProgCtrl->isProgramLoaded()) 
 			{
 				m_Log << "But first, we will unload current program loaded... " << CUtil::CLog::endl;
-				unload();
+				unload(true, 10);
 			}
 		}
 
@@ -279,6 +470,32 @@ void CApp::onReceiveFile(const std::string& name)
 		ssCmd.str(std::string());
 		ssCmd.clear();
 		ssCmd << "./" << KILLAPPCMD << " " << DATAVIEWER;
+		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+
+		// let's kill any bintool running right now
+		ssCmd.str(std::string());
+		ssCmd.clear();
+		ssCmd << "./" << KILLAPPCMD << " " << "binTool";
+		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+
+		// let's kill any testtool running right now
+		ssCmd.str(std::string());
+		ssCmd.clear();
+		ssCmd << "./" << KILLAPPCMD << " " << "testTool";
+		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+
+		ssCmd.str(std::string());
+		ssCmd.clear();
+		ssCmd << "./" << KILLAPPCMD << " " << "flowTool";
+		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+
+		ssCmd.str(std::string());
+		ssCmd.clear();
+		ssCmd << "./" << KILLAPPCMD << " " << "errorTool";
 		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
 		system(ssCmd.str().c_str());
 
@@ -642,61 +859,72 @@ event handler for state notification EOT
 ------------------------------------------------------------------------------------------ */
 void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status)
 {
+	// if we're not sending bin, bail out
 	if (!m_CONFIG.bSendBin) return;
-/*
-	int nSelectedSites[ m_pProgCtrl->getNumberOfSelectedSites() ];
-	int* nSelectedSites = m_pProgCtrl->getSelectedSites();
-	for (int i = 1; i < m_pProgCtrl->getNumberOfSelectedSites(); i++)
-	{
-		m_Log << nSelectedSites[i] << (i == m_pProgCtrl->getNumberOfSelectedSites() - 1? "" : ", ");
-	}
-	m_Log << CUtil::CLog::endl;
-*/	
-
 
 	// set host/tester name
 	std::stringstream send;
 	send << m_szTesterName;
 
-	// let's find the first active site
-	int* nSelectedSites = m_pProgCtrl->getSelectedSites();
-	int nStartSite = -1;
-	for (int i = 1; i < m_pProgCtrl->getNumberOfSelectedSites(); i++)
-	{
-		if (nSelectedSites[i] == 1)
-		{ 
-			nStartSite = i; 
-			break;
-		}
-	}	
-	// wow we didn't find any active site in selected site list!!!
-	if(nStartSite == -1) return;
+	// as per Amkor specs, if wafer test, insert wafer id (lot id) here
+	if (m_CONFIG.nTestType == CONFIG::APL_WAFER) send << "," <<  m_pProgCtrl->getLotInformation(EVX_LotLotID);
 
-	//let's put a filler on sites that we
+	// if wafer test, extract x/y coords. needed as per Amkor specs
+	int *sites = 0;
+	int *xCoords = 0;
+	int *yCoords = 0;
 
+	if (m_CONFIG.nTestType == CONFIG::APL_WAFER)
+	{	
+		m_Log << "wafer test" << CUtil::CLog::endl;
+		// initialize arrays and set to defaults
+		sites = new int[array_size];
+		xCoords = new int[array_size];
+		yCoords = new int[array_size];
 
-	// send bins 
-	bool bFound = false;
-	for (int i = 1; i < array_size; i++)
-	{
-		// is this site valid?
-		if (site[i] == 1)
+		if ( m_pProgCtrl->getWaferCoords(array_size, sites, xCoords, yCoords) != EVXA::OK )
 		{
-			send << (bFound? "":", ") << (m_CONFIG.bUseHardBin? hw_bin[i] : sw_bin[i]) << (i == array_size - 1? "" : ", ");
-			bFound = true;
-		}		
+			m_Log << "Error: Something went wrong int qerying Unison for X/Y coords." << CUtil::CLog::endl;
+		}
 	}
 
-	// set the asterisk as end string character
-	send << "*";
+	// loop through all loaded sites, start at 1. for unison, site 1 = 1
+	for (int i = 1; i < m_pProgCtrl->getNumberOfLoadedSites(); i++)
+	{
+		// if there's at least 1 site, let's print the comma before first site as separator to host name
+		if (i == 1)
+		{
+			send << ",";
+		}
 
+		// if this site is beyond array size, or is this is not selected, we skip it
+		if (i >= array_size || site[i] == 0)
+		{
+			send << ""; 
+		}
+
+		// otherwise, this is a selected site with valid bin. print it
+		else
+		{
+			if (m_CONFIG.nTestType == CONFIG::APL_WAFER) send << xCoords[i] << "/" << yCoords[i] << "/";
+			send << (m_CONFIG.bUseHardBin? hw_bin[i] : sw_bin[i]);
+		}	
+		// if this is the last site, insert asterisk as end char for string to send. otherwise, a coma separator
+		send << (i == m_pProgCtrl->getNumberOfLoadedSites() - 1? "*" : ",");
+	}
+
+	// if we used these arrays, destroy them on the way
+	if (sites) delete []sites;
+	if (xCoords) delete []xCoords;
+	if (yCoords) delete []yCoords;
+
+	// finally, send the string to remote host
 	CClient c;
-	if (!c.connect()) 
+	if (!c.connect(m_CONFIG.IP, m_CONFIG.nPort)) 
 	{
 		m_Log << "ERROR: Failed to connect to server." << CUtil::CLog::endl;
 		return;
 	}
 	c.send(send.str());
 	c.disconnect();
-	//m_Log << "EOT" << CUtil::CLog::endl;
 }

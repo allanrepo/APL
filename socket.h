@@ -11,8 +11,8 @@
 #include <stdio.h>
 #include <utility.h>
 
-#define IP "127.0.0.1"
-#define PORT 54000 // default listenting port used if not specified in command line 
+#define SOCKET_IP_DEFAULT "127.0.0.1"
+#define SOCKET_PORT_DEFAULT 54000 // default listenting port used if not specified in command line 
 #define MAXBYTEMESSAGE 4096
 
 /* ------------------------------------------------------------------------------------------
@@ -29,21 +29,10 @@ public:
 	CClient();
 	virtual ~CClient();
 
-	bool connect(const std::string& ip = "127.0.0.1" , unsigned short port = PORT );
+	bool connect(const std::string& ip = SOCKET_IP_DEFAULT , unsigned short port = SOCKET_PORT_DEFAULT, int nType = SOCK_STREAM);
 	bool send(const std::string& in);
 	void disconnect();
-
-	//bool start(unsigned long ms = 0);
-	//bool read(std::string& out, unsigned long ms = 0);
 };
 
-
-class CServer
-{
-private:
-public:
-	CServer();
-	virtual ~CServer();
-};
 
 #endif

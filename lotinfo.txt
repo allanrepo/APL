@@ -1,10 +1,11 @@
-OPERATOR:allan   
+OPERATOR:theterminator   
 LOTid:LOT789XYZ
 subLotID:SUBLOT789XYZ
 DEVICE:DEVICE1234xxx  
 ProductID:PROD_ID_69
 FILENAMEREV:filename69   
 TESTMODE:testmode123    
+PACKAGE:bigpackage
 COMMANDMODE:cmdmode    
 ACTIVEFLOWNAME:9activeflow69   
 DATECODE:nottoday   

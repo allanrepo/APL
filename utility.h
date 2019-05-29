@@ -85,6 +85,8 @@ namespace CUtil
 	char toUpper(const char c);
 	const std::string removeLeadingTrailingSpace(const std::string& str);
 	bool isFileExist(const std::string& szFile);
+	const std::string toUpper(const std::string& str);
+
 };
 
 

@@ -502,7 +502,7 @@ bool XML_Node::isValidText( const std::string &str ) const
   return str.find_first_not_of(" \t\n\r") != std::string::npos;
 }
 
-XML_Node::~XML_Node()
+XML_Node::~XML_Node() 
 {
   // delete self and children..
   for (unsigned i = 0; i < this->children.size(); i++) {
@@ -530,24 +530,51 @@ XML_Node * XML_Node::fetchChild( int i )
   return this->children.at(i);
 }
 
+// get the child node with the specified tag
+// there can be multiple child nodes with the same tag. index specifies
+// which child node you want. index = 0, means the first child node found is returned
 XML_Node * XML_Node::fetchChild( const std::string & tag, int index )
 {
-  int index_count = -1;
-    
-  for ( unsigned i = 0; i < this->children.size(); i++) {
-    XML_Node *current = this->children.at(i);
-        
-    // if the tag matches..
-    if ( current->fetchTag().compare(tag) == 0 ) {
-            
-      // increment index count..
-      index_count++;
-            
-      // if the index num matches, return
-      if (index == index_count) return current;
-    }
-  }
-  return NULL;
+	int index_count = -1;
+
+	for ( unsigned i = 0; i < children.size(); i++) 
+	{
+		XML_Node *current = children.at(i);
+
+		// if the tag matches..
+		if ( current->fetchTag().compare(tag) == 0 ) 
+		{
+			// increment index count..
+			index_count++;
+
+			// if the index num matches, return
+			if (index == index_count) return current;
+		}
+	}
+	return 0;
+}
+
+// get the value of the attribute of this node
+// there can be multiple attributes with the same tag. index specifies
+// which attribute you want. index = 0, means the first attribute found is returned
+std::string XML_Node::fetchVal(const std::string& attribute, int index) const
+{
+	int index_count = -1;
+
+	for(int i = 0; i < numAttr(); i++) 
+	{
+
+		if (attr[index].compare(attribute) == 0)
+		{
+			// increment index count..
+			index_count++;
+
+			// if the index num matches, return
+			if (index == index_count) return vals[i];
+		}
+
+	}
+	return "";		
 }
 
 std::vector<XML_Node*> XML_Node::fetchChildren( const std::string & tag )

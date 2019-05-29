@@ -103,11 +103,25 @@ char CUtil::toUpper(const char c)
 }
 
 /*-----------------------------------------------------------------------------------------
+convert string to upper case
+-----------------------------------------------------------------------------------------*/
+const std::string CUtil::toUpper(const std::string& str)
+{
+	std::string rslt = str;
+	for (std::string::size_type i = 0; i < rslt.size(); i++)
+	{ 
+		rslt[i] = CUtil::toUpper(rslt[i]); 
+	}
+
+	return rslt;
+}
+
+/*-----------------------------------------------------------------------------------------
 remove leading/trailing space in string
 -----------------------------------------------------------------------------------------*/
 const std::string CUtil::removeLeadingTrailingSpace(const std::string& str)
 {
-	std::string s = str;
+	std::string s = str; 
 
 	// find the first non space character
 	size_t pos = s.find_first_not_of(" \n\t\f\v", 0, 5);

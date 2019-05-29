@@ -1,3 +1,29 @@
+/* ---------------------------------------------------------------------------------------------------------------------
+version beta.1.20190529 release notes:
+
+-	added a new feature following Amkor Bin Solution specificatios Revision 1.3 where APL sends a string 
+	containing bin results for all sites tested every test cycle (EOT) to Amkor's remote host via UDP
+	-	this feature is disabled by default. this can be enabled through APL's XML config file
+	-	IP, port, and socket type can be specified in APL's XML config file as well. Amkor specifies
+		socket type to be UDP but APL can be configured to use TCP-IP through APL's XML config file.
+	-	bin type to be send (hard or soft) can also be specified in APL's XML config file
+
+-	because there are so many settings to set now, using command line arguments is too much therefore
+	APL can now be configured via XML config file. a separate documentation will be provided to describe
+	in detail all the parameters that can be set.
+	- 	launching APL now is a simpe as >apl -config /home/user/test/config.xml where /home/user/test
+		is the path where the config file is located and apl.xml is the name of the config file.
+	- 	note that the tag names such as <Field> or <BinType> are case sensitve. but the values they
+		contain are not. so <BinType>hard</BinType> has same value as <BinType>HARD</BinType>
+	
+-	in production, APL will be running in the background, therefore it's logs will not be visible. there
+	is now an option to store in into a file. the file and the path to save it can be set in APL XML
+	config file
+
+-	
+
+--------------------------------------------------------------------------------------------------------------------- */
+
 #ifndef __APP__
 #define __APP__
 #include <fd.h>
@@ -7,6 +33,7 @@
 #include <evxa/EVXA.hxx>
 #include <stdf.h>
 #include <socket.h>
+#include <xml.h>
 
 /* ------------------------------------------------------------------------------------------
 constants
@@ -31,7 +58,6 @@ class CAppFileDesc;
 class CMonitorFileDesc;
 
 
-
 /* ------------------------------------------------------------------------------------------
 app class. this is where stuff happens. 
 inherited CTester class so as to make it a lot easier to access EVXA objects
@@ -41,15 +67,35 @@ class CApp: public CTester
 protected:
 	struct CONFIG
 	{
+		enum APL_TEST_TYPE
+		{
+			APL_WAFER,
+			APL_FINAL,
+			APL_MANUAL
+		};
+
+		// binning parameters
 		bool bSendBin;
 		bool bUseHardBin;
-		bool bWafer;
+		APL_TEST_TYPE nTestType;
+		std::string IP;	
+		int nPort;
+		int nSocketType;
+
+		// logging parameters
+		std::string szLogPath;
+		bool bLogToFile;
 
 		CONFIG()
 		{
 			bSendBin = false;
 			bUseHardBin = false;
-			bWafer = false;
+			nTestType = APL_FINAL;		
+			nPort = 54000;
+			IP = "127.0.0.1";
+			szLogPath = "/tmp";	
+			bLogToFile = false;
+			nSocketType = SOCK_STREAM;
 		}
 	};
 
@@ -86,6 +132,9 @@ protected:
 	
 	// launches OICu with option to load program using system command line
 	bool launch(const std::string& tester, const std::string& program, bool bProd);
+
+	// parse xml config file and extract this software's settings
+	bool config(const std::string& config);
 
 public:
 	CApp(int argc, char **argv);
@@ -151,8 +200,5 @@ public:
 	virtual	void onFileMoveTo( const std::string& name ){ m_App.onReceiveFile(name); }
 	virtual	void onFileModify( const std::string& name ){ m_App.onReceiveFile(name); }
 };
-
-
-
 
 #endif
