@@ -20,10 +20,10 @@ CApp::CApp(int argc, char **argv)
 	}
 
 	// if file name to monitor is not set, assign default
-	if (m_szMonitorFileName.empty()){ m_szMonitorFileName = "lotinfo.txt"; }
+	if (m_CONFIG.szLotInfoFileName.empty()){ m_CONFIG.szLotInfoFileName = "lotinfo.txt"; }
 
 	// if path to monitor is not set, assign default
-	if (m_szMonitorPath.empty()){ m_szMonitorPath = "/tmp"; }
+	if (m_CONFIG.szLotInfoFilePath.empty()){ m_CONFIG.szLotInfoFilePath = "/tmp"; }
 
 	// if config file is not set, assign default
 	if (m_szConfigFullPathName.empty()){ m_szConfigFullPathName = "./config.xml"; }
@@ -34,30 +34,15 @@ CApp::CApp(int argc, char **argv)
 	// parse xml config file. default is ./config.xml
 	config( m_szConfigFullPathName );
 
-	if (m_CONFIG.bLogToFile)
-	{
-		// get the host name
-		char szHostName[32];
-		gethostname(szHostName, 32);
-
-		// get date stamp
-		struct timeval tv;
-		gettimeofday(&tv, NULL);
-		struct tm* tmNow = localtime(&tv.tv_sec);				
-
-		// set log file to <path>/apl.<hostname>.<yyyymmdd>.log
-		std::stringstream ssLogToFile;
-		ssLogToFile << m_CONFIG.szLogPath << "/apl." << szHostName << "." << (tmNow->tm_year + 1900) << (tmNow->tm_mon + 1) << tmNow->tm_mday << ".log";
-		m_Log.file(ssLogToFile.str());
-		m_Log << "Log is saved to " << ssLogToFile.str() << CUtil::CLog::endl;
-	}
+	// setup logger file output if this feature is enabled
+	initLogger(m_CONFIG.bLogToFile);
 
 	// print out settings 
 	m_Log << "Version: " << VERSION << CUtil::CLog::endl;
 	m_Log << "Developer: " << DEVELOPER << CUtil::CLog::endl;
 	m_Log << "Tester: " << m_szTesterName << CUtil::CLog::endl; 
-	m_Log << "Path: " << m_szMonitorPath << CUtil::CLog::endl;
-	m_Log << "File: " << m_szMonitorFileName << CUtil::CLog::endl;
+	m_Log << "Path: " << m_CONFIG.szLotInfoFilePath << CUtil::CLog::endl;
+	m_Log << "File: " << m_CONFIG.szLotInfoFileName << CUtil::CLog::endl;
 	m_Log << "Config File: " << m_szConfigFullPathName << CUtil::CLog::endl;
 	m_Log << "Binning: " << (m_CONFIG.bSendBin? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "Bin type (if binning enabled): " << (m_CONFIG.bUseHardBin? "hard" : "soft") << CUtil::CLog::endl;
@@ -80,9 +65,11 @@ CApp::CApp(int argc, char **argv)
 	};
 	m_Log << "Log To File: " << (m_CONFIG.bLogToFile? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "Log Path (if enabled): " << m_CONFIG.szLogPath << CUtil::CLog::endl;
+	m_Log << "LotInfo to STDF: " << (m_CONFIG.bSendInfo? "enabled" : "disabled") << CUtil::CLog::endl;
+	
 
 	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
-	m_pMonitorFileDesc = new CMonitorFileDesc(*this, m_szMonitorPath);
+	m_pMonitorFileDesc = new CMonitorFileDesc(*this, m_CONFIG.szLotInfoFilePath);
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
 
 	// get file descriptor of tester state notification and add to our fd manager		
@@ -126,6 +113,11 @@ CApp::CApp(int argc, char **argv)
 				m_bSTDF = false;
 			}
 		}
+
+		// file where logs are to be saved (if enabled) doesn't automatically change its name to updated timestamp so this is the only
+		// place in the app where we can do that. so if we reach this point in the app loop, let's take the opportunity to update
+		// log file's name
+		initLogger(m_CONFIG.bLogToFile);
 	}
 }
 
@@ -142,17 +134,22 @@ initialize variables, reset params
 ------------------------------------------------------------------------------------------ */
 void CApp::init()
 {
-	m_szProgramFullPathName = "";
-	m_szMonitorPath = "/tmp";
-	m_szTesterName = "";
-	m_szMonitorFileName = "lotinfo.txt";
+	// config.xml by default is found within APL's base folder (here executable is)
 	m_szConfigFullPathName = "./config.xml";
+
+	// these variables will hold tester stuff. clear by default
+	m_szProgramFullPathName = "";
+	m_szTesterName = "";
 	
 	// used for telling this app that it's ready to set lotinfo params
 	m_bSTDF = false;
 
 	// flag used to request for tester reconnect, true by default so it tries to connect on launch
 	m_bReconnect = true;
+
+	// set lotinfo file parameters to default
+	m_CONFIG.szLotInfoFileName = "lotinfo.txt";
+	m_CONFIG.szLotInfoFilePath = "/tmp";
 
 	// binning @EOT is disabled by default
 	m_CONFIG.bSendBin = false;
@@ -161,10 +158,48 @@ void CApp::init()
 	m_CONFIG.IP = "127.0.0.1";
 	m_CONFIG.nPort = 54000;	
 	m_CONFIG.nSocketType = SOCK_STREAM;
+
+	// logging to file is disabled by default
 	m_CONFIG.bLogToFile = false;
 	m_CONFIG.szLogPath = "/tmp";
+
+	// sending data from lotinfo to unison's lotinformation/stdf is disabled by default
+	m_CONFIG.bSendInfo = false;
 }
  
+/* ------------------------------------------------------------------------------------------
+initialize logger file 
+------------------------------------------------------------------------------------------ */
+void CApp::initLogger( bool bEnable )
+{
+	// if logger to file is disabled, let's quickly reset it and bail
+	if (!bEnable)
+	{
+		m_Log.file("");
+		return;
+	}
+
+	// get the host name
+	char szHostName[32];
+	gethostname(szHostName, 32);
+
+	// get date stamp
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	struct tm* tmNow = localtime(&tv.tv_sec);				
+
+	// set log file to <path>/apl.<hostname>.<yyyymmdd>.log
+	std::stringstream ssLogToFile;
+	ssLogToFile << m_CONFIG.szLogPath << "/apl." << szHostName << "." << (tmNow->tm_year + 1900) << (tmNow->tm_mon + 1) << tmNow->tm_mday << ".log";
+	
+	// if this new log file name the same one already set in the logger? if yes, then we don't have to do anything
+	if (ssLogToFile.str().compare( m_Log.file() ) == 0) return;
+
+	// otherwise, set this 
+	m_Log.file(ssLogToFile.str());
+	m_Log << "Log is saved to " << ssLogToFile.str() << CUtil::CLog::endl;
+}
+
 /* ------------------------------------------------------------------------------------------
 parse config xml file
 ------------------------------------------------------------------------------------------ */
@@ -228,8 +263,8 @@ bool CApp::config(const std::string& file)
 		// check if <LotInfo> is set
 		if (pConfig->fetchChild("LotInfo"))
 		{
-			if (pConfig->fetchChild("LotInfo")->fetchChild("File")){ m_szMonitorFileName = pConfig->fetchChild("LotInfo")->fetchChild("File")->fetchText(); }
-			if (pConfig->fetchChild("LotInfo")->fetchChild("Path")){ m_szMonitorPath = pConfig->fetchChild("LotInfo")->fetchChild("Path")->fetchText(); }		
+			if (pConfig->fetchChild("LotInfo")->fetchChild("File")){ m_CONFIG.szLotInfoFileName = pConfig->fetchChild("LotInfo")->fetchChild("File")->fetchText(); }
+			if (pConfig->fetchChild("LotInfo")->fetchChild("Path")){ m_CONFIG.szLotInfoFilePath = pConfig->fetchChild("LotInfo")->fetchChild("Path")->fetchText(); }		
 		}
 		else m_Log << "Warning: Didn't find <LotInfo>. " << CUtil::CLog::endl;
 
@@ -245,9 +280,13 @@ bool CApp::config(const std::string& file)
 		{
 			if (!pConfig->fetchChild(i)) continue;
 			if (pConfig->fetchChild(i)->fetchTag().compare("STDF") != 0) continue;
-
+			
 			XML_Node* pStdf = pConfig->fetchChild(i);
-			m_Log << "<STDF>: '" << pStdf->fetchVal("Field") << "'" << CUtil::CLog::endl;
+			
+			// if an <STDF> tag is found with attribute state = true, enable STDF feature	
+			if (CUtil::toUpper( pStdf->fetchVal("state") ).compare("TRUE") == 0){ m_CONFIG.bSendInfo = true; }
+
+			m_Log << "<STDF>: '" << pStdf->fetchVal("field") << "'" << CUtil::CLog::endl;
 			for (int j = 0; j < pStdf->numChildren(); j++)
 			{
 				if (!pStdf->fetchChild(j)) continue;
@@ -323,51 +362,6 @@ bool CApp::scan(int argc, char **argv)
 				continue;
 			}
 		}	
-#if 0	
-		// look for -path arg. if partial match is at first char, we found it
-		s = "-path";
-		if (s.find(*it) == 0)
-		{
-			// expect the next arg (and it must exist) to be tester name
-			it++;
-			if (it == args.end())
-			{
-				m_Log << "ERROR: " << s << " argument found but option is missing." << CUtil::CLog::endl;
-				return false;
-			}
-			else
-			{
-				m_szMonitorPath = *it;
-				continue;
-			}	
-		}	
-		// look for -monitor arg. if partial match is at first char, we found it
-		s = "-monitor";
-		if (s.find(*it) == 0)
-		{
-			// expect the next arg (and it must exist) to be tester name
-			it++;
-			if (it == args.end())
-			{
-				m_Log << "ERROR: " << s << " argument found but option is missing." << CUtil::CLog::endl;
-				return false;
-			}
-			else
-			{
-				m_szMonitorFileName = *it;
-				continue;
-			}	
-		}	
-	
-		// look for -binning arg. if partial match is at first char, we found it
-		s = "-binning";
-		if (s.find(*it) == 0)
-		{
-			// if this flag is used, binning@EOT is enabled
-			m_CONFIG.bSendBin = true;
-			continue;
-		}	
-#endif
 		// look for -config arg. if partial match is at first char, we found it
 		s = "-config";
 		if (s.find(*it) == 0)
@@ -411,10 +405,10 @@ void CApp::onReceiveFile(const std::string& name)
 {
 	// create string that holds full path + monitor file 
 	std::stringstream ssFullPathMonitorName;
-	ssFullPathMonitorName << m_szMonitorPath << "/" << name;
+	ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << name;
 
 	// is this file lotinfo.txt?   
-	if (name.compare(m_szMonitorFileName) != 0)
+	if (name.compare(m_CONFIG.szLotInfoFileName) != 0)
 	{
 		m_Log << "File received but is not what we're waiting for: " << name << CUtil::CLog::endl;
 		return;
@@ -509,8 +503,8 @@ void CApp::onReceiveFile(const std::string& name)
 		// launch OICu and load program
 		launch(m_szTesterName, m_szProgramFullPathName, true);
 
-		// let app know we are setting STDF fields
-		m_bSTDF = true;
+		// let app know we are setting STDF fields. do it only if this feature is enabled
+		m_bSTDF = true & m_CONFIG.bSendInfo;
 	}
  
 	// delete the lotinfo.txt
@@ -640,21 +634,22 @@ bool CApp::parse(const std::string& name)
 			if (field.compare("TEMPERATURE") == 0){ m_MIR.TestTmp = value; continue; }
 			if (field.compare("BOARDID") == 0){ m_SDR.LoadId = value; continue; }
 
-			// we're looking for jobfile field only, ignore the rest (for now)
-			if (field.compare(JOBFILE) != 0) continue;
-
-			m_Log << "'" << field << "' : '"  << value << "'" << CUtil::CLog::endl;
-
-			// does the program/path in value refer to exising file?
-			if (!CUtil::isFileExist(value))
+			// if we didn't find anything we looked for including jobfile, let's move to next field
+			if (field.compare(JOBFILE) == 0)
 			{
-				m_Log << "ERROR: '" << value << "' program cannot be accessed." << CUtil::CLog::endl;
-				continue;
-			}
-			else
-			{
-				m_Log << "'" << value << "' exists. let's try to load it." << CUtil::CLog::endl;
-				m_szProgramFullPathName = value;			
+				m_Log << field << " field found, test program to load: '" << value << "'. checking if valid..." << CUtil::CLog::endl;
+
+				// does the program/path in value refer to exising file?
+				if (!CUtil::isFileExist(value))
+				{
+					m_Log << "ERROR: '" << value << "' program cannot be accessed." << CUtil::CLog::endl;
+					continue;
+				}
+				else
+				{
+					m_Log << "'" << value << "' exists. let's try to load it." << CUtil::CLog::endl;
+					m_szProgramFullPathName = value;			
+				}
 			}
 		}
 	

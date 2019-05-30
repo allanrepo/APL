@@ -35,7 +35,8 @@ namespace CUtil
 		static bool enable;
 		static bool silent;
 
-		void file(const std::string& file = ""){ m_file = file; }
+		void file(const std::string& file){ m_file = file; }
+		const std::string& file(){ return m_file; }
 		void clear(){ m_stream.str(std::string()); }
 		void flush()
 		{ 

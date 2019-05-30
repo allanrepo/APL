@@ -1,4 +1,12 @@
 /* ---------------------------------------------------------------------------------------------------------------------
+version beta.1.20190530 release notes:
+
+-	added an attribute in <STDF state="true"> where state=true enables lotinfo fields to be set to 
+	unison's STDF. this is disabled by default now.
+-	setting up file to save log (if enabled) is now actively updated through the app loop. this is to
+	ensure the file name changes when time stamp (next day) occurs.
+-	some variables are now moved into CONFIG structure for more elegant coding design
+
 version beta.1.20190529 release notes:
 
 -	added a new feature following Amkor Bin Solution specificatios Revision 1.3 where APL sends a string 
@@ -40,7 +48,7 @@ constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
 #define JOBFILE "JOBFILE"
-#define VERSION "beta.1.0.20190529"
+#define VERSION "beta.1.0.20190530"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"
@@ -75,19 +83,27 @@ protected:
 		};
 
 		// binning parameters
-		bool bSendBin;
-		bool bUseHardBin;
-		APL_TEST_TYPE nTestType;
-		std::string IP;	
-		int nPort;
-		int nSocketType;
+		bool 		bSendBin;
+		bool 		bUseHardBin;
+		APL_TEST_TYPE 	nTestType;
+		std::string 	IP;	
+		int 		nPort;
+		int 		nSocketType;
 
 		// logging parameters
-		std::string szLogPath;
-		bool bLogToFile;
+		std::string 	szLogPath;
+		bool 		bLogToFile;
+
+		// STDF parameters
+		bool 		bSendInfo;
+
+		// lotinfo file parameters
+		std::string szLotInfoFileName;
+		std::string szLotInfoFilePath;
 
 		CONFIG()
 		{
+			bSendInfo = false;
 			bSendBin = false;
 			bUseHardBin = false;
 			nTestType = APL_FINAL;		
@@ -96,6 +112,8 @@ protected:
 			szLogPath = "/tmp";	
 			bLogToFile = false;
 			nSocketType = SOCK_STREAM;
+			szLotInfoFileName = "lotinfo.txt";
+			szLotInfoFilePath = "/tmp";
 		}
 	};
 
@@ -108,9 +126,7 @@ protected:
 
 	// parameters
 	std::string m_szProgramFullPathName;
-	std::string m_szMonitorPath;
 	std::string m_szTesterName;
-	std::string m_szMonitorFileName;
 	std::string m_szConfigFullPathName;
 
 	// file descriptor for inotify to monitor path where lotinfo.txt will be sent
@@ -126,6 +142,8 @@ protected:
 
 	// initialize variabls, reset stuff
 	void init();
+
+	void initLogger(bool bEnable = false);
 
 	// utility function that acquire linux login username
 	const std::string getUserName() const;

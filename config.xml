@@ -15,9 +15,10 @@
 			<IP>127.0.0.1</IP>
 			<Port>54000</Port>
 		</Binning>
-		<Logging state = "true">
+		<Logging state = "false">
 			<Path>/home/localuser/Desktop/</Path>
 		</Logging>
+		<STDF state = "true" />
 		<STDF field = "MIR">
 			<Field name = "LOT_ID">lotid</Field>
 			<Field name = "PART_TYP">device</Field>
