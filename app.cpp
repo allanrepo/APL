@@ -270,9 +270,15 @@ bool CApp::config(const std::string& file)
 
 
 		// for debug purposes, print out all the parameters of <Binning>
-		for (int i = 0; i < pBinning->numChildren(); i++)
+		if (pBinning)
 		{
-			if ( pBinning->fetchChild(i) ) { m_Log << "<" << pBinning->fetchChild(i)->fetchTag() << ">: '" << pBinning->fetchChild(i)->fetchText() << "'" << CUtil::CLog::endl; }
+			for (int i = 0; i < pBinning->numChildren(); i++)
+			{
+				if ( pBinning->fetchChild(i) ) 
+				{ 
+					m_Log << "<" << pBinning->fetchChild(i)->fetchTag() << ">: '" << pBinning->fetchChild(i)->fetchText() << "'" << CUtil::CLog::endl; 
+				}
+			}
 		}
 
 		// lets extract STDF stuff
