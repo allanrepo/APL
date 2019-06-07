@@ -10,7 +10,7 @@ version beta.1.20190607 release notes:
 -	now there's a possibility that setting STDF through setLotInformation() might fail. if it does, i added
 	a mechanism to reconnect tester and setLotInformation() again.
 
-version beta.1.20190530 release notes:
+version beta.1.20190530 release notes: 
 -	fixed a bug where APL crashes if config.xml set <binning> disabled
 -	added an attribute in <STDF state="true"> where state=true enables lotinfo fields to be set to 
 	unison's STDF. this is disabled by default now.
