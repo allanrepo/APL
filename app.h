@@ -1,6 +1,17 @@
 /* ---------------------------------------------------------------------------------------------------------------------
-version beta.1.20190530 release notes:
+version beta.1.20190607 release notes:
+-	now, setSTDF() is called on State Notification's PROGRAM_LOAD event. previously the main app loop checks if 
+	program is loaded and only then it calls setSTDF(). this is because i am concerned that app might miss
+	PROGRAM_LOAD event because the app connects to tester at the same time it launches OICu with load program 
+	at the same time. if program loads faster befure app can connect to tester, it might miss PROGRAM_LOAD 
+	event. however, if i check isProgramLoaded() during app loop, evxa returns true even before program is 
+	actually loaded, thereby causing it to setSTDF() too soon. this can cause issue intermitently. also, it is
+	observed that app is able to connect to tester fast enough before program gets loaded.
+-	now there's a possibility that setting STDF through setLotInformation() might fail. if it does, i added
+	a mechanism to reconnect tester and setLotInformation() again.
 
+version beta.1.20190530 release notes:
+-	fixed a bug where APL crashes if config.xml set <binning> disabled
 -	added an attribute in <STDF state="true"> where state=true enables lotinfo fields to be set to 
 	unison's STDF. this is disabled by default now.
 -	setting up file to save log (if enabled) is now actively updated through the app loop. this is to
@@ -28,7 +39,14 @@ version beta.1.20190529 release notes:
 	is now an option to store in into a file. the file and the path to save it can be set in APL XML
 	config file
 
--	
+TO-DO list
+-	fd manage's add() function implementation is dangerous. it adds new fd directly which you can call in one 
+	an fd object's process while that same fd object is being processed by fd manager in it's select() loop.
+	bad idea. this will cause instant crash. must fix this by making add() to queue for adding new fd's 
+	and peform the actual add only outside of select() loop
+-	put a god damn mutex in some of the system calls to synchronize with the app!!!
+-	need to mutex logger class. not critical, low priority, but must be done for a more elegant code.
+	
 
 --------------------------------------------------------------------------------------------------------------------- */
 
@@ -48,7 +66,7 @@ constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
 #define JOBFILE "JOBFILE"
-#define VERSION "beta.1.0.20190530"
+#define VERSION "beta.1.0.20190607"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"
@@ -135,10 +153,13 @@ protected:
 	// STDF field holders
 	MIR m_MIR;
 	SDR m_SDR;
-	void printSTDF();
-	void setSTDF();
+	bool setSTDF();
 	bool m_bSTDF;
 	bool setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce = false);
+
+	// we set flag to allw app to send STDF again after reconnecting to tester. this is necessary in situations where sending STDF fails 
+	// after trying to do it after PROGRAM_LOAD
+	bool m_bSTDFAftReconnect;
 
 	// initialize variabls, reset stuff
 	void init();
@@ -214,9 +235,9 @@ public:
 	CMonitorFileDesc(CApp& app, const std::string& path, unsigned short mask = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM)
 	: CNotifyFileDescriptor(path, mask), m_App(app){}
 
-	virtual	void onFileCreate( const std::string& name ){ m_App.onReceiveFile(name); }	
-	virtual	void onFileMoveTo( const std::string& name ){ m_App.onReceiveFile(name); }
-	virtual	void onFileModify( const std::string& name ){ m_App.onReceiveFile(name); }
+	virtual	void onFileCreate( const std::string& name ){ m_Log << " onFileCreate" << CUtil::CLog::endl; m_App.onReceiveFile(name); }	
+	virtual	void onFileMoveTo( const std::string& name ){ m_Log << " onFileMoveTo" << CUtil::CLog::endl; m_App.onReceiveFile(name); }
+	virtual	void onFileModify( const std::string& name ){ m_Log << " onFileModify" << CUtil::CLog::endl; m_App.onReceiveFile(name); }
 };
 
 #endif

@@ -1,8 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <APL_CONF>
-	<CurrentSiteConfiguration>Amkor</CurrentSiteConfiguration>
+	<CurrentSiteConfiguration>Singapore</CurrentSiteConfiguration>
 
+	<SiteConfiguration name = "Singapore1">
+		<LotInfo>
+			<File>b.txt</File>
+			<Path>/home/localuser/Desktop/APL</Path>
+		</LotInfo>
+		<Binning state = "true">
+			<BinType>soft</BinType> <!-- hard, soft -->	
+			<TestType>wafer</TestType> <!-- final, wafer -->		
+			<SocketType>udp</SocketType>
+			<IP>127.0.0.1</IP>
+			<Port>54000</Port>
+		</Binning>
+		<Logging state = "true">
+			<Path>/home/localuser/Desktop/</Path>
+		</Logging>
+		<STDF></STDF>
+	</SiteConfiguration>
 	<SiteConfiguration name = "Singapore">
 		<LotInfo>
 			<File>b.txt</File>
@@ -11,12 +28,12 @@
 		<Binning state = "true">
 			<BinType>soft</BinType> <!-- hard, soft -->	
 			<TestType>wafer</TestType> <!-- final, wafer -->		
-			<SocketType>tcp</SocketType>
+			<SocketType>udp</SocketType>
 			<IP>127.0.0.1</IP>
 			<Port>54000</Port>
 		</Binning>
 		<Logging state = "true">
-			<Path>/home/localuser/sharedtest/PROD/stcdmdx/Desktop/</Path>
+			<Path>/home/localuser/Desktop/</Path>
 		</Logging>
 		<STDF state = "true" />
 		<STDF field = "MIR">
@@ -49,20 +66,6 @@
 		</Logging>
 	</SiteConfiguration>
 	<SiteConfiguration name = "Amkor">
-		<LotInfo>
-			<File>K3DMDx01_LotInfo.txt</File>
-			<Path>/home/test/PROD/stcdmdx/pgms/.LotInfo/</Path>
-		</LotInfo>
-		<Binning state = "false">
-			<BinType>soft</BinType> <!-- hard, soft -->	
-			<TestType>final</TestType> <!-- final, wafer -->		
-			<SocketType>udp</SocketType>
-			<IP>127.0.0.1</IP>
-			<Port>4000</Port>
-		</Binning>
-		<Logging state = "true">
-			<Path>/home/test/PROD/stcdmdx/Desktop/</Path>
-		</Logging>
 	</SiteConfiguration>
 
 </APL_CONF>

@@ -67,7 +67,6 @@ CApp::CApp(int argc, char **argv)
 	m_Log << "Log Path (if enabled): " << m_CONFIG.szLogPath << CUtil::CLog::endl;
 	m_Log << "LotInfo to STDF: " << (m_CONFIG.bSendInfo? "enabled" : "disabled") << CUtil::CLog::endl;
 	
-
 	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, m_CONFIG.szLotInfoFilePath);
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
@@ -88,10 +87,22 @@ CApp::CApp(int argc, char **argv)
 	while(1) 
 	{
 		// are we connected to tester? should we try? attempt once
-		//if(!isReady())
-		if(m_bReconnect)
+		if(m_bReconnect){ if (connect(m_szTesterName, 1)) m_bReconnect = false; }
+
+		// if we're connected to tester now and we need to send STDF 	
+		if (!m_bReconnect && m_bSTDFAftReconnect && m_pProgCtrl)
 		{
-			if (connect(m_szTesterName, 1))	m_bReconnect = false;
+			if (m_pProgCtrl->isProgramLoaded())
+			{
+				// if we failed to send STDF fields again, let's keep reconnecting...
+				m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
+				if (!setSTDF())
+				{ 
+					m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
+					m_bReconnect = true; 
+				}
+				else m_bSTDFAftReconnect = false;
+			}
 		}
 
 		// before calling select(), update file descriptors of evxa objects. this is to ensure the FD manager
@@ -102,17 +113,6 @@ CApp::CApp(int argc, char **argv)
 
 		// proccess any file descriptor notification on select every second.
 		m_FileDescMgr.select(1000);
-
-		if (m_bSTDF)
-		{
-			if (!m_pProgCtrl) continue;
-			if (m_pProgCtrl->isProgramLoaded())
-			{
-				m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
-				setSTDF();
-				m_bSTDF = false;
-			}
-		}
 
 		// file where logs are to be saved (if enabled) doesn't automatically change its name to updated timestamp so this is the only
 		// place in the app where we can do that. so if we reach this point in the app loop, let's take the opportunity to update
@@ -143,6 +143,7 @@ void CApp::init()
 	
 	// used for telling this app that it's ready to set lotinfo params
 	m_bSTDF = false;
+	m_bSTDFAftReconnect = false;
 
 	// flag used to request for tester reconnect, true by default so it tries to connect on launch
 	m_bReconnect = true;
@@ -190,7 +191,8 @@ void CApp::initLogger( bool bEnable )
 
 	// set log file to <path>/apl.<hostname>.<yyyymmdd>.log
 	std::stringstream ssLogToFile;
-	ssLogToFile << m_CONFIG.szLogPath << "/apl." << szHostName << "." << (tmNow->tm_year + 1900) << (tmNow->tm_mon + 1) << tmNow->tm_mday << ".log";
+	ssLogToFile << m_CONFIG.szLogPath << "/apl." << szHostName << "." << (tmNow->tm_year + 1900);
+	ssLogToFile << (tmNow->tm_mon + 1 < 10? "0" : "") << (tmNow->tm_mon + 1) << (tmNow->tm_mday < 10? "0" : "") << tmNow->tm_mday << ".log";
 	
 	// if this new log file name the same one already set in the logger? if yes, then we don't have to do anything
 	if (ssLogToFile.str().compare( m_Log.file() ) == 0) return;
@@ -402,7 +404,7 @@ const std::string CApp::getUserName() const
 	getpwuid_r(uid, &password, buf_passw, 1024, &passwd_info);
 	return std::string(passwd_info->pw_name);
 }
-
+ 
  
 /* ------------------------------------------------------------------------------------------
 process the incoming file from the monitored path
@@ -424,9 +426,6 @@ void CApp::onReceiveFile(const std::string& name)
 	// parse lotinfo.txt file 
 	m_szProgramFullPathName.clear();
 	parse(ssFullPathMonitorName.str());
-
-	// for debug purposes, lets print out STDF stuff here
-	printSTDF();
 
 	// do we have the 'PROGRAM' field and its value from lotinfo.txt?
 	if (m_szProgramFullPathName.empty()) 
@@ -578,7 +577,7 @@ void CApp::onErrorResponse(int fd)
 }
  
 /* ------------------------------------------------------------------------------------------
-
+parse the lotinfo.txt file
 ------------------------------------------------------------------------------------------ */
 bool CApp::parse(const std::string& name)
 {
@@ -701,20 +700,6 @@ bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std:
 }
 
 /* ------------------------------------------------------------------------------------------
-
------------------------------------------------------------------------------------------- */
-void CApp::printSTDF()
-{
-	m_Log << "OPERATOR: " << m_MIR.OperNam << CUtil::CLog::endl;
-	m_Log << "DEVICE: " << m_MIR.PartTyp << CUtil::CLog::endl;
-	m_Log << "LOTID: " << m_MIR.LotId << CUtil::CLog::endl;
-	m_Log << "PRODUCTID: " << m_MIR.FamlyId << CUtil::CLog::endl;
-	m_Log << "TEMP: " << m_MIR.TestTmp << CUtil::CLog::endl;
-	m_Log << "PROBERHANDLERID: " << m_SDR.HandId << CUtil::CLog::endl;
-	m_Log << "BOARDID: " << m_SDR.LoadId << CUtil::CLog::endl;
-}
-
-/* ------------------------------------------------------------------------------------------
 wraps progctrl method to set lotinfo/stdf
 -	returns false if it fails to set, true otherwise
 ------------------------------------------------------------------------------------------ */
@@ -742,70 +727,72 @@ bool CApp::setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& fie
 	else
 	{ 
 		m_Log << "Field is empty. " << label << " will not be set." << CUtil::CLog::endl; 
-		return false;
+		return true;
 	}
 }
 
 /* ------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------------------ */
-void CApp::setSTDF()
+bool CApp::setSTDF()
 {
-	// make sure we have valid evxa object
-	if (!m_pProgCtrl) return;
+	if (!m_pProgCtrl) return false;
+	bool bRslt = true;
 
 	// set MIR
-	setLotInformation(EVX_LotLotID, 		m_MIR.LotId, 	"MIR.LotLotID");
-	setLotInformation(EVX_LotCommandMode, 		m_MIR.CmodCod, 	"MIR.LotCommandMode");
-	setLotInformation(EVX_LotActiveFlowName, 	m_MIR.FlowId, 	"MIR.LotActiveFlowName");
-	setLotInformation(EVX_LotDesignRev, 		m_MIR.DsgnRev, 	"MIR.LotDesignRev");
-	setLotInformation(EVX_LotDateCode, 		m_MIR.DateCod, 	"MIR.LotDateCode");
-	setLotInformation(EVX_LotOperFreq, 		m_MIR.OperFrq, 	"MIR.LotOperFreq");
-	setLotInformation(EVX_LotOperator, 		m_MIR.OperNam, 	"MIR.LotOperator");
-	setLotInformation(EVX_LotTcName, 		m_MIR.NodeNam, 	"MIR.LotTcName");
-	setLotInformation(EVX_LotDevice, 		m_MIR.PartTyp, 	"MIR.LotDevice");
-	setLotInformation(EVX_LotEngrLotId, 		m_MIR.EngId, 	"MIR.LotEngrLotId");
-	setLotInformation(EVX_LotTestTemp, 		m_MIR.TestTmp, 	"MIR.LotTestTemp");
-	setLotInformation(EVX_LotTestFacility, 		m_MIR.FacilId, 	"MIR.LotTestFacility");
-	setLotInformation(EVX_LotTestFloor, 		m_MIR.FloorId, 	"MIR.LotTestFloor");
-	setLotInformation(EVX_LotHead, 			m_MIR.StatNum, 	"MIR.LotHead");
-	setLotInformation(EVX_LotFabricationID, 	m_MIR.ProcId, 	"MIR.LotFabricationID");
-	setLotInformation(EVX_LotTestMode, 		m_MIR.ModeCod, 	"MIR.LotTestMode");
-	setLotInformation(EVX_LotProductID, 		m_MIR.FamlyId,  "MIR.LotProductID");
-	setLotInformation(EVX_LotPackage, 		m_MIR.PkgTyp, 	"MIR.LotPackage");
-	setLotInformation(EVX_LotSublotID, 		m_MIR.SblotId, 	"MIR.LotSublotID");
-	setLotInformation(EVX_LotTestSetup, 		m_MIR.SetupId, 	"MIR.LotTestSetup");
-	setLotInformation(EVX_LotFileNameRev, 		m_MIR.JobRev, 	"MIR.LotFileNameRev");
-	setLotInformation(EVX_LotAuxDataFile, 		m_MIR.AuxFile, 	"MIR.LotAuxDataFile");
-	setLotInformation(EVX_LotTestPhase, 		m_MIR.TestCod, 	"MIR.LotTestPhase");
-	setLotInformation(EVX_LotUserText, 		m_MIR.UserText, "MIR.LotUserText");
-	setLotInformation(EVX_LotRomCode, 		m_MIR.RomCod, 	"MIR.LotRomCode");
-	setLotInformation(EVX_LotTesterSerNum, 		m_MIR.SerlNum, 	"MIR.LotTesterSerNum");
-	setLotInformation(EVX_LotTesterType, 		m_MIR.TstrTyp, 	"MIR.LotTesterType");
-	setLotInformation(EVX_LotSupervisor, 		m_MIR.SuprNam, 	"MIR.LotSupervisor");
-	setLotInformation(EVX_LotSystemName, 		m_MIR.ExecTyp, 	"MIR.LotSystemName");
-	setLotInformation(EVX_LotTargetName, 		m_MIR.ExecVer, 	"MIR.LotTargetName");
-	setLotInformation(EVX_LotTestSpecName, 		m_MIR.SpecNam, 	"MIR.LotTestSpecName");
-	setLotInformation(EVX_LotTestSpecRev, 		m_MIR.SpecVer, 	"MIR.LotTestSpecRev");
-	setLotInformation(EVX_LotProtectionCode, 	m_MIR.ProtCod, 	"MIR.LotProtectionCode");
+	if ( !setLotInformation(EVX_LotLotID, 			m_MIR.LotId, 	"MIR.LotLotID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCommandMode, 		m_MIR.CmodCod, 	"MIR.LotCommandMode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotActiveFlowName, 		m_MIR.FlowId, 	"MIR.LotActiveFlowName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDesignRev, 		m_MIR.DsgnRev, 	"MIR.LotDesignRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDateCode, 		m_MIR.DateCod, 	"MIR.LotDateCode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotOperFreq, 		m_MIR.OperFrq, 	"MIR.LotOperFreq")) bRslt = false;
+	if ( !setLotInformation(EVX_LotOperator, 		m_MIR.OperNam, 	"MIR.LotOperator")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTcName, 			m_MIR.NodeNam, 	"MIR.LotTcName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDevice, 			m_MIR.PartTyp, 	"MIR.LotDevice")) bRslt = false;
+	if ( !setLotInformation(EVX_LotEngrLotId, 		m_MIR.EngId, 	"MIR.LotEngrLotId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestTemp, 		m_MIR.TestTmp, 	"MIR.LotTestTemp")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestFacility, 		m_MIR.FacilId, 	"MIR.LotTestFacility")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestFloor, 		m_MIR.FloorId, 	"MIR.LotTestFloor")) bRslt = false;
+	if ( !setLotInformation(EVX_LotHead, 			m_MIR.StatNum, 	"MIR.LotHead")) bRslt = false;
+	if ( !setLotInformation(EVX_LotFabricationID, 		m_MIR.ProcId, 	"MIR.LotFabricationID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestMode, 		m_MIR.ModeCod, 	"MIR.LotTestMode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProductID, 		m_MIR.FamlyId,  "MIR.LotProductID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotPackage, 		m_MIR.PkgTyp, 	"MIR.LotPackage")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSublotID, 		m_MIR.SblotId, 	"MIR.LotSublotID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSetup, 		m_MIR.SetupId, 	"MIR.LotTestSetup")) bRslt = false;
+	if ( !setLotInformation(EVX_LotFileNameRev, 		m_MIR.JobRev, 	"MIR.LotFileNameRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotAuxDataFile, 		m_MIR.AuxFile, 	"MIR.LotAuxDataFile")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestPhase, 		m_MIR.TestCod, 	"MIR.LotTestPhase")) bRslt = false;
+	if ( !setLotInformation(EVX_LotUserText, 		m_MIR.UserText, "MIR.LotUserText")) bRslt = false;
+	if ( !setLotInformation(EVX_LotRomCode, 		m_MIR.RomCod, 	"MIR.LotRomCode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTesterSerNum, 		m_MIR.SerlNum, 	"MIR.LotTesterSerNum")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTesterType, 		m_MIR.TstrTyp, 	"MIR.LotTesterType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSupervisor, 		m_MIR.SuprNam, 	"MIR.LotSupervisor")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSystemName, 		m_MIR.ExecTyp, 	"MIR.LotSystemName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTargetName, 		m_MIR.ExecVer, 	"MIR.LotTargetName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSpecName, 		m_MIR.SpecNam, 	"MIR.LotTestSpecName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSpecRev, 		m_MIR.SpecVer, 	"MIR.LotTestSpecRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProtectionCode, 		m_MIR.ProtCod, 	"MIR.LotProtectionCode")) bRslt = false;
 
 	// set SDR
-	setLotInformation(EVX_LotHandlerType, 		m_SDR.HandTyp, 	"SDR.LotHandlerType");
-	setLotInformation(EVX_LotCardId, 		m_SDR.CardId, 	"SDR.LotCardId");
-	setLotInformation(EVX_LotLoadBrdId, 		m_SDR.LoadId, 	"SDR.LotLoadBrdId");
-	setLotInformation(EVX_LotProberHandlerID, 	m_SDR.HandId, 	"SDR.LotProberHandlerID");
-	setLotInformation(EVX_LotDIBType, 		m_SDR.DibTyp, 	"SDR.LotDIBType");
-	setLotInformation(EVX_LotIfCableId, 		m_SDR.CableId, 	"SDR.LotIfCableId");
-	setLotInformation(EVX_LotContactorType, 	m_SDR.ContTyp, 	"SDR.LotContactorType");
-	setLotInformation(EVX_LotLoadBrdType, 		m_SDR.LoadTyp, 	"SDR.LotLoadBrdType");
-	setLotInformation(EVX_LotContactorId, 		m_SDR.ContId, 	"SDR.LotContactorId");
-	setLotInformation(EVX_LotLaserType, 		m_SDR.LaserTyp, "SDR.LotLaserType");
-	setLotInformation(EVX_LotLaserId, 		m_SDR.LaserId, 	"SDR.LotLaserId");
-	setLotInformation(EVX_LotExtEquipType, 		m_SDR.ExtrTyp, 	"SDR.LotExtEquipType");
-	setLotInformation(EVX_LotExtEquipId, 		m_SDR.ExtrId, 	"SDR.LotExtEquipId");
-	setLotInformation(EVX_LotActiveLoadBrdName, 	m_SDR.DibId, 	"SDR.LotActiveLoadBrdName");
-	setLotInformation(EVX_LotCardType, 		m_SDR.CardTyp, 	"SDR.LotCardType");
-	setLotInformation(EVX_LotIfCableType, 		m_SDR.CableTyp, "SDR.LotIfCableType");
+	if ( !setLotInformation(EVX_LotHandlerType, 		m_SDR.HandTyp, 	"SDR.LotHandlerType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCardId, 			m_SDR.CardId, 	"SDR.LotCardId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLoadBrdId, 		m_SDR.LoadId, 	"SDR.LotLoadBrdId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProberHandlerID, 	m_SDR.HandId, 	"SDR.LotProberHandlerID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDIBType, 		m_SDR.DibTyp, 	"SDR.LotDIBType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotIfCableId, 		m_SDR.CableId, 	"SDR.LotIfCableId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotContactorType, 		m_SDR.ContTyp, 	"SDR.LotContactorType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLoadBrdType, 		m_SDR.LoadTyp, 	"SDR.LotLoadBrdType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotContactorId, 		m_SDR.ContId, 	"SDR.LotContactorId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLaserType, 		m_SDR.LaserTyp, "SDR.LotLaserType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLaserId, 		m_SDR.LaserId, 	"SDR.LotLaserId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotExtEquipType, 		m_SDR.ExtrTyp, 	"SDR.LotExtEquipType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotExtEquipId, 		m_SDR.ExtrId, 	"SDR.LotExtEquipId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotActiveLoadBrdName, 	m_SDR.DibId, 	"SDR.LotActiveLoadBrdName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCardType, 		m_SDR.CardTyp, 	"SDR.LotCardType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotIfCableType, 		m_SDR.CableTyp, "SDR.LotIfCableType")) bRslt = false;
+
+	return bRslt;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -825,8 +812,24 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 			m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOAD_FAILED" << CUtil::CLog::endl;
 			break;
 		case EVX_PROGRAM_LOADED:
+		{
 		    	m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOADED" << CUtil::CLog::endl;
+
+			// let's set STDF fields here from lotinfo.txt after program is loaded
+			if (m_bSTDF)
+			{
+				m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
+				if (!setSTDF())
+				{
+					m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
+					m_bReconnect = true;
+					m_bSTDFAftReconnect = true;	
+				}
+				m_bSTDF = false;	
+			}
+
 			break;
+		}
 		case EVX_PROGRAM_START: 
 			m_Log << "programChange[" << state << "]: EVX_PROGRAM_START" << CUtil::CLog::endl;
 			break;
@@ -850,8 +853,14 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 			m_Log << "programChange[" << state << "]: EVX_PROGRAM_READY" << CUtil::CLog::endl;
 			break;
 		default:
-			if(m_pProgCtrl->getStatus() !=  EVXA::OK) m_Log << "An Error occured[" << state << "]: " << m_pProgCtrl->getStatusBuffer() << CUtil::CLog::endl;
-		break;
+		{
+			if(m_pProgCtrl->getStatus() !=  EVXA::OK)
+			{
+				m_Log << "An Error occured[" << state << "]: " << m_pProgCtrl->getStatusBuffer() << CUtil::CLog::endl;
+				m_pProgCtrl->clearStatus();
+			}
+			break;
+		}
 	}
 }
 
