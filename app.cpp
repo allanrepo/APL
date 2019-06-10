@@ -83,6 +83,9 @@ CApp::CApp(int argc, char **argv)
 	CAppFileDesc StateEvxioErrorFileDesc(*this, &CApp::onErrorResponse, m_pEvxio? m_pEvxio->getErrorSocketId(): -1);
 	m_FileDescMgr.add( StateEvxioErrorFileDesc );
 
+	m_EventMgr.add( new CAppEvent(*this, &CApp::onLaunchTimeOut, 3100) );
+	m_EventMgr.add( new CAppEvent(*this, &CApp::onProgramLoadTimeOut, 6300) );
+
 	// run the application loop
 	while(1) 
 	{
@@ -112,12 +115,14 @@ CApp::CApp(int argc, char **argv)
 		StateEvxioErrorFileDesc.set(m_pEvxio? m_pEvxio->getErrorSocketId(): -1);
 
 		// proccess any file descriptor notification on select every second.
-		m_FileDescMgr.select(1000);
+		m_FileDescMgr.select(400);
 
 		// file where logs are to be saved (if enabled) doesn't automatically change its name to updated timestamp so this is the only
 		// place in the app where we can do that. so if we reach this point in the app loop, let's take the opportunity to update
 		// log file's name
 		initLogger(m_CONFIG.bLogToFile);
+
+		m_EventMgr.update();
 	}
 }
 
@@ -528,8 +533,8 @@ bool CApp::launch(const std::string& tester, const std::string& program, bool bP
 	// >launcher -nodisplay -prod -load <program> -T <tester> -qual
 	std::stringstream ssCmd;
 	ssCmd << "launcher -nodisplay " << (bProd? "-prod " : "") << (program.empty()? "": "-load ") << (program.empty()? "" : program) << " -qual " << " -T " << m_szTesterName ;
-	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
 	system(ssCmd.str().c_str());	
+	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
 
 	// let's try to connect to tester in our main loop
 	m_bReconnect = true;
@@ -938,3 +943,119 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 	c.send(send.str());
 	c.disconnect();
 }
+
+void CApp::onLaunchTimeOut(CEventManager::CEvent* p)
+{ 
+	m_Log << "LaunchTimeOut Happens: " << CUtil::CLog::endl; 
+	if (p) p->m_state = CEventManager::CEvent::REMOVE; 
+}
+void CApp::onProgramLoadTimeOut(CEventManager::CEvent* p)
+{
+	m_Log << "ProgramLoadTimeOut Happens: " << CUtil::CLog::endl; 
+	if (p) p->m_state = CEventManager::CEvent::REMOVE; 
+}
+
+
+CEventManager::CEventManager()
+{
+
+}
+
+CEventManager::~CEventManager()
+{
+
+}
+
+void CEventManager::add(CEvent* pEvent)
+{
+	m_Queue.push_back(pEvent);
+}
+
+void CEventManager::remove(CEvent* pEvent)
+{
+	pEvent->m_state = CEvent::REMOVE;
+}
+
+/* ------------------------------------------------------------------------------------------
+ 
+------------------------------------------------------------------------------------------ */
+void CEventManager::update()
+{
+	// before we feal with time let's check if there are there events to add?
+	if (m_Queue.size())
+	{ 
+		m_Log << m_Queue.size() << " events are added. ";
+		m_Events.splice(m_Events.end(), m_Queue); 
+		m_Log << "there are now " << m_Events.size() << " active." << CUtil::CLog::endl;
+	}
+
+	// snapshot time now
+	struct timeval now;
+	gettimeofday(&now, NULL);
+
+	// this is to monitor the overall elapsed time per loop. events don't really care about this
+	// we only do this for debug purposes
+#if 0
+	// get the elapsed time between now and last update()
+	long dwTimeMS = (((long)now.tv_sec - (long)m_prev.tv_sec ) * 1000);
+	dwTimeMS += (((long)now.tv_usec - (long)m_prev.tv_usec) / 1000);
+
+	m_Log << "time: " << (dwTimeMS / 1) << CUtil::CLog::endl;
+
+	m_prev.tv_sec = now.tv_sec;
+	m_prev.tv_usec = now.tv_usec;
+#endif
+
+	// loop through all events and increment their elapsed time: event.elapsed = now - event.prev
+	for (std::list< CEvent* >::iterator it = m_Events.begin(); it != m_Events.end(); it++)
+	{
+		// is this a valid event?
+		CEvent* pEvent = *it;
+		if ( !pEvent ) continue;
+
+		// first time?
+		if (pEvent->m_bFirst)
+		{
+			pEvent->m_bFirst = false;
+			pEvent->m_prev.tv_sec = now.tv_sec;
+			pEvent->m_prev.tv_usec = now.tv_usec;
+			continue;
+		} 
+
+		// calculate actual delta time (in MS) for this event
+		long nTimeMS = (((long)now.tv_sec - (long)pEvent->m_prev.tv_sec ) * 1000);
+		nTimeMS += (((long)now.tv_usec - (long)pEvent->m_prev.tv_usec) / 1000);		
+		
+		// if elapsed time is already greater than this event's interval time, let's execute this event
+		if ( nTimeMS > pEvent->m_nIntervalMS )
+		{
+			// calculate number of times this interval happened within this elapsed time
+			long nStep = nTimeMS / pEvent->m_nIntervalMS;
+
+			// execute event
+			pEvent->onInterval(nStep);
+
+			// update this event's timer
+			nTimeMS = pEvent->m_nIntervalMS * nStep;
+			pEvent->m_prev.tv_sec += (nTimeMS / 1000);
+			pEvent->m_prev.tv_usec += (nTimeMS % 1000) * 1000;
+
+			m_Log << "event: " << nTimeMS << ", " << nStep << ", " << pEvent->m_nIntervalMS << CUtil::CLog::endl;			
+		}
+	}
+
+	// are there events to remove?
+	for (std::list< CEvent* >::iterator it = m_Events.begin(); it != m_Events.end(); it++)
+	{
+		CEvent* pEvent = (*it);
+		if (pEvent->m_state == CEvent::REMOVE)
+		{
+			std::list< CEvent* >::iterator rm = it;
+			it++;		
+			m_Events.erase(rm);
+			m_Log << "an event has been removed. There are now " << m_Events.size() << " active." << CUtil::CLog::endl;
+		}
+	}
+}
+
+

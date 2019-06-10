@@ -82,7 +82,72 @@ declarations
 class CApp;
 class CAppFileDesc;
 class CMonitorFileDesc;
+class CEventManager;
 
+class CEventManager
+{
+public:
+	class CEvent
+	{
+	public:
+		enum STATE
+		{
+			ADD,
+			REMOVE,
+			PAUSE,
+			EXEC
+		};
+
+		struct timeval m_prev;
+		bool m_bFirst;
+		long m_nIntervalMS;
+		virtual void onInterval(long n = 0){}
+		STATE m_state;
+
+		CEvent(long n): m_nIntervalMS(n)
+		{
+			m_bFirst = true;
+			m_state = EXEC;			
+		}
+		virtual ~CEvent(){}
+	};
+
+protected:
+	std::list< CEvent* > m_Events;
+	std::list< CEvent* > m_Queue;
+
+	struct timeval m_prev;
+	CUtil::CLog m_Log;
+
+public:
+	CEventManager();
+
+	virtual ~CEventManager();
+
+	void update();
+
+	void add(CEvent* pEvent);
+	void remove(CEvent* pEvent);
+};
+
+class CAppEvent: public CEventManager::CEvent
+{
+protected:
+	CApp& m_App;
+	void (CApp::* m_onIntervalPtr)(CEvent*);
+	CUtil::CLog m_Log;
+public:
+	CAppEvent(CApp& app, void (CApp::* p)(CEvent*) = 0, long nTimeOut = 1000):  CEvent(nTimeOut), m_App(app)
+	{
+		m_onIntervalPtr = p;
+	}
+	virtual ~CAppEvent(){}
+
+	virtual void onInterval(long n)
+	{
+		if (m_onIntervalPtr) (m_App.*m_onIntervalPtr)(this);
+	}
+};
 
 /* ------------------------------------------------------------------------------------------
 app class. this is where stuff happens. 
@@ -175,6 +240,8 @@ protected:
 	// parse xml config file and extract this software's settings
 	bool config(const std::string& config);
 
+	CEventManager m_EventMgr;
+
 public:
 	CApp(int argc, char **argv);
 	virtual ~CApp();
@@ -198,6 +265,9 @@ public:
 
 	// event handler for state notification EOT
 	virtual void onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0);
+
+	void onLaunchTimeOut(CEventManager::CEvent* p);
+	void onProgramLoadTimeOut(CEventManager::CEvent* p);
 };
 
 
@@ -239,5 +309,8 @@ public:
 	virtual	void onFileMoveTo( const std::string& name ){ m_Log << " onFileMoveTo" << CUtil::CLog::endl; m_App.onReceiveFile(name); }
 	virtual	void onFileModify( const std::string& name ){ m_Log << " onFileModify" << CUtil::CLog::endl; m_App.onReceiveFile(name); }
 };
+
+
+
 
 #endif
