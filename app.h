@@ -60,6 +60,7 @@ TO-DO list
 #include <stdf.h>
 #include <socket.h>
 #include <xml.h>
+#include <event.h>
 
 /* ------------------------------------------------------------------------------------------
 constants
@@ -71,9 +72,6 @@ constants
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"
 #define KILLTESTERCMD "kill.tester.sh"
-#define OPTOOL "optool"
-#define OICU "oicu"
-#define DATAVIEWER "dataviewer"
 
 
 /* ------------------------------------------------------------------------------------------
@@ -82,70 +80,30 @@ declarations
 class CApp;
 class CAppFileDesc;
 class CMonitorFileDesc;
-class CEventManager;
+class CAppEvent;
 
-class CEventManager
-{
-public:
-	class CEvent
-	{
-	public:
-		enum STATE
-		{
-			ADD,
-			REMOVE,
-			PAUSE,
-			EXEC
-		};
-
-		struct timeval m_prev;
-		bool m_bFirst;
-		long m_nIntervalMS;
-		virtual void onInterval(long n = 0){}
-		STATE m_state;
-
-		CEvent(long n): m_nIntervalMS(n)
-		{
-			m_bFirst = true;
-			m_state = EXEC;			
-		}
-		virtual ~CEvent(){}
-	};
-
-protected:
-	std::list< CEvent* > m_Events;
-	std::list< CEvent* > m_Queue;
-
-	struct timeval m_prev;
-	CUtil::CLog m_Log;
-
-public:
-	CEventManager();
-
-	virtual ~CEventManager();
-
-	void update();
-
-	void add(CEvent* pEvent);
-	void remove(CEvent* pEvent);
-};
-
+/* ------------------------------------------------------------------------------------------
+event class inherited specifically to allow CApp class methods to be executed 
+at onTimeOut.
+------------------------------------------------------------------------------------------ */
 class CAppEvent: public CEventManager::CEvent
 {
 protected:
 	CApp& m_App;
-	void (CApp::* m_onIntervalPtr)(CEvent*);
+	void (CApp::* m_onTimeOutPtr)(CEvent*);
 	CUtil::CLog m_Log;
 public:
-	CAppEvent(CApp& app, void (CApp::* p)(CEvent*) = 0, long nTimeOut = 1000):  CEvent(nTimeOut), m_App(app)
+	CAppEvent(CApp& app, void (CApp::* p)(CEvent*) = 0, long nTimeOut = 0):
+	CEvent(nTimeOut), m_App(app)
 	{
-		m_onIntervalPtr = p;
+		m_onTimeOutPtr = p;
 	}
 	virtual ~CAppEvent(){}
 
-	virtual void onInterval(long n)
+	// overwritten to allow it to execute a method from CApp class
+	virtual void onTimeOut(long n)
 	{
-		if (m_onIntervalPtr) (m_App.*m_onIntervalPtr)(this);
+		if (m_onTimeOutPtr) (m_App.*m_onTimeOutPtr)(this);
 	}
 };
 
@@ -165,6 +123,9 @@ protected:
 			APL_MANUAL
 		};
 
+		// launch parameters
+		bool 		bProd;
+
 		// binning parameters
 		bool 		bSendBin;
 		bool 		bUseHardBin;
@@ -181,11 +142,12 @@ protected:
 		bool 		bSendInfo;
 
 		// lotinfo file parameters
-		std::string szLotInfoFileName;
-		std::string szLotInfoFilePath;
+		std::string 	szLotInfoFileName;
+		std::string 	szLotInfoFilePath;
 
 		CONFIG()
 		{
+			bProd = true;
 			bSendInfo = false;
 			bSendBin = false;
 			bUseHardBin = false;
@@ -234,13 +196,16 @@ protected:
 	// utility function that acquire linux login username
 	const std::string getUserName() const;
 	
-	// launches OICu with option to load program using system command line
-	bool launch(const std::string& tester, const std::string& program, bool bProd);
-
 	// parse xml config file and extract this software's settings
 	bool config(const std::string& config);
 
+	// event manager
 	CEventManager m_EventMgr;
+
+	// event objects
+	CEventManager::CEvent* m_pLaunchOICu;
+	CEventManager::CEvent* m_pConnect;
+	CEventManager::CEvent* m_pSetLotInfo;
 
 public:
 	CApp(int argc, char **argv);
@@ -266,8 +231,9 @@ public:
 	// event handler for state notification EOT
 	virtual void onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0);
 
-	void onLaunchTimeOut(CEventManager::CEvent* p);
-	void onProgramLoadTimeOut(CEventManager::CEvent* p);
+	void onLaunchOICU(CEventManager::CEvent* p = 0);
+	void onConnect(CEventManager::CEvent* p = 0);
+	void onSetLotInfo(CEventManager::CEvent* p = 0);
 };
 
 

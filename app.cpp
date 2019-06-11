@@ -37,6 +37,13 @@ CApp::CApp(int argc, char **argv)
 	// setup logger file output if this feature is enabled
 	initLogger(m_CONFIG.bLogToFile);
 
+	// create events
+	m_pLaunchOICu = new CAppEvent(*this, &CApp::onLaunchOICU, 60000);
+	m_pConnect = new CAppEvent(*this, &CApp::onConnect, 0);
+
+	// we connect to tester on APL launch by default. we trigger this event for it
+	m_EventMgr.add( m_pConnect );
+
 	// print out settings 
 	m_Log << "Version: " << VERSION << CUtil::CLog::endl;
 	m_Log << "Developer: " << DEVELOPER << CUtil::CLog::endl;
@@ -83,15 +90,15 @@ CApp::CApp(int argc, char **argv)
 	CAppFileDesc StateEvxioErrorFileDesc(*this, &CApp::onErrorResponse, m_pEvxio? m_pEvxio->getErrorSocketId(): -1);
 	m_FileDescMgr.add( StateEvxioErrorFileDesc );
 
-	m_EventMgr.add( new CAppEvent(*this, &CApp::onLaunchTimeOut, 3100) );
-	m_EventMgr.add( new CAppEvent(*this, &CApp::onProgramLoadTimeOut, 6300) );
+	//m_EventMgr.add( new CAppEvent(*this, &CApp::onLaunchTimeOut, 3100) );
+	//m_EventMgr.add( new CAppEvent(*this, &CApp::onProgramLoadTimeOut, 6300) );
 
 	// run the application loop
 	while(1) 
 	{
 		// are we connected to tester? should we try? attempt once
-		if(m_bReconnect){ if (connect(m_szTesterName, 1)) m_bReconnect = false; }
-
+		//if(m_bReconnect){ if (connect(m_szTesterName, 1)) m_bReconnect = false; }
+/*
 		// if we're connected to tester now and we need to send STDF 	
 		if (!m_bReconnect && m_bSTDFAftReconnect && m_pProgCtrl)
 		{
@@ -107,7 +114,7 @@ CApp::CApp(int argc, char **argv)
 				else m_bSTDFAftReconnect = false;
 			}
 		}
-
+*/
 		// before calling select(), update file descriptors of evxa objects. this is to ensure the FD manager
 		// don't use a bad file descriptor. when evxa objects are destroyed, their file descriptors are considered bad.
 		StateNotificationFileDesc.set(m_pState? m_pState->getSocketId(): -1);
@@ -115,7 +122,7 @@ CApp::CApp(int argc, char **argv)
 		StateEvxioErrorFileDesc.set(m_pEvxio? m_pEvxio->getErrorSocketId(): -1);
 
 		// proccess any file descriptor notification on select every second.
-		m_FileDescMgr.select(400);
+		m_FileDescMgr.select(1000);
 
 		// file where logs are to be saved (if enabled) doesn't automatically change its name to updated timestamp so this is the only
 		// place in the app where we can do that. so if we reach this point in the app loop, let's take the opportunity to update
@@ -151,7 +158,7 @@ void CApp::init()
 	m_bSTDFAftReconnect = false;
 
 	// flag used to request for tester reconnect, true by default so it tries to connect on launch
-	m_bReconnect = true;
+	//m_bReconnect = true;
 
 	// set lotinfo file parameters to default
 	m_CONFIG.szLotInfoFileName = "lotinfo.txt";
@@ -408,8 +415,7 @@ const std::string CApp::getUserName() const
 
 	getpwuid_r(uid, &password, buf_passw, 1024, &passwd_info);
 	return std::string(passwd_info->pw_name);
-}
- 
+} 
  
 /* ------------------------------------------------------------------------------------------
 process the incoming file from the monitored path
@@ -454,67 +460,17 @@ void CApp::onReceiveFile(const std::string& name)
 			}
 		}
 
-		// in case we're connected from previous OICu load, let's make sure we're disconnected now.
-		disconnect();
-
-		// let's kill any OICu running right now
-		std::stringstream ssCmd;
-		ssCmd << "./" << KILLAPPCMD << " " << OICU;
-		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
-		system(ssCmd.str().c_str());
-
-		// let's kill any OpTool running right now
-		ssCmd.str(std::string());
-		ssCmd.clear();
-		ssCmd << "./" << KILLAPPCMD << " " << OPTOOL;
-		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
-		system(ssCmd.str().c_str());
-
-		// let's kill any dataviewer running right now
-		ssCmd.str(std::string());
-		ssCmd.clear();
-		ssCmd << "./" << KILLAPPCMD << " " << DATAVIEWER;
-		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
-		system(ssCmd.str().c_str());
-
-		// let's kill any bintool running right now
-		ssCmd.str(std::string());
-		ssCmd.clear();
-		ssCmd << "./" << KILLAPPCMD << " " << "binTool";
-		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
-		system(ssCmd.str().c_str());
-
-		// let's kill any testtool running right now
-		ssCmd.str(std::string());
-		ssCmd.clear();
-		ssCmd << "./" << KILLAPPCMD << " " << "testTool";
-		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
-		system(ssCmd.str().c_str());
-
-		ssCmd.str(std::string());
-		ssCmd.clear();
-		ssCmd << "./" << KILLAPPCMD << " " << "flowTool";
-		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
-		system(ssCmd.str().c_str());
-
-		ssCmd.str(std::string());
-		ssCmd.clear();
-		ssCmd << "./" << KILLAPPCMD << " " << "errorTool";
-		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
-		system(ssCmd.str().c_str());
-
-		// kill tester
-		ssCmd.str(std::string());
-		ssCmd.clear();
-		ssCmd << "./" << KILLTESTERCMD << " " << m_szTesterName;
-		m_Log << "END TESTER: " << ssCmd.str() << CUtil::CLog::endl;		
-		system(ssCmd.str().c_str());
+		// let's queue a time-out event that when expires, it will attempt to launch OICu and load program
+		// again if at that point, OICu and/or test program is not yet loaded.
+		// we set it to immediate so its count down starts now.
+		m_EventMgr.add( m_pLaunchOICu, true );
 
 		// launch OICu and load program
-		launch(m_szTesterName, m_szProgramFullPathName, true);
+		onLaunchOICU();
+		//launch(m_szTesterName, m_szProgramFullPathName, true);
 
 		// let app know we are setting STDF fields. do it only if this feature is enabled
-		m_bSTDF = true & m_CONFIG.bSendInfo;
+		m_bSTDF = m_CONFIG.bSendInfo;
 	}
  
 	// delete the lotinfo.txt
@@ -522,24 +478,80 @@ void CApp::onReceiveFile(const std::string& name)
 }
 
 /* ------------------------------------------------------------------------------------------
-launches unison (OICu or OpTool)
-- 	after sending launch command, we're also setting APL to try reconnecting to tester
+event that handles setting lotinfo from lotinfo.tx file
 ------------------------------------------------------------------------------------------ */
-bool CApp::launch(const std::string& tester, const std::string& program, bool bProd)
+void CApp::onSetLotInfo(CEventManager::CEvent* p)
 {
-	m_Log << "launching OICu and loading '" << program << "'..." << CUtil::CLog::endl;
+}
+
+/* ------------------------------------------------------------------------------------------
+event where app attempt to connect to tester 
+------------------------------------------------------------------------------------------ */
+void CApp::onConnect(CEventManager::CEvent* p)
+{
+	// are we connected to tester? should we try? attempt once
+	if (!isReady()) connect(m_szTesterName, 1);
+}
+
+/* ------------------------------------------------------------------------------------------
+event where it attempts to launch OICu and load test program.
+-	"disconnects" from tester by destroying evxa objects
+-	tries to kill apps/thread owned by a currently running unison (if any)
+-	launch OICu and load specified test program via command line
+-	sets a flag to let app reconnect evxa objects to tester
+------------------------------------------------------------------------------------------ */
+void CApp::onLaunchOICU(CEventManager::CEvent* p)
+{
+	m_Log << "Executing onLaunchOICU event..." << CUtil::CLog::endl;
+
+	// is tester ready and our evxa object valid? 
+	// do we have reference to event object? if not, force launch OICu
+	if (isReady() && m_pProgCtrl && p)
+	{
+		// is program loaded?
+		if (m_pProgCtrl->isProgramLoaded())
+		{
+			// is the program loaded the same as program we're trying to load?
+			if (true)
+			{
+				// looks like we already launched OICu and loaded the right program
+				m_Log << "Program " << "" << " is already loaded, NICE! we're we don't need this time-out event anymore." << CUtil::CLog::endl;
+				if (p) m_EventMgr.remove(p);			
+				return;
+			}
+		}
+	}
+
+	// in case we're connected from previous OICu load, let's make sure we're disconnected now.
+	disconnect();
+
+	// kill the following apps that has these names
+	std::string apps[] = { "oicu", "optool", "dataviewer", "binTool", "testTool", "flowtool", "errorTool" };
+	for (unsigned i = 0; i < sizeof(apps)/sizeof(*apps); i++)
+	{
+		std::stringstream ssCmd;
+		ssCmd << "./" << KILLAPPCMD << " " << apps[i];
+		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+	}
+
+	// kill tester
+	std::stringstream ssCmd;
+	ssCmd << "./" << KILLTESTERCMD << " " << m_szTesterName;
+	m_Log << "END TESTER: " << ssCmd.str() << CUtil::CLog::endl;		
+	system(ssCmd.str().c_str());
 
 	// setup system command to launch OICu
+	m_Log << "launching OICu and loading '" << m_szProgramFullPathName << "'..." << CUtil::CLog::endl;
+
 	// >launcher -nodisplay -prod -load <program> -T <tester> -qual
-	std::stringstream ssCmd;
-	ssCmd << "launcher -nodisplay " << (bProd? "-prod " : "") << (program.empty()? "": "-load ") << (program.empty()? "" : program) << " -qual " << " -T " << m_szTesterName ;
+	ssCmd.str(std::string());
+	ssCmd.clear();
+	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
+	ssCmd << (m_szProgramFullPathName.empty()? "": "-load ") << (m_szProgramFullPathName.empty()? "" : m_szProgramFullPathName);
+	ssCmd << " -qual " << " -T " << m_szTesterName ;
 	system(ssCmd.str().c_str());	
 	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
-
-	// let's try to connect to tester in our main loop
-	m_bReconnect = true;
-
-	return true;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -942,120 +954,6 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 	}
 	c.send(send.str());
 	c.disconnect();
-}
-
-void CApp::onLaunchTimeOut(CEventManager::CEvent* p)
-{ 
-	m_Log << "LaunchTimeOut Happens: " << CUtil::CLog::endl; 
-	if (p) p->m_state = CEventManager::CEvent::REMOVE; 
-}
-void CApp::onProgramLoadTimeOut(CEventManager::CEvent* p)
-{
-	m_Log << "ProgramLoadTimeOut Happens: " << CUtil::CLog::endl; 
-	if (p) p->m_state = CEventManager::CEvent::REMOVE; 
-}
-
-
-CEventManager::CEventManager()
-{
-
-}
-
-CEventManager::~CEventManager()
-{
-
-}
-
-void CEventManager::add(CEvent* pEvent)
-{
-	m_Queue.push_back(pEvent);
-}
-
-void CEventManager::remove(CEvent* pEvent)
-{
-	pEvent->m_state = CEvent::REMOVE;
-}
-
-/* ------------------------------------------------------------------------------------------
- 
------------------------------------------------------------------------------------------- */
-void CEventManager::update()
-{
-	// before we feal with time let's check if there are there events to add?
-	if (m_Queue.size())
-	{ 
-		m_Log << m_Queue.size() << " events are added. ";
-		m_Events.splice(m_Events.end(), m_Queue); 
-		m_Log << "there are now " << m_Events.size() << " active." << CUtil::CLog::endl;
-	}
-
-	// snapshot time now
-	struct timeval now;
-	gettimeofday(&now, NULL);
-
-	// this is to monitor the overall elapsed time per loop. events don't really care about this
-	// we only do this for debug purposes
-#if 0
-	// get the elapsed time between now and last update()
-	long dwTimeMS = (((long)now.tv_sec - (long)m_prev.tv_sec ) * 1000);
-	dwTimeMS += (((long)now.tv_usec - (long)m_prev.tv_usec) / 1000);
-
-	m_Log << "time: " << (dwTimeMS / 1) << CUtil::CLog::endl;
-
-	m_prev.tv_sec = now.tv_sec;
-	m_prev.tv_usec = now.tv_usec;
-#endif
-
-	// loop through all events and increment their elapsed time: event.elapsed = now - event.prev
-	for (std::list< CEvent* >::iterator it = m_Events.begin(); it != m_Events.end(); it++)
-	{
-		// is this a valid event?
-		CEvent* pEvent = *it;
-		if ( !pEvent ) continue;
-
-		// first time?
-		if (pEvent->m_bFirst)
-		{
-			pEvent->m_bFirst = false;
-			pEvent->m_prev.tv_sec = now.tv_sec;
-			pEvent->m_prev.tv_usec = now.tv_usec;
-			continue;
-		} 
-
-		// calculate actual delta time (in MS) for this event
-		long nTimeMS = (((long)now.tv_sec - (long)pEvent->m_prev.tv_sec ) * 1000);
-		nTimeMS += (((long)now.tv_usec - (long)pEvent->m_prev.tv_usec) / 1000);		
-		
-		// if elapsed time is already greater than this event's interval time, let's execute this event
-		if ( nTimeMS > pEvent->m_nIntervalMS )
-		{
-			// calculate number of times this interval happened within this elapsed time
-			long nStep = nTimeMS / pEvent->m_nIntervalMS;
-
-			// execute event
-			pEvent->onInterval(nStep);
-
-			// update this event's timer
-			nTimeMS = pEvent->m_nIntervalMS * nStep;
-			pEvent->m_prev.tv_sec += (nTimeMS / 1000);
-			pEvent->m_prev.tv_usec += (nTimeMS % 1000) * 1000;
-
-			m_Log << "event: " << nTimeMS << ", " << nStep << ", " << pEvent->m_nIntervalMS << CUtil::CLog::endl;			
-		}
-	}
-
-	// are there events to remove?
-	for (std::list< CEvent* >::iterator it = m_Events.begin(); it != m_Events.end(); it++)
-	{
-		CEvent* pEvent = (*it);
-		if (pEvent->m_state == CEvent::REMOVE)
-		{
-			std::list< CEvent* >::iterator rm = it;
-			it++;		
-			m_Events.erase(rm);
-			m_Log << "an event has been removed. There are now " << m_Events.size() << " active." << CUtil::CLog::endl;
-		}
-	}
 }
 
 
