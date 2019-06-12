@@ -40,7 +40,7 @@ CApp::CApp(int argc, char **argv)
 	// create events
 	m_pLaunchOICu = new CAppEvent(*this, &CApp::onLaunchOICU, 0);
 	m_pConnect = new CAppEvent(*this, &CApp::onConnect, 0);
-	m_pSetLotInfo = new CAppEvent(*this, &CApp::onSetlotInfo, 0);
+	m_pSetLotInfo = new CAppEvent(*this, &CApp::onSetLotInfo, 0);
 	m_pProgramLoadFail = new CAppEvent(*this, &CApp::onProgramLoadFail, 60000);
 
 	// we connect to tester on APL launch by default. we trigger this event for it
@@ -465,10 +465,15 @@ void CApp::onReceiveFile(const std::string& name)
 		// let's queue a time-out event that when expires, it will attempt to launch OICu and load program
 		// again if at that point, OICu and/or test program is not yet loaded.
 		// we set it to immediate so its count down starts now.
-		m_EventMgr.add( m_pLaunchOICu, true );
+		m_EventMgr.add( m_pLaunchOICu );
+
+		// let's queue a time-out event that when expires, it will attempt to launch OICu and load program
+		// again if at that point, OICu and/or test program is not yet loaded.
+		// we set it to immediate so its count down starts now.
+		m_EventMgr.add( m_pProgramLoadFail, true );
 
 		// launch OICu and load program
-		onLaunchOICU();
+		//onLaunchOICU();
 		//launch(m_szTesterName, m_szProgramFullPathName, true);
 
 		// let app know we are setting STDF fields. do it only if this feature is enabled
@@ -514,6 +519,33 @@ void CApp::onConnect(CEventManager::CEvent* p)
 }
 
 /* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+void CApp::onProgramLoadFail(CEventManager::CEvent* p)
+{
+	// is tester ready and our evxa object valid? 
+	// do we have reference to event object? if not, force launch OICu
+	if (isReady() && m_pProgCtrl)
+	{
+		// is program loaded?
+		if (m_pProgCtrl->isProgramLoaded())
+		{
+			// is the program loaded the same as program we're trying to load?
+			if (true)
+			{
+				// looks like we already launched OICu and loaded the right program
+				m_Log << "Program " << "" << " is already loaded, NICE! we're we don't need this time-out event anymore." << CUtil::CLog::endl;
+				if (p) m_EventMgr.remove(p);			
+				return;
+			}
+		}
+	}
+
+	// if you reach this point, program failed to load. let's launch OICu again
+	m_EventMgr.add( m_pLaunchOICu, true );
+}
+
+/* ------------------------------------------------------------------------------------------
 event where it attempts to launch OICu and load test program.
 -	"disconnects" from tester by destroying evxa objects
 -	tries to kill apps/thread owned by a currently running unison (if any)
@@ -523,7 +555,7 @@ event where it attempts to launch OICu and load test program.
 void CApp::onLaunchOICU(CEventManager::CEvent* p)
 {
 	m_Log << "Executing onLaunchOICU event..." << CUtil::CLog::endl;
-
+/*
 	// is tester ready and our evxa object valid? 
 	// do we have reference to event object? if not, force launch OICu
 	if (isReady() && m_pProgCtrl && p)
@@ -541,7 +573,7 @@ void CApp::onLaunchOICU(CEventManager::CEvent* p)
 			}
 		}
 	}
-
+*/
 	// in case we're connected from previous OICu load, let's make sure we're disconnected now.
 	disconnect();
 
@@ -572,6 +604,9 @@ void CApp::onLaunchOICU(CEventManager::CEvent* p)
 	ssCmd << " -qual " << " -T " << m_szTesterName ;
 	system(ssCmd.str().c_str());	
 	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
+
+	// let's stop this event after launching
+	m_EventMgr.remove(p);
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -856,7 +891,7 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 			if (m_bSTDF)
 			{
 				m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
-				m_EventMgr.add( m_pSetLotInfo );
+				//m_EventMgr.add( m_pSetLotInfo );
 /*
 				if (!setSTDF())
 				{
