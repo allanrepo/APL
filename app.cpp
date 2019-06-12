@@ -41,7 +41,7 @@ CApp::CApp(int argc, char **argv)
 	m_pLaunchOICu = new CAppEvent(*this, &CApp::onLaunchOICU, 0);
 	m_pConnect = new CAppEvent(*this, &CApp::onConnect, 0);
 	m_pSetLotInfo = new CAppEvent(*this, &CApp::onSetLotInfo, 0);
-	m_pProgramLoadFail = new CAppEvent(*this, &CApp::onProgramLoadFail, 60000);
+	m_pProgramLoadFail = new CAppEvent(*this, &CApp::onProgramLoadFail, m_CONFIG.nRelaunchTimeOutMS);
 
 	// we connect to tester on APL launch by default. we trigger this event for it
 	m_EventMgr.add( m_pConnect );
@@ -92,31 +92,9 @@ CApp::CApp(int argc, char **argv)
 	CAppFileDesc StateEvxioErrorFileDesc(*this, &CApp::onErrorResponse, m_pEvxio? m_pEvxio->getErrorSocketId(): -1);
 	m_FileDescMgr.add( StateEvxioErrorFileDesc );
 
-	//m_EventMgr.add( new CAppEvent(*this, &CApp::onLaunchTimeOut, 3100) );
-	//m_EventMgr.add( new CAppEvent(*this, &CApp::onProgramLoadTimeOut, 6300) );
-
 	// run the application loop
 	while(1) 
 	{
-		// are we connected to tester? should we try? attempt once
-		//if(m_bReconnect){ if (connect(m_szTesterName, 1)) m_bReconnect = false; }
-/*
-		// if we're connected to tester now and we need to send STDF 	
-		if (!m_bReconnect && m_bSTDFAftReconnect && m_pProgCtrl)
-		{
-			if (m_pProgCtrl->isProgramLoaded())
-			{
-				// if we failed to send STDF fields again, let's keep reconnecting...
-				m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
-				if (!setSTDF())
-				{ 
-					m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
-					m_bReconnect = true; 
-				}
-				else m_bSTDFAftReconnect = false;
-			}
-		}
-*/
 		// before calling select(), update file descriptors of evxa objects. this is to ensure the FD manager
 		// don't use a bad file descriptor. when evxa objects are destroyed, their file descriptors are considered bad.
 		StateNotificationFileDesc.set(m_pState? m_pState->getSocketId(): -1);
@@ -154,13 +132,11 @@ void CApp::init()
 	// these variables will hold tester stuff. clear by default
 	m_szProgramFullPathName = "";
 	m_szTesterName = "";
+
+	m_nLaunchAttempt = 0;
 	
 	// used for telling this app that it's ready to set lotinfo params
 	m_bSTDF = false;
-	m_bSTDFAftReconnect = false;
-
-	// flag used to request for tester reconnect, true by default so it tries to connect on launch
-	//m_bReconnect = true;
 
 	// set lotinfo file parameters to default
 	m_CONFIG.szLotInfoFileName = "lotinfo.txt";
@@ -267,6 +243,23 @@ bool CApp::config(const std::string& file)
 		}	
 
 		// let's now find the <Binning> from <SiteConfiguration> 
+		XML_Node* pLaunch = pConfig->fetchChild("Launch");
+		if (pLaunch)
+		{ 
+			for (int i = 0; i < pLaunch->numChildren(); i++)
+			{
+				if (!pLaunch->fetchChild(i)) continue;
+				if (pLaunch->fetchChild(i)->fetchTag().compare("Field") != 0) continue;
+
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Type") == 0){ m_CONFIG.bProd = pLaunch->fetchChild(i)->fetchText().compare("prod") == 0? true: false; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Relaunch") == 0){ m_CONFIG.nRelaunchTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Max Attempt to Relaunch") == 0){ m_CONFIG.nRelaunchAttempt = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ); }				
+			}
+		}
+		else m_Log << "Warning: Didn't find <Launch>. " << CUtil::CLog::endl;
+
+
+		// let's now find the <Binning> from <SiteConfiguration> 
 		XML_Node* pBinning = 0;
 		if (pConfig->fetchChild("Binning")){ if ( CUtil::toUpper( pConfig->fetchChild("Binning")->fetchVal("state") ).compare("TRUE") == 0) pBinning = pConfig->fetchChild("Binning"); }
 		else m_Log << "Warning: Didn't find <Binning>. " << CUtil::CLog::endl;
@@ -308,7 +301,7 @@ bool CApp::config(const std::string& file)
 			// if an <STDF> tag is found with attribute state = true, enable STDF feature	
 			if (CUtil::toUpper( pStdf->fetchVal("state") ).compare("TRUE") == 0){ m_CONFIG.bSendInfo = true; }
 
-			m_Log << "<STDF>: '" << pStdf->fetchVal("field") << "'" << CUtil::CLog::endl;
+			m_Log << "<STDF>: '" << pStdf->fetchVal("Field") << "'" << CUtil::CLog::endl;
 			for (int j = 0; j < pStdf->numChildren(); j++)
 			{
 				if (!pStdf->fetchChild(j)) continue;
@@ -462,19 +455,8 @@ void CApp::onReceiveFile(const std::string& name)
 			}
 		}
 
-		// let's queue a time-out event that when expires, it will attempt to launch OICu and load program
-		// again if at that point, OICu and/or test program is not yet loaded.
-		// we set it to immediate so its count down starts now.
+		// let's queue an event that launcyes OICu and load program
 		m_EventMgr.add( m_pLaunchOICu );
-
-		// let's queue a time-out event that when expires, it will attempt to launch OICu and load program
-		// again if at that point, OICu and/or test program is not yet loaded.
-		// we set it to immediate so its count down starts now.
-		m_EventMgr.add( m_pProgramLoadFail, true );
-
-		// launch OICu and load program
-		//onLaunchOICU();
-		//launch(m_szTesterName, m_szProgramFullPathName, true);
 
 		// let app know we are setting STDF fields. do it only if this feature is enabled
 		m_bSTDF = m_CONFIG.bSendInfo;
@@ -489,24 +471,17 @@ event that handles setting lotinfo from lotinfo.tx file
 ------------------------------------------------------------------------------------------ */
 void CApp::onSetLotInfo(CEventManager::CEvent* p)
 {
+	// since we're already executing this event, we'll now remove it from the event manager
+	m_EventMgr.remove(p);
+
+	// we're setting lotinfo from lotinfo.txt to stdf file. did an error occur?
 	if (!setSTDF())
 	{
 		m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
-		m_EventMgr.add( m_pLaunchOICu, true );
 		
-	}
-	else
-	{
-		if (p) m_EventMgr.remove(p);
-	}
-/*
-				if (!setSTDF())
-				{
-					m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
-					m_bReconnect = true;
-					m_bSTDFAftReconnect = true;	
-				}
-*/
+		// let's relaunch OICu and reload program if an error occurs here
+		m_EventMgr.add( m_pLaunchOICu, true );
+	}		
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -523,6 +498,9 @@ void CApp::onConnect(CEventManager::CEvent* p)
 ------------------------------------------------------------------------------------------ */
 void CApp::onProgramLoadFail(CEventManager::CEvent* p)
 {
+	// since we're already executing this event, we'll now remove it from the event manager
+	m_EventMgr.remove(p);
+
 	// is tester ready and our evxa object valid? 
 	// do we have reference to event object? if not, force launch OICu
 	if (isReady() && m_pProgCtrl)
@@ -535,10 +513,17 @@ void CApp::onProgramLoadFail(CEventManager::CEvent* p)
 			{
 				// looks like we already launched OICu and loaded the right program
 				m_Log << "Program " << "" << " is already loaded, NICE! we're we don't need this time-out event anymore." << CUtil::CLog::endl;
-				if (p) m_EventMgr.remove(p);			
+				m_nLaunchAttempt = 0;
 				return;
 			}
 		}
+	}
+
+	if (m_nLaunchAttempt >= m_CONFIG.nRelaunchAttempt)
+	{
+		m_Log << "WARNING: APL has already made " << m_nLaunchAttempt << " attempts to launch OICu and load program but it kept failing. We'll stop now. Check for issue please." << CUtil::CLog::endl;
+		m_nLaunchAttempt = 0;
+		return;
 	}
 
 	// if you reach this point, program failed to load. let's launch OICu again
@@ -554,26 +539,15 @@ event where it attempts to launch OICu and load test program.
 ------------------------------------------------------------------------------------------ */
 void CApp::onLaunchOICU(CEventManager::CEvent* p)
 {
-	m_Log << "Executing onLaunchOICU event..." << CUtil::CLog::endl;
-/*
-	// is tester ready and our evxa object valid? 
-	// do we have reference to event object? if not, force launch OICu
-	if (isReady() && m_pProgCtrl && p)
-	{
-		// is program loaded?
-		if (m_pProgCtrl->isProgramLoaded())
-		{
-			// is the program loaded the same as program we're trying to load?
-			if (true)
-			{
-				// looks like we already launched OICu and loaded the right program
-				m_Log << "Program " << "" << " is already loaded, NICE! we're we don't need this time-out event anymore." << CUtil::CLog::endl;
-				if (p) m_EventMgr.remove(p);			
-				return;
-			}
-		}
-	}
-*/
+	// since we're done with this event. we will remove it. we do it here at teh beginning of this function so that whatever happens in this
+	// function, e.g. we got stuck on block due to failed unison restart, our event handler has already removed this event
+	m_EventMgr.remove(p);
+
+	// let's queue a time-out event that when expires, it will check if OICu has indeed launched and test program is loaded
+	m_EventMgr.add( m_pProgramLoadFail, true );
+
+	m_nLaunchAttempt++;
+
 	// in case we're connected from previous OICu load, let's make sure we're disconnected now.
 	disconnect();
 
@@ -604,9 +578,6 @@ void CApp::onLaunchOICU(CEventManager::CEvent* p)
 	ssCmd << " -qual " << " -T " << m_szTesterName ;
 	system(ssCmd.str().c_str());	
 	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
-
-	// let's stop this event after launching
-	m_EventMgr.remove(p);
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -618,7 +589,6 @@ void CApp::onStateNotificationResponse(int fd)
 	{
       		const char *errbuf = m_pState->getStatusBuffer();
 		m_Log << "State Notification Response Not OK: " << errbuf << CUtil::CLog::endl;
-		m_bReconnect = true;
 	}  		
 }
 
@@ -631,7 +601,6 @@ void CApp::onEvxioResponse(int fd)
 	{
       		const char *errbuf = m_pState->getStatusBuffer();
 		m_Log << "EVXIO Stream Response Not OK: " << errbuf << CUtil::CLog::endl;
-		m_bReconnect = true;
 	}  		
 }
 
@@ -644,7 +613,6 @@ void CApp::onErrorResponse(int fd)
 	{
       		const char *errbuf = m_pState->getStatusBuffer();
 		m_Log << "EVXIO Error Response Not OK: " << errbuf << CUtil::CLog::endl;
-		m_bReconnect = true;
 	}  		
 }
  
@@ -891,16 +859,8 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 			if (m_bSTDF)
 			{
 				m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
-				//m_EventMgr.add( m_pSetLotInfo );
-/*
-				if (!setSTDF())
-				{
-					m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
-					m_bReconnect = true;
-					m_bSTDFAftReconnect = true;	
-				}
-				m_bSTDF = false;	
-*/
+				m_EventMgr.add( m_pSetLotInfo );
+				m_bSTDF = false;
 			}
 
 			break;

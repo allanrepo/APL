@@ -125,6 +125,8 @@ protected:
 
 		// launch parameters
 		bool 		bProd;
+		int		nRelaunchTimeOutMS;
+		int		nRelaunchAttempt;
 
 		// binning parameters
 		bool 		bSendBin;
@@ -148,6 +150,8 @@ protected:
 		CONFIG()
 		{
 			bProd = true;
+			nRelaunchTimeOutMS = 120000;
+			nRelaunchAttempt = 5;
 			bSendInfo = false;
 			bSendBin = false;
 			bUseHardBin = false;
@@ -164,10 +168,11 @@ protected:
 
 protected:
 	CFileDescriptorManager m_FileDescMgr;
-	bool m_bReconnect;
 
 	// config
 	CONFIG m_CONFIG;
+
+	long m_nLaunchAttempt;
 
 	// parameters
 	std::string m_szProgramFullPathName;
@@ -183,10 +188,6 @@ protected:
 	bool setSTDF();
 	bool m_bSTDF;
 	bool setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce = false);
-
-	// we set flag to allw app to send STDF again after reconnecting to tester. this is necessary in situations where sending STDF fails 
-	// after trying to do it after PROGRAM_LOAD
-	bool m_bSTDFAftReconnect;
 
 	// initialize variabls, reset stuff
 	void init();
@@ -232,6 +233,7 @@ public:
 	// event handler for state notification EOT
 	virtual void onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0);
 
+	// events. what they do is pretty obvious with their function name
 	void onLaunchOICU(CEventManager::CEvent* p = 0);
 	void onProgramLoadFail(CEventManager::CEvent* p = 0);
 	void onConnect(CEventManager::CEvent* p = 0);

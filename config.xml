@@ -21,6 +21,11 @@
 		<STDF></STDF>
 	</SiteConfiguration>
 	<SiteConfiguration name = "Singapore">
+		<Launch>
+			<Field name = "Type">prod</Field> <!-- prod, engr-->
+			<Field name = "Wait Time To Relaunch">60</Field>
+			<Field name = "Max Attempt to Relaunch">5</Field>
+		</Launch>
 		<LotInfo>
 			<File>b.txt</File>
 			<Path>/home/localuser/Desktop/APL</Path>
