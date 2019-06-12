@@ -38,8 +38,10 @@ CApp::CApp(int argc, char **argv)
 	initLogger(m_CONFIG.bLogToFile);
 
 	// create events
-	m_pLaunchOICu = new CAppEvent(*this, &CApp::onLaunchOICU, 60000);
+	m_pLaunchOICu = new CAppEvent(*this, &CApp::onLaunchOICU, 0);
 	m_pConnect = new CAppEvent(*this, &CApp::onConnect, 0);
+	m_pSetLotInfo = new CAppEvent(*this, &CApp::onSetlotInfo, 0);
+	m_pProgramLoadFail = new CAppEvent(*this, &CApp::onProgramLoadFail, 60000);
 
 	// we connect to tester on APL launch by default. we trigger this event for it
 	m_EventMgr.add( m_pConnect );
@@ -482,6 +484,24 @@ event that handles setting lotinfo from lotinfo.tx file
 ------------------------------------------------------------------------------------------ */
 void CApp::onSetLotInfo(CEventManager::CEvent* p)
 {
+	if (!setSTDF())
+	{
+		m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
+		m_EventMgr.add( m_pLaunchOICu, true );
+		
+	}
+	else
+	{
+		if (p) m_EventMgr.remove(p);
+	}
+/*
+				if (!setSTDF())
+				{
+					m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
+					m_bReconnect = true;
+					m_bSTDFAftReconnect = true;	
+				}
+*/
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -836,6 +856,8 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 			if (m_bSTDF)
 			{
 				m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
+				m_EventMgr.add( m_pSetLotInfo );
+/*
 				if (!setSTDF())
 				{
 					m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
@@ -843,6 +865,7 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 					m_bSTDFAftReconnect = true;	
 				}
 				m_bSTDF = false;	
+*/
 			}
 
 			break;

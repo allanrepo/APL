@@ -206,6 +206,7 @@ protected:
 	CEventManager::CEvent* m_pLaunchOICu;
 	CEventManager::CEvent* m_pConnect;
 	CEventManager::CEvent* m_pSetLotInfo;
+	CEventManager::CEvent* m_pProgramLoadFail;
 
 public:
 	CApp(int argc, char **argv);
@@ -232,6 +233,7 @@ public:
 	virtual void onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0);
 
 	void onLaunchOICU(CEventManager::CEvent* p = 0);
+	void onProgramLoadFail(CEventManager::CEvent* p = 0);
 	void onConnect(CEventManager::CEvent* p = 0);
 	void onSetLotInfo(CEventManager::CEvent* p = 0);
 };
