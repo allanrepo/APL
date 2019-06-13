@@ -1,14 +1,6 @@
 /* ---------------------------------------------------------------------------------------------------------------------
 version beta.1.20190607 release notes:
--	now, setSTDF() is called on State Notification's PROGRAM_LOAD event. previously the main app loop checks if 
-	program is loaded and only then it calls setSTDF(). this is because i am concerned that app might miss
-	PROGRAM_LOAD event because the app connects to tester at the same time it launches OICu with load program 
-	at the same time. if program loads faster befure app can connect to tester, it might miss PROGRAM_LOAD 
-	event. however, if i check isProgramLoaded() during app loop, evxa returns true even before program is 
-	actually loaded, thereby causing it to setSTDF() too soon. this can cause issue intermitently. also, it is
-	observed that app is able to connect to tester fast enough before program gets loaded.
--	now there's a possibility that setting STDF through setLotInformation() might fail. if it does, i added
-	a mechanism to reconnect tester and setLotInformation() again.
+-	
 
 version beta.1.20190530 release notes: 
 -	fixed a bug where APL crashes if config.xml set <binning> disabled
@@ -151,7 +143,7 @@ protected:
 		{
 			bProd = true;
 			nRelaunchTimeOutMS = 120000;
-			nRelaunchAttempt = 5;
+			nRelaunchAttempt = 3;
 			bSendInfo = false;
 			bSendBin = false;
 			bUseHardBin = false;
@@ -207,7 +199,8 @@ protected:
 	CEventManager::CEvent* m_pLaunchOICu;
 	CEventManager::CEvent* m_pConnect;
 	CEventManager::CEvent* m_pSetLotInfo;
-	CEventManager::CEvent* m_pProgramLoadFail;
+	CEventManager::CEvent* m_pCheckProgramLoaded;
+	CEventManager::CEvent* m_pProgramLoad;
 
 public:
 	CApp(int argc, char **argv);
@@ -235,9 +228,10 @@ public:
 
 	// events. what they do is pretty obvious with their function name
 	void onLaunchOICU(CEventManager::CEvent* p = 0);
-	void onProgramLoadFail(CEventManager::CEvent* p = 0);
+	void onCheckProgramLoaded(CEventManager::CEvent* p = 0);
 	void onConnect(CEventManager::CEvent* p = 0);
 	void onSetLotInfo(CEventManager::CEvent* p = 0);
+	void onProgramLoad(CEventManager::CEvent* p = 0);
 };
 
 

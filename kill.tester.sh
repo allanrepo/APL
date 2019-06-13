@@ -11,7 +11,7 @@ TESTER="$1"
 echo "Executing Tester Killer  by Allan Asis"
 
 
-restart_tester $TESTER -k
+restart_tester $TESTER -k &
 
 sleep 1
 

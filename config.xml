@@ -3,28 +3,11 @@
 <APL_CONF>
 	<CurrentSiteConfiguration>Singapore</CurrentSiteConfiguration>
 
-	<SiteConfiguration name = "Singapore1">
-		<LotInfo>
-			<File>b.txt</File>
-			<Path>/home/localuser/Desktop/APL</Path>
-		</LotInfo>
-		<Binning state = "true">
-			<BinType>soft</BinType> <!-- hard, soft -->	
-			<TestType>wafer</TestType> <!-- final, wafer -->		
-			<SocketType>udp</SocketType>
-			<IP>127.0.0.1</IP>
-			<Port>54000</Port>
-		</Binning>
-		<Logging state = "true">
-			<Path>/home/localuser/Desktop/</Path>
-		</Logging>
-		<STDF></STDF>
-	</SiteConfiguration>
 	<SiteConfiguration name = "Singapore">
 		<Launch>
-			<Field name = "Type">prod</Field> <!-- prod, engr-->
-			<Field name = "Wait Time To Relaunch">60</Field>
-			<Field name = "Max Attempt to Relaunch">5</Field>
+			<Param name = "Type">prod</Param> <!-- prod, engr-->
+			<Param name = "Wait Time To Relaunch">20</Param>
+			<Param name = "Max Attempt to Relaunch">12</Param>
 		</Launch>
 		<LotInfo>
 			<File>b.txt</File>
@@ -42,15 +25,15 @@
 		</Logging>
 		<STDF state = "true" />
 		<STDF field = "MIR">
-			<Field name = "LOT_ID">lotid</Field>
-			<Field name = "PART_TYP">device</Field>
-			<Field name = "OPER_NAM">operator</Field>
-			<Field name = "FAMLY_ID">productid</Field>
-			<Field name = "TST_TEMP">temperature</Field>
+			<Param name = "LOT_ID">lotid</Param>
+			<Param name = "PART_TYP">device</Param>
+			<Param name = "OPER_NAM">operator</Param>
+			<Param name = "FAMLY_ID">productid</Param>
+			<Param name = "TST_TEMP">temperature</Param>
 		</STDF>
 		<STDF field = "SDR">
-			<Field name = "HAND_ID">proberhandlerid</Field>
-			<Field name = "LOAD_ID">boardid</Field>
+			<Param name = "HAND_ID">proberhandlerid</Param>
+			<Param name = "LOAD_ID">boardid</Param>
 		</STDF>
 	</SiteConfiguration>
 

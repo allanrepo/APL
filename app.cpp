@@ -41,7 +41,8 @@ CApp::CApp(int argc, char **argv)
 	m_pLaunchOICu = new CAppEvent(*this, &CApp::onLaunchOICU, 0);
 	m_pConnect = new CAppEvent(*this, &CApp::onConnect, 0);
 	m_pSetLotInfo = new CAppEvent(*this, &CApp::onSetLotInfo, 0);
-	m_pProgramLoadFail = new CAppEvent(*this, &CApp::onProgramLoadFail, m_CONFIG.nRelaunchTimeOutMS);
+	m_pCheckProgramLoaded = new CAppEvent(*this, &CApp::onCheckProgramLoaded, m_CONFIG.nRelaunchTimeOutMS);
+	m_pProgramLoad = new CAppEvent(*this, &CApp::onProgramLoad, 0);
 
 	// we connect to tester on APL launch by default. we trigger this event for it
 	m_EventMgr.add( m_pConnect );
@@ -75,6 +76,10 @@ CApp::CApp(int argc, char **argv)
 	m_Log << "Log To File: " << (m_CONFIG.bLogToFile? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "Log Path (if enabled): " << m_CONFIG.szLogPath << CUtil::CLog::endl;
 	m_Log << "LotInfo to STDF: " << (m_CONFIG.bSendInfo? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Launch Type: " << (m_CONFIG.bProd? "OICu" : "OpTool") << CUtil::CLog::endl;
+	m_Log << "Wait Time To Relaunch: " << (m_CONFIG.nRelaunchTimeOutMS/1000) << " seconds" << CUtil::CLog::endl;
+	m_Log << "Max Attempt to Relaunch: " << m_CONFIG.nRelaunchAttempt << CUtil::CLog::endl;
+
 	
 	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, m_CONFIG.szLotInfoFilePath);
@@ -249,7 +254,7 @@ bool CApp::config(const std::string& file)
 			for (int i = 0; i < pLaunch->numChildren(); i++)
 			{
 				if (!pLaunch->fetchChild(i)) continue;
-				if (pLaunch->fetchChild(i)->fetchTag().compare("Field") != 0) continue;
+				if (pLaunch->fetchChild(i)->fetchTag().compare("Param") != 0) continue;
 
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Type") == 0){ m_CONFIG.bProd = pLaunch->fetchChild(i)->fetchText().compare("prod") == 0? true: false; }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Relaunch") == 0){ m_CONFIG.nRelaunchTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
@@ -301,11 +306,11 @@ bool CApp::config(const std::string& file)
 			// if an <STDF> tag is found with attribute state = true, enable STDF feature	
 			if (CUtil::toUpper( pStdf->fetchVal("state") ).compare("TRUE") == 0){ m_CONFIG.bSendInfo = true; }
 
-			m_Log << "<STDF>: '" << pStdf->fetchVal("Field") << "'" << CUtil::CLog::endl;
+			m_Log << "<STDF>: '" << pStdf->fetchVal("Param") << "'" << CUtil::CLog::endl;
 			for (int j = 0; j < pStdf->numChildren(); j++)
 			{
 				if (!pStdf->fetchChild(j)) continue;
-				if (pStdf->fetchChild(j)->fetchTag().compare("Field") != 0) continue;					
+				if (pStdf->fetchChild(j)->fetchTag().compare("Param") != 0) continue;					
 				
 				m_Log << "	" << pStdf->fetchChild(j)->fetchVal("name") << ": " << pStdf->fetchChild(j)->fetchText() << CUtil::CLog::endl;
 			}			
@@ -430,14 +435,10 @@ void CApp::onReceiveFile(const std::string& name)
 	else m_Log << name << " file received." << CUtil::CLog::endl;
 
 	// parse lotinfo.txt file 
-	m_szProgramFullPathName.clear();
-	parse(ssFullPathMonitorName.str());
-
-	// do we have the 'PROGRAM' field and its value from lotinfo.txt?
-	if (m_szProgramFullPathName.empty()) 
+	if (!parse(ssFullPathMonitorName.str()))
 	{
 		m_Log << ssFullPathMonitorName.str() << " file received but didn't find a program to load.";
-		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field." << CUtil::CLog::endl;
+		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field. and is valid?" << CUtil::CLog::endl;
 	}
 	// look's like we're good to launch OICu and load program. let's do it
 	else
@@ -455,11 +456,14 @@ void CApp::onReceiveFile(const std::string& name)
 			}
 		}
 
-		// let's queue an event that launcyes OICu and load program
+		// initialize launch attempt counter. we only reset this counter once when we recieve a valid lotinfo.txt file
+		m_nLaunchAttempt = 0;
+
+		// let's queue an event that launches OICu and load program
 		m_EventMgr.add( m_pLaunchOICu );
 
 		// let app know we are setting STDF fields. do it only if this feature is enabled
-		m_bSTDF = m_CONFIG.bSendInfo;
+		//m_bSTDF = m_CONFIG.bSendInfo;
 	}
  
 	// delete the lotinfo.txt
@@ -467,86 +471,35 @@ void CApp::onReceiveFile(const std::string& name)
 }
 
 /* ------------------------------------------------------------------------------------------
-event that handles setting lotinfo from lotinfo.tx file
------------------------------------------------------------------------------------------- */
-void CApp::onSetLotInfo(CEventManager::CEvent* p)
-{
-	// since we're already executing this event, we'll now remove it from the event manager
-	m_EventMgr.remove(p);
-
-	// we're setting lotinfo from lotinfo.txt to stdf file. did an error occur?
-	if (!setSTDF())
-	{
-		m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
-		
-		// let's relaunch OICu and reload program if an error occurs here
-		m_EventMgr.add( m_pLaunchOICu, true );
-	}		
-}
-
-/* ------------------------------------------------------------------------------------------
-event where app attempt to connect to tester 
------------------------------------------------------------------------------------------- */
-void CApp::onConnect(CEventManager::CEvent* p)
-{
-	// are we connected to tester? should we try? attempt once
-	if (!isReady()) connect(m_szTesterName, 1);
-}
-
-/* ------------------------------------------------------------------------------------------
-
------------------------------------------------------------------------------------------- */
-void CApp::onProgramLoadFail(CEventManager::CEvent* p)
-{
-	// since we're already executing this event, we'll now remove it from the event manager
-	m_EventMgr.remove(p);
-
-	// is tester ready and our evxa object valid? 
-	// do we have reference to event object? if not, force launch OICu
-	if (isReady() && m_pProgCtrl)
-	{
-		// is program loaded?
-		if (m_pProgCtrl->isProgramLoaded())
-		{
-			// is the program loaded the same as program we're trying to load?
-			if (true)
-			{
-				// looks like we already launched OICu and loaded the right program
-				m_Log << "Program " << "" << " is already loaded, NICE! we're we don't need this time-out event anymore." << CUtil::CLog::endl;
-				m_nLaunchAttempt = 0;
-				return;
-			}
-		}
-	}
-
-	if (m_nLaunchAttempt >= m_CONFIG.nRelaunchAttempt)
-	{
-		m_Log << "WARNING: APL has already made " << m_nLaunchAttempt << " attempts to launch OICu and load program but it kept failing. We'll stop now. Check for issue please." << CUtil::CLog::endl;
-		m_nLaunchAttempt = 0;
-		return;
-	}
-
-	// if you reach this point, program failed to load. let's launch OICu again
-	m_EventMgr.add( m_pLaunchOICu, true );
-}
-
-/* ------------------------------------------------------------------------------------------
 event where it attempts to launch OICu and load test program.
 -	"disconnects" from tester by destroying evxa objects
 -	tries to kill apps/thread owned by a currently running unison (if any)
 -	launch OICu and load specified test program via command line
--	sets a flag to let app reconnect evxa objects to tester
+-	initiate an event that waits for time-out before checking if program loaded 
+	successfully
+-	increments launch counter
 ------------------------------------------------------------------------------------------ */
 void CApp::onLaunchOICU(CEventManager::CEvent* p)
 {
-	// since we're done with this event. we will remove it. we do it here at teh beginning of this function so that whatever happens in this
+	// as soon as we execute this event, we remove it. we only execute this once everytime this event is queued.
+	// we do it here at the beginning of this function so that whatever happens in this
 	// function, e.g. we got stuck on block due to failed unison restart, our event handler has already removed this event
 	m_EventMgr.remove(p);
 
-	// let's queue a time-out event that when expires, it will check if OICu has indeed launched and test program is loaded
-	m_EventMgr.add( m_pProgramLoadFail, true );
+	// we check here if we already surpass the max allowed attempt to launch OICu afer receiving lotinfo.txt file
+	if (m_nLaunchAttempt >= m_CONFIG.nRelaunchAttempt)
+	{
+		m_Log << "WARNING: APL has already made " << m_nLaunchAttempt << " attempts to launch OICu and load program since receiving ";
+		m_Log << m_CONFIG.szLotInfoFileName << " file. We'll stop now. Check for issue please." << CUtil::CLog::endl;
+		return;
+	}
+	// increment launch counter
+	else m_nLaunchAttempt++;
 
-	m_nLaunchAttempt++;
+	// let's queue a time-out event that when expires, it will check if OICu has indeed launched and test program is loaded
+	// we start here and set count-down time-out to start immediately now so in case there's a blocking event here, the wait time
+	// counts
+	m_EventMgr.add( m_pCheckProgramLoaded, true );
 
 	// in case we're connected from previous OICu load, let's make sure we're disconnected now.
 	disconnect();
@@ -568,16 +521,106 @@ void CApp::onLaunchOICU(CEventManager::CEvent* p)
 	system(ssCmd.str().c_str());
 
 	// setup system command to launch OICu
-	m_Log << "launching OICu and loading '" << m_szProgramFullPathName << "'..." << CUtil::CLog::endl;
+	m_Log << "launching(" << m_nLaunchAttempt << ") OICu and loading '" << m_szProgramFullPathName << "'..." << CUtil::CLog::endl;
 
 	// >launcher -nodisplay -prod -load <program> -T <tester> -qual
 	ssCmd.str(std::string());
 	ssCmd.clear();
 	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
 	ssCmd << (m_szProgramFullPathName.empty()? "": "-load ") << (m_szProgramFullPathName.empty()? "" : m_szProgramFullPathName);
-	ssCmd << " -qual " << " -T " << m_szTesterName ;
-	system(ssCmd.str().c_str());	
+	ssCmd << " -qual " << " -T " << m_szTesterName;
+	// system(ssCmd.str().c_str());	ALLAN
 	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
+}
+
+/* ------------------------------------------------------------------------------------------
+event that checks if program is loaded. this will ensure APL knows if it successfully 
+loaded the program. it does it by waiting for a specified amount of time since the
+last attempt to launch OICu and load program. OICu does not tell APL if something went
+wrong during OICu launch and/or program load so when that happens, APL will end up
+waiting forever. we don't want this because APL will be blamed even if it's OICu/Unison's
+fault. to avoid having APL wait forever, we use this event as a sort of wait time before
+checking if program actually loads
+-	it waits until it's time-out is up and then checks if program is loaded
+-	if program is not loaded, it will attempt to load again
+-	however we cannot keep on trying to load forever as well because that will be 
+	annoying. so there's an attempt counter. if we reach the max attempt, we stop
+	and let factory know something is seriously wrong and needs to be checked.
+------------------------------------------------------------------------------------------ */
+void CApp::onCheckProgramLoaded(CEventManager::CEvent* p)
+{
+	// since we're already executing this event, we'll now remove it from the event manager
+	m_EventMgr.remove(p);
+
+	// is tester ready and our evxa object valid? 
+	// do we have reference to event object? if not, force launch OICu
+	if (isReady() && m_pProgCtrl)
+	{
+		// is program loaded?
+		if (m_pProgCtrl->isProgramLoaded())
+		{
+			// is the program loaded the same as program we're trying to load?
+			if (true)
+			{
+				// looks like we already launched OICu and loaded the right program
+				m_Log << "Program " << "" << " is already loaded, NICE! we're we don't need this time-out event anymore." << CUtil::CLog::endl;
+				return;
+			}
+		}
+	}
+	
+	m_Log << "WARNING: We reached a time-out in waiting for program to load. let's try to launch OICu and load program again..." << CUtil::CLog::endl;
+
+	// if you reach this point, program failed to load. let's launch OICu again
+	m_EventMgr.add( m_pLaunchOICu, true );
+}
+
+/* ------------------------------------------------------------------------------------------
+this event is is executed when program is successfully loaded through state notification.
+-	if setLotInfo is enabled, we queue this event.
+-	at this point, the onCheckProgramLoaded() event is not needed anymore and it should
+	be removed from queue already but i feel it's not necessary to do that. 
+------------------------------------------------------------------------------------------ */
+void CApp::onProgramLoad(CEventManager::CEvent* p)
+{
+	// since we're already executing this event, we'll now remove it from the event manager
+	m_EventMgr.remove(p);
+
+	// let's set STDF fields here from lotinfo.txt after program is loaded
+	if (m_CONFIG.bSendInfo)
+	{
+		m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
+		m_EventMgr.add( m_pSetLotInfo );
+		//m_bSTDF = false;
+	}
+}
+
+/* ------------------------------------------------------------------------------------------
+event that handles setting lotinfo from lotinfo.txt file
+-	if an error occurs in setting lot info, relaunches OICu and load program again
+------------------------------------------------------------------------------------------ */
+void CApp::onSetLotInfo(CEventManager::CEvent* p)
+{
+	// since we're already executing this event, we'll now remove it from the event manager
+	m_EventMgr.remove(p);
+
+	// we're setting lotinfo from lotinfo.txt to stdf file. did an error occur?
+	if (setSTDF()) // ALLAN
+	{
+		m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
+		
+		// let's relaunch OICu and reload program if an error occurs here
+		m_EventMgr.add( m_pLaunchOICu, true );
+	}		
+}
+
+/* ------------------------------------------------------------------------------------------
+event where app attempt to connect to tester 
+------------------------------------------------------------------------------------------ */
+void CApp::onConnect(CEventManager::CEvent* p)
+{
+	// are we connected to tester? should we try? attempt once
+	if (!isReady()) connect(m_szTesterName, 1);
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -618,6 +661,8 @@ void CApp::onErrorResponse(int fd)
  
 /* ------------------------------------------------------------------------------------------
 parse the lotinfo.txt file
+-	STDF fields and test program will only be acknowledged to use if a JOBFILE
+	field exists and has a valid test program path/name value
 ------------------------------------------------------------------------------------------ */
 bool CApp::parse(const std::string& name)
 {
@@ -632,10 +677,6 @@ bool CApp::parse(const std::string& name)
 	// return false if it finds an empty file to allow app to try again
 	if (s.empty()) return false;
 
-	// before parsing, let's reset STDF field variables
-	m_MIR.clear();
-	m_SDR.clear();
-
 	// for debugging purpose, let's dump the contents of the file
 	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
 	m_Log << "Content extracted from " << name << "." << CUtil::CLog::endl;
@@ -643,6 +684,9 @@ bool CApp::parse(const std::string& name)
 	m_Log << s << CUtil::CLog::endl;
 	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
  
+	MIR l_MIR;
+	SDR l_SDR;
+	std::string szJobFile;
 	while(s.size())  
 	{ 
 		// find next '\n' position 
@@ -659,25 +703,25 @@ bool CApp::parse(const std::string& name)
 		if (getFieldValuePair(l, DELIMITER, field, value))
 		{
 			// extract STDF fields
-			if (field.compare("OPERATOR") == 0){ m_MIR.OperNam = value; continue; }
-			if (field.compare("LOTID") == 0){ m_MIR.LotId = value; continue; }
-			if (field.compare("SUBLOTID") == 0){ m_MIR.SblotId = value; continue; }
-			if (field.compare("DEVICE") == 0){ m_MIR.PartTyp = value; continue; }
-			if (field.compare("PRODUCTID") == 0){ m_MIR.FamlyId = value; continue; }
-			if (field.compare("PACKAGE") == 0){ m_MIR.PkgTyp = value; continue; }
-			if (field.compare("FILENAMEREV") == 0){ m_MIR.JobRev = value; continue; }
-			if (field.compare("TESTMODE") == 0){ m_MIR.ModeCod = value; continue; }
-			if (field.compare("COMMANDMODE") == 0){ m_MIR.CmodCod = value; continue; }
-			if (field.compare("ACTIVEFLOWNAME") == 0){ m_MIR.FlowId = value; continue; }
-			if (field.compare("DATECODE") == 0){ m_MIR.DateCod = value; continue; }
-			if (field.compare("CONTACTORTYPE") == 0){ m_SDR.ContTyp = value; continue; }
-			if (field.compare("CONTACTORID") == 0){ m_SDR.ContId = value; continue; }
-			if (field.compare("FABRICATIONID") == 0){ m_MIR.ProcId = value; continue; }
-			if (field.compare("TESTFLOOR") == 0){ m_MIR.FloorId = value; continue; }
-			if (field.compare("TESTFACILITY") == 0){ m_MIR.FacilId = value; continue; }
-			if (field.compare("PROBERHANDLERID") == 0){ m_SDR.HandId = value; continue; }
-			if (field.compare("TEMPERATURE") == 0){ m_MIR.TestTmp = value; continue; }
-			if (field.compare("BOARDID") == 0){ m_SDR.LoadId = value; continue; }
+			if (field.compare("OPERATOR") == 0){ l_MIR.OperNam = value; continue; }
+			if (field.compare("LOTID") == 0){ l_MIR.LotId = value; continue; }
+			if (field.compare("SUBLOTID") == 0){ l_MIR.SblotId = value; continue; }
+			if (field.compare("DEVICE") == 0){ l_MIR.PartTyp = value; continue; }
+			if (field.compare("PRODUCTID") == 0){ l_MIR.FamlyId = value; continue; }
+			if (field.compare("PACKAGE") == 0){ l_MIR.PkgTyp = value; continue; }
+			if (field.compare("FILENAMEREV") == 0){ l_MIR.JobRev = value; continue; }
+			if (field.compare("TESTMODE") == 0){ l_MIR.ModeCod = value; continue; }
+			if (field.compare("COMMANDMODE") == 0){ l_MIR.CmodCod = value; continue; }
+			if (field.compare("ACTIVEFLOWNAME") == 0){ l_MIR.FlowId = value; continue; }
+			if (field.compare("DATECODE") == 0){ l_MIR.DateCod = value; continue; }
+			if (field.compare("CONTACTORTYPE") == 0){ l_SDR.ContTyp = value; continue; }
+			if (field.compare("CONTACTORID") == 0){ l_SDR.ContId = value; continue; }
+			if (field.compare("FABRICATIONID") == 0){ l_MIR.ProcId = value; continue; }
+			if (field.compare("TESTFLOOR") == 0){ l_MIR.FloorId = value; continue; }
+			if (field.compare("TESTFACILITY") == 0){ l_MIR.FacilId = value; continue; }
+			if (field.compare("PROBERHANDLERID") == 0){ l_SDR.HandId = value; continue; }
+			if (field.compare("TEMPERATURE") == 0){ l_MIR.TestTmp = value; continue; }
+			if (field.compare("BOARDID") == 0){ l_SDR.LoadId = value; continue; }
 
 			// if we didn't find anything we looked for including jobfile, let's move to next field
 			if (field.compare(JOBFILE) == 0)
@@ -693,7 +737,7 @@ bool CApp::parse(const std::string& name)
 				else
 				{
 					m_Log << "'" << value << "' exists. let's try to load it." << CUtil::CLog::endl;
-					m_szProgramFullPathName = value;			
+					szJobFile = value;			
 				}
 			}
 		}
@@ -702,7 +746,15 @@ bool CApp::parse(const std::string& name)
 		if (pos == std::string::npos) break;		
 	}	
 
-	return true;
+	// ok did we find a valid JobFile in the lotinfo.txt?
+	if (szJobFile.empty()) return false;
+	else
+	{
+		m_szProgramFullPathName = szJobFile;
+		m_MIR = l_MIR;
+		m_SDR = l_SDR;
+		return true;
+	}
 } 
 
 /* ------------------------------------------------------------------------------------------
@@ -745,6 +797,8 @@ wraps progctrl method to set lotinfo/stdf
 ------------------------------------------------------------------------------------------ */
 bool CApp::setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce)
 {
+	return true; // ALLAN
+
 	if (!m_pProgCtrl) return false;
 
 	// if field is empty, we won't set it, unless we're forced to, which clears the lot information instead
@@ -855,14 +909,7 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 		{
 		    	m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOADED" << CUtil::CLog::endl;
 
-			// let's set STDF fields here from lotinfo.txt after program is loaded
-			if (m_bSTDF)
-			{
-				m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
-				m_EventMgr.add( m_pSetLotInfo );
-				m_bSTDF = false;
-			}
-
+			m_EventMgr.add( m_pProgramLoad );
 			break;
 		}
 		case EVX_PROGRAM_START: 
