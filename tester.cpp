@@ -46,7 +46,7 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
     		m_pTestHead = new TestheadConnection(strTesterName.c_str(), m_nHead);
     		if(m_pTestHead->getStatus() !=  EVXA::OK) 
 		{ 
-			if(nSleep) sleep(nSleep); 
+			//if(nSleep) sleep(nSleep); 
 			//m_Log << "Failed to create testheadConnection object." << CUtil::CLog::endl;
 			continue; 
 		} 
@@ -56,7 +56,7 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
     		m_pTester = new TesterConnection(strTesterName.c_str());	
     		if(m_pTester->getStatus() != EVXA::OK)
 		{ 
-			if(nSleep) sleep(nSleep); 
+			//if(nSleep) sleep(nSleep); 
 			//m_Log << "Failed to create TesterConnection object." << CUtil::CLog::endl;
 			continue; 
 		}
@@ -66,7 +66,7 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
     		m_pProgCtrl = new ProgramControl(*m_pTestHead);
     		if(m_pProgCtrl->getStatus() !=  EVXA::OK) 
 		{ 
-			if(nSleep) sleep(nSleep); 
+			//if(nSleep) sleep(nSleep); 
 			//m_Log << "Failed to create ProgramControl object." << CUtil::CLog::endl;
 			continue; 
 		}
@@ -76,7 +76,7 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
     		m_pState = new CStateNotification(*this);
     		if(m_pState->getStatus() !=  EVXA::OK) 
 		{ 
-			if(nSleep) sleep(nSleep); 
+			//if(nSleep) sleep(nSleep); 
 			//m_Log << "Failed to create CStateNotification object." << CUtil::CLog::endl;
 			continue; 
 		} 
@@ -91,7 +91,7 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
     		m_pEvxio = new CEvxioStreamClient(szTesterName, m_nHead);
     		if(m_pEvxio->getStatus() != EVXA::OK) 
 		{ 
-			if(nSleep) sleep(nSleep); 
+			//if(nSleep) sleep(nSleep); 
 			//m_Log << "Failed to create CEvxioStreamClient object." << CUtil::CLog::endl;
 			continue; 
 		} 
@@ -106,7 +106,7 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
 		m_Log << "Connecting to " << strTesterName << "..." << CUtil::CLog::endl;
     		if(m_pEvxio->ConnectEvxioStreams(m_pTestHead, szPid) != EVXA::OK) 
 		{ 
-			if(nSleep) sleep(nSleep); 
+			//if(nSleep) sleep(nSleep); 
 			//m_Log << "Failed to connect to '" << strTesterName << "'." << CUtil::CLog::endl;
 			continue; 
 		} 

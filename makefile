@@ -11,7 +11,7 @@ APL_FILES= demo.cpp app.cpp utility.cpp tester.cpp fd.cpp notify.cpp stdf.cpp so
 
 APL_OBJS = $(APL_FILES:.cpp=.o)
 
-TEST_FILES = test.cpp app1.cpp state.cpp utility.cpp notify.cpp fd.cpp
+TEST_FILES = test.cpp app1.cpp state.cpp utility.cpp notify.cpp fd.cpp tester.cpp xml.cpp
 
 TEST_OBJS = $(TEST_FILES:.cpp=.o)
 

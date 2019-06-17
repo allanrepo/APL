@@ -18,7 +18,7 @@ void CAppState::run()
 
 		// is this state enabled?
 		if (!pTask->m_bEnabled) continue;
-
+	
 		// first time?
 		if (pTask->m_bFirst)
 		{
@@ -49,6 +49,24 @@ void CAppState::run()
 }
 
 /* ------------------------------------------------------------------------------------------
+when state object is loaded
+------------------------------------------------------------------------------------------ */
+void CAppState::load()
+{
+	// enable all tasks
+	for (std::list< CTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
+	{
+		// is this a valid event?
+		CTask* pTask = *it;
+		if ( !pTask ) continue;
+
+		// enable and reset its timer
+		pTask->enable();
+		pTask->m_bFirst = true;				
+	}
+}
+
+/* ------------------------------------------------------------------------------------------
 constructor
 ------------------------------------------------------------------------------------------ */
 CApp::CApp(int argc, char **argv)
@@ -56,17 +74,13 @@ CApp::CApp(int argc, char **argv)
 	// parse command line arguments
 	scan(argc, argv);
 
-	// if tester name is not set through command line argument, assign default name
-	if (m_szTesterName.empty())
-	{
-		std::stringstream ss;
-		getUserName().empty()? (ss << "sim") : (ss << getUserName() << "_sim");
-		m_szTesterName = ss.str();
-	}
-
 	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, "/home/localuser/Desktop");
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
+
+	// create init state and its tasks
+	m_pStateOnInit = new CAppState("onInit");
+	m_pStateOnInit->add(*this, &CApp::onInit, 0, "onInit");	
 
 	// create idle state and and its tasks
 	m_pStateOnIdle = new CAppState("onIdle");
@@ -74,7 +88,7 @@ CApp::CApp(int argc, char **argv)
 	m_pStateOnIdle->add(*this, &CApp::onSelect, 0, "onSelect"); 
 
 	// add set the first active state 
-	m_StateMgr.set(m_pStateOnIdle);
+	m_StateMgr.set(m_pStateOnInit);
 
 	// run the state machine
 	m_StateMgr.run(); 
@@ -87,8 +101,6 @@ CApp::~CApp()
 {
 
 }
-
-
 
 /* ------------------------------------------------------------------------------------------
 parse command line arguments
@@ -154,13 +166,45 @@ const std::string CApp::getUserName() const
 	return std::string(passwd_info->pw_name);
 } 
 
-
-void CApp::onConnect()
+/* ------------------------------------------------------------------------------------------
+TASK: to perform initialization
+------------------------------------------------------------------------------------------ */
+void CApp::onInit(CStateManager::CState& state, CTask& task)
 {
-	m_Log << "TASK: onConnect" << CUtil::CLog::endl;
+	m_Log << "Executing onInit() task..." << CUtil::CLog::endl;
+
+	// if tester name is not set through command line argument, assign default name
+	if (m_szTesterName.empty())
+	{
+		std::stringstream ss;
+		getUserName().empty()? (ss << "sim") : (ss << getUserName() << "_sim");
+		m_szTesterName = ss.str();
+	}
+
+	// if config file is not set, assign default
+	if (m_szConfigFullPathName.empty()){ m_szConfigFullPathName = "./config.xml"; }
+
+	// parse config file
+	config( m_szConfigFullPathName );
+
+	// setup logger file output if this feature is enabled
+//	initLogger(m_CONFIG.bLogToFile);
+
+
+	// we do this only once	so we disable after
+	task.disable();
+
+	// we also switch to next state: on idle
+	m_StateMgr.set(m_pStateOnIdle);
 }
 
-void CApp::onSelect()
+void CApp::onConnect(CStateManager::CState& state, CTask& task)
+{
+	// are we connected to tester? should we try? attempt once
+	if (!isReady()) connect(m_szTesterName, 1);
+}
+
+void CApp::onSelect(CStateManager::CState& state, CTask& task)
 {
 	// proccess any file descriptor notification on select every second.
 	m_FileDescMgr.select(20);
@@ -169,5 +213,161 @@ void CApp::onSelect()
 void CApp::onReceiveFile(const std::string& name)
 {
 	m_Log << "file: " << name << CUtil::CLog::endl;
+}
+
+/* ------------------------------------------------------------------------------------------
+parse config xml file
+------------------------------------------------------------------------------------------ */
+bool CApp::config(const std::string& file)
+{
+	m_Log << "Parsing " << file << "..." << CUtil::CLog::endl;
+
+	// open xml config file and try to extract root tag	
+	XML_Node *root = new XML_Node (file.c_str());
+	if (root)
+	{
+		std::string tag = CUtil::toUpper(root->fetchTag());
+		if (tag.compare("APL_CONF") != 0)
+		{
+			m_Log << "Error: Invalid root tag '" << root->fetchTag() << "' found. Please check your '" << file << "'." << CUtil::CLog::endl;
+			return false;
+		}
+		
+		// let's find <CurrentSiteConfiguration> on <APL_CONF>'s nodes 
+		XML_Node *pCurrSiteConfig = root->fetchChild( "CurrentSiteConfiguration" );
+		if ( !pCurrSiteConfig ) 
+		{
+			m_Log << "Error: did not find <CurrentSiteConfiguration> in '" << file << "'." << CUtil::CLog::endl;
+			return false;
+		}
+		else m_Log << "<CurrentSiteConfiguration> : '" << pCurrSiteConfig->fetchText() << "'" << CUtil::CLog::endl;
+
+		// let's find the <SiteConfiguration> that matches <CurrentSiteConfiguration>
+		XML_Node *pConfig = 0;
+		m_Log << "<SiteConfiguration> : ";
+		for( int i = 0; i < root->numChildren(); i++ )
+		{
+			// only <SiteConfiguration> is handled, we ignore everything else
+			if (!root->fetchChild(i)) continue;
+			if (root->fetchChild(i)->fetchTag().compare("SiteConfiguration") != 0) continue;
+
+			m_Log << "'" << root->fetchChild(i)->fetchVal("name") <<  "', ";
+
+			// we take only the first <CurrentSiteConfiguration> match, ignore succeeding ones
+			if ( root->fetchChild(i)->fetchVal("name").compare( pCurrSiteConfig->fetchText() ) == 0 ){ if (!pConfig) pConfig = root->fetchChild(i); }
+		}
+		m_Log << CUtil::CLog::endl;
+	
+		// bail out if we didn't find <SiteConfiguration> with <CurrentSiteConfiguration>
+		if (!pConfig)
+		{
+			m_Log << "Error: did not find <SiteConfiguration> with '" << pCurrSiteConfig->fetchText() << "' attribute." << CUtil::CLog::endl;
+			return false;
+		}	
+
+		// let's now find the <Binning> from <SiteConfiguration> 
+		XML_Node* pLaunch = pConfig->fetchChild("Launch");
+		if (pLaunch)
+		{ 
+			for (int i = 0; i < pLaunch->numChildren(); i++)
+			{
+				if (!pLaunch->fetchChild(i)) continue;
+				if (pLaunch->fetchChild(i)->fetchTag().compare("Param") != 0) continue;
+
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Type") == 0){ m_CONFIG.bProd = pLaunch->fetchChild(i)->fetchText().compare("prod") == 0? true: false; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Relaunch") == 0){ m_CONFIG.nRelaunchTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Max Attempt to Relaunch") == 0){ m_CONFIG.nRelaunchAttempt = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ); }				
+			}
+		}
+		else m_Log << "Warning: Didn't find <Launch>. " << CUtil::CLog::endl;
+
+
+		// let's now find the <Binning> from <SiteConfiguration> 
+		XML_Node* pBinning = 0;
+		if (pConfig->fetchChild("Binning")){ if ( CUtil::toUpper( pConfig->fetchChild("Binning")->fetchVal("state") ).compare("TRUE") == 0) pBinning = pConfig->fetchChild("Binning"); }
+		else m_Log << "Warning: Didn't find <Binning>. " << CUtil::CLog::endl;
+
+		// check if <logging> is set
+		XML_Node* pLogging = 0;
+		if (pConfig->fetchChild("Logging")){ if ( CUtil::toUpper( pConfig->fetchChild("Logging")->fetchVal("state") ).compare("TRUE") == 0) pLogging = pConfig->fetchChild("Logging"); }
+		else m_Log << "Warning: Didn't find <Logging>. " << CUtil::CLog::endl;
+
+		// check if <LotInfo> is set
+		if (pConfig->fetchChild("LotInfo"))
+		{
+			if (pConfig->fetchChild("LotInfo")->fetchChild("File")){ m_CONFIG.szLotInfoFileName = pConfig->fetchChild("LotInfo")->fetchChild("File")->fetchText(); }
+			if (pConfig->fetchChild("LotInfo")->fetchChild("Path")){ m_CONFIG.szLotInfoFilePath = pConfig->fetchChild("LotInfo")->fetchChild("Path")->fetchText(); }		
+		}
+		else m_Log << "Warning: Didn't find <LotInfo>. " << CUtil::CLog::endl;
+
+
+		// for debug purposes, print out all the parameters of <Binning>
+		if (pBinning)
+		{
+			for (int i = 0; i < pBinning->numChildren(); i++)
+			{
+				if ( pBinning->fetchChild(i) ) 
+				{ 
+					m_Log << "<" << pBinning->fetchChild(i)->fetchTag() << ">: '" << pBinning->fetchChild(i)->fetchText() << "'" << CUtil::CLog::endl; 
+				}
+			}
+		}
+
+		// lets extract STDF stuff
+		for (int i = 0; i < pConfig->numChildren(); i++)
+		{
+			if (!pConfig->fetchChild(i)) continue;
+			if (pConfig->fetchChild(i)->fetchTag().compare("STDF") != 0) continue;
+			
+			XML_Node* pStdf = pConfig->fetchChild(i);
+			
+			// if an <STDF> tag is found with attribute state = true, enable STDF feature	
+			if (CUtil::toUpper( pStdf->fetchVal("state") ).compare("TRUE") == 0){ m_CONFIG.bSendInfo = true; }
+
+			m_Log << "<STDF>: '" << pStdf->fetchVal("Param") << "'" << CUtil::CLog::endl;
+			for (int j = 0; j < pStdf->numChildren(); j++)
+			{
+				if (!pStdf->fetchChild(j)) continue;
+				if (pStdf->fetchChild(j)->fetchTag().compare("Param") != 0) continue;					
+				
+				m_Log << "	" << pStdf->fetchChild(j)->fetchVal("name") << ": " << pStdf->fetchChild(j)->fetchText() << CUtil::CLog::endl;
+			}			
+		}
+
+		// if we found binning node, it means <Binning> is in config which means binning@EOT is enabled
+		if (pBinning)
+		{
+			m_CONFIG.bSendBin = true;
+			if (pBinning->fetchChild("BinType"))
+			{
+				if (CUtil::toUpper(pBinning->fetchChild("BinType")->fetchText()).compare("HARD") == 0) m_CONFIG.bUseHardBin = true;
+				if (CUtil::toUpper(pBinning->fetchChild("BinType")->fetchText()).compare("SOFT") == 0) m_CONFIG.bUseHardBin = false;
+			}
+			if (pBinning->fetchChild("TestType"))
+			{
+				if (CUtil::toUpper(pBinning->fetchChild("TestType")->fetchText()).compare("WAFER") == 0) m_CONFIG.nTestType = CONFIG::APL_WAFER;
+				if (CUtil::toUpper(pBinning->fetchChild("TestType")->fetchText()).compare("FINAL") == 0) m_CONFIG.nTestType = CONFIG::APL_FINAL;
+			}
+			if (pBinning->fetchChild("SocketType"))
+			{
+				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("UDP") == 0) m_CONFIG.nSocketType = SOCK_DGRAM;
+				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("TCP") == 0) m_CONFIG.nSocketType = SOCK_STREAM;
+				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("RAW") == 0) m_CONFIG.nSocketType = SOCK_RAW;
+			}
+			if (pBinning->fetchChild("IP")){ m_CONFIG.IP = pBinning->fetchChild("IP")->fetchText(); }	
+			if (pBinning->fetchChild("Port")){ m_CONFIG.nPort = CUtil::toLong(pBinning->fetchChild("Port")->fetchText()); }	
+		}
+
+		// if <logging> was set, let's see if logging is enabled and file path is specified
+		if (pLogging)
+		{
+			m_CONFIG.bLogToFile = true;
+			if (pLogging->fetchChild("Path")){ m_CONFIG.szLogPath = pLogging->fetchChild("Path")->fetchText(); }
+		}
+
+	}	
+
+	if (root) delete root;
+	return true;
 }
 

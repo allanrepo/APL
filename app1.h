@@ -7,6 +7,8 @@
 #include <notify.h>
 #include <pwd.h>
 #include <sys/time.h>
+#include <tester.h>
+#include <xml.h>
 
 class CApp;
 class CTask;
@@ -14,13 +16,66 @@ class CAppState;
 class CMonitorFileDesc;
 
 
-class CApp
+class CApp: public CTester
 {
+protected:
+	struct CONFIG
+	{
+		enum APL_TEST_TYPE
+		{
+			APL_WAFER,
+			APL_FINAL,
+			APL_MANUAL
+		};
+
+		// launch parameters
+		bool 		bProd;
+		int		nRelaunchTimeOutMS;
+		int		nRelaunchAttempt;
+
+		// binning parameters
+		bool 		bSendBin;
+		bool 		bUseHardBin;
+		APL_TEST_TYPE 	nTestType;
+		std::string 	IP;	
+		int 		nPort;
+		int 		nSocketType;
+
+		// logging parameters
+		std::string 	szLogPath;
+		bool 		bLogToFile;
+
+		// STDF parameters
+		bool 		bSendInfo;
+
+		// lotinfo file parameters
+		std::string 	szLotInfoFileName;
+		std::string 	szLotInfoFilePath;
+
+		CONFIG()
+		{
+			bProd = true;
+			nRelaunchTimeOutMS = 120000;
+			nRelaunchAttempt = 3;
+			bSendInfo = false;
+			bSendBin = false;
+			bUseHardBin = false;
+			nTestType = APL_FINAL;		
+			nPort = 54000;
+			IP = "127.0.0.1";
+			szLogPath = "/tmp";	
+			bLogToFile = false;
+			nSocketType = SOCK_STREAM;
+			szLotInfoFileName = "lotinfo.txt";
+			szLotInfoFilePath = "/tmp";
+		}
+	};
 protected:
 	// resources
 	CUtil::CLog m_Log;
 
 	// parameters
+	CONFIG m_CONFIG;
 	std::string m_szConfigFullPathName;
 	std::string m_szTesterName;
 
@@ -32,18 +87,23 @@ protected:
 	CStateManager m_StateMgr;
 
 	// states
+	CAppState* m_pStateOnInit;
 	CAppState* m_pStateOnIdle;
 
+
 	// tasks/events
-	void onConnect();
-	void onSelect();
+	void onConnect(CStateManager::CState&, CTask&);
+	void onSelect(CStateManager::CState&, CTask&);
+	void onInit(CStateManager::CState&, CTask&);
 
 	// process the incoming file from the monitored path
 	void onReceiveFile(const std::string& name);	
-	
-	bool scan(int argc, char **argv);
 
-	// utility function that acquire linux login username
+	// parse XML config file
+	bool config(const std::string& config);
+	
+	// utility functions. purpose are obvious in their function name and arguments
+	bool scan(int argc, char **argv);
 	const std::string getUserName() const;
 
 public:
@@ -59,16 +119,18 @@ class CTask
 protected:
 	CApp& m_App;
 	std::string m_szName;
-	void (CApp::* m_pRun)();
+	void (CApp::* m_pRun)(CStateManager::CState&, CTask&);
 	CUtil::CLog m_Log;
 
 	struct timeval m_prev;
 	bool m_bFirst;
 	long m_nDelayMS;
 	bool m_bEnabled;
+
+	CStateManager::CState* m_pState;
 	
 public:
-	CTask(CApp& app, void (CApp::* p)() = 0, long nDelayMS = 0, const std::string& name = ""):
+	CTask(CApp& app, void (CApp::* p)(CStateManager::CState&, CTask&) = 0, long nDelayMS = 0, const std::string& name = ""):
 	m_App(app)
 	{
 		m_nDelayMS = nDelayMS;
@@ -80,8 +142,11 @@ public:
 	
 	virtual void run()
 	{
-		if (m_pRun) (m_App.*m_pRun)();
+		if (m_pRun) (m_App.*m_pRun)(*m_pState, *this);
 	}
+
+	void enable(){ m_bEnabled = true; }
+	void disable(){ m_bEnabled = false; }
 
 	friend class CAppState;
 };
@@ -93,17 +158,23 @@ protected:
 	CUtil::CLog m_Log;
 
 public:
-	CAppState(const std::string& name = ""):CState(name){}
+	CAppState(const std::string& name = ""):CState(name)
+	{
+	}
 
 	virtual ~CAppState(){}
 
-	// overwritten to allow it to execute a method from CApp class
 	virtual void run();
+	virtual void load();
 
-	void add(CApp& app, void (CApp::* p)(), long nDelayMS = 0, const std::string& name = "")
+	void add(CApp& app, void (CApp::* p)(CStateManager::CState&, CTask&), long nDelayMS = 0, const std::string& name = "")
 	{
 		CTask* pTask = new CTask(app, p, nDelayMS, name);
-		if (pTask) m_Tasks.push_back(pTask);
+		if (pTask)
+		{
+			m_Tasks.push_back(pTask);
+			pTask->m_pState = this;
+		}
 	};
 
 };
