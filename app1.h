@@ -11,7 +11,7 @@
 #include <xml.h>
 
 class CApp;
-class CTask;
+class CAppTask;
 class CAppState;
 class CMonitorFileDesc;
 
@@ -70,6 +70,7 @@ protected:
 			szLotInfoFilePath = "/tmp";
 		}
 	};
+
 protected:
 	// resources
 	CUtil::CLog m_Log;
@@ -91,10 +92,10 @@ protected:
 	CAppState* m_pStateOnIdle;
 
 	// tasks/events
-	void onConnect(CStateManager::CState&, CTask&);
-	void onSelect(CStateManager::CState&, CTask&);
-	void onInit(CStateManager::CState&, CTask&);
-	void onUpdateLogFile(CStateManager::CState&, CTask&);
+	void onConnect(CState&, CAppTask&);
+	void onSelect(CState&, CAppTask&);
+	void onInit(CState&, CAppTask&);
+	void onUpdateLogFile(CState&, CAppTask&);
 
 	// process the incoming file from the monitored path
 	void onReceiveFile(const std::string& name);	
@@ -115,12 +116,12 @@ public:
 /* ------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------------------ */
-class CTask
+class CAppTask
 {
 protected:
 	CApp& m_App;
 	std::string m_szName;
-	void (CApp::* m_pRun)(CStateManager::CState&, CTask&);
+	void (CApp::* m_pRun)(CState&, CAppTask&);
 	CUtil::CLog m_Log;
 
 	struct timeval m_prev;
@@ -128,10 +129,10 @@ protected:
 	long m_nDelayMS;
 	bool m_bEnabled;
 
-	CStateManager::CState* m_pState;
+	CState* m_pState;
 	
 public:
-	CTask(CApp& app, void (CApp::* p)(CStateManager::CState&, CTask&) = 0, long nDelayMS = 0, const std::string& name = ""):
+	CAppTask(CApp& app, void (CApp::* p)(CState&, CAppTask&) = 0, long nDelayMS = 0, const std::string& name = ""):
 	m_App(app)
 	{
 		m_nDelayMS = nDelayMS;
@@ -152,10 +153,10 @@ public:
 	friend class CAppState;
 };
 
-class CAppState: public CStateManager::CState
+class CAppState: public CState
 {
 protected:
-	std::list<CTask*> m_Tasks;
+	std::list<CAppTask*> m_Tasks;
 	CUtil::CLog m_Log;
 
 public:
@@ -168,9 +169,9 @@ public:
 	virtual void run();
 	virtual void load();
 
-	void add(CApp& app, void (CApp::* p)(CStateManager::CState&, CTask&), long nDelayMS = 0, const std::string& name = "")
+	void add(CApp& app, void (CApp::* p)(CState&, CAppTask&), long nDelayMS = 0, const std::string& name = "")
 	{
-		CTask* pTask = new CTask(app, p, nDelayMS, name);
+		CAppTask* pTask = new CAppTask(app, p, nDelayMS, name);
 		if (pTask)
 		{
 			m_Tasks.push_back(pTask);

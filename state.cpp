@@ -3,7 +3,7 @@
 /* ------------------------------------------------------------------------------------------
 constructor
 ------------------------------------------------------------------------------------------ */
-CStateManager::CState::CState(const std::string& name)
+CState::CState(const std::string& name)
 {
 	m_szName = name;
 }
@@ -12,28 +12,47 @@ CStateManager::CState::CState(const std::string& name)
 /* ------------------------------------------------------------------------------------------
 destructor
 ------------------------------------------------------------------------------------------ */
-CStateManager::CState::~CState()
+CState::~CState()
 {
 }
 
 /* ------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------------------ */
-void CStateManager::CState::run()
+void CState::run()
+{
+//	m_Log << "State: " << m_szName << CUtil::CLog::endl;
+
+	for (std::list< CTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
+	{			
+		// is this a valid event?
+		CTask* pTask = *it;
+		if ( !pTask ) continue;
+
+		// is this state enabled?
+		if (!pTask->m_bEnabled) continue;
+	
+		// execute event
+		pTask->run();
+	}	
+}
+
+void CState::add( CTask* pTask )
+{
+	if (pTask) m_Tasks.push_back(pTask);
+}
+
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+void CState::load()
 {
 }
 
 /* ------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------------------ */
-void CStateManager::CState::load()
-{
-}
-
-/* ------------------------------------------------------------------------------------------
-
------------------------------------------------------------------------------------------- */
-void CStateManager::CState::unload()
+void CState::unload()
 {
 }
 
@@ -111,5 +130,80 @@ void CStateManager::set( CState* pState )
 ------------------------------------------------------------------------------------------ */
 void CStateManager::clear()
 {
+}
+
+CSequence::CSequence()
+{
+	m_currTask = m_Tasks.begin(); // actually sets it to .end() since m_Tasks is empty now
+	m_bLoop = true;
+	m_bFirst = true;
+}
+
+CSequence::~CSequence()
+{
+	m_Tasks.clear();
+}
+
+void CSequence::run()
+{
+	// snapshot time now
+	struct timeval now;
+	gettimeofday(&now, NULL);
+
+
+	// first time?
+	if (m_bFirst)
+	{
+		m_bFirst = false;
+		m_prev.tv_sec = now.tv_sec;
+		m_prev.tv_usec = now.tv_usec;
+	} 
+
+	// delta time is in timeval format. let's convert it into long format (milliseconds)	
+	long nTimeMS = (((long)now.tv_sec - (long)m_prev.tv_sec ) * 1000);
+	nTimeMS += (((long)now.tv_usec - (long)m_prev.tv_usec) / 1000);	
+
+	long nSpentMS = 0;
+	while ( m_currTask != m_Tasks.end() )
+	{
+		if ( nTimeMS >= (*m_currTask)->m_nDelayMS )
+		{
+			(*m_currTask)->run();
+
+			m_Log << "Seq exec: " << nTimeMS << CUtil::CLog::endl;
+
+			nTimeMS -= (*m_currTask)->m_nDelayMS;
+			
+			nSpentMS += (*m_currTask)->m_nDelayMS;			
+
+			m_currTask++;
+
+			if (m_bLoop && m_currTask == m_Tasks.end()) m_currTask = m_Tasks.begin();
+		}
+		else
+		{
+			m_prev.tv_sec += (nSpentMS / 1000);
+			m_prev.tv_usec += (nSpentMS % 1000) * 1000;
+			break;
+		}
+	}
+}
+
+void CSequence::load()
+{
+}
+
+void CSequence::unload()
+{
+}
+
+void CSequence::queue(CTask* pTask)
+{
+	if (!pTask) return;
+
+	m_Tasks.push_back(pTask);
+
+	// if current task still points to end of list, let's make it point at the beginning now 
+	if ( m_currTask == m_Tasks.end() ) m_currTask = m_Tasks.begin();
 }
 

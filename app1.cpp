@@ -2,7 +2,7 @@
 #include <unistd.h>
 
 /* ------------------------------------------------------------------------------------------
-
+overriden state::run() function
 ------------------------------------------------------------------------------------------ */
 void CAppState::run()
 {
@@ -10,10 +10,10 @@ void CAppState::run()
 	struct timeval now;
 	gettimeofday(&now, NULL);
 
-	for (std::list< CTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
+	for (std::list< CAppTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
 	{			
 		// is this a valid event?
-		CTask* pTask = *it;
+		CAppTask* pTask = *it;
 		if ( !pTask ) continue;
 
 		// is this state enabled?
@@ -54,10 +54,10 @@ when state object is loaded
 void CAppState::load()
 {
 	// enable all tasks
-	for (std::list< CTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
+	for (std::list< CAppTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
 	{
 		// is this a valid event?
-		CTask* pTask = *it;
+		CAppTask* pTask = *it;
 		if ( !pTask ) continue;
 
 		// enable and reset its timer
@@ -100,7 +100,7 @@ CApp::~CApp()
 }
 
 /* ------------------------------------------------------------------------------------------
-parse command line arguments
+utility function: parse command line arguments
 ------------------------------------------------------------------------------------------ */
 bool CApp::scan(int argc, char **argv)
 {
@@ -150,7 +150,7 @@ bool CApp::scan(int argc, char **argv)
 }
 
 /* ------------------------------------------------------------------------------------------
-get user name
+utility function: get user name
 ------------------------------------------------------------------------------------------ */
 const std::string CApp::getUserName() const
 { 
@@ -166,7 +166,7 @@ const std::string CApp::getUserName() const
 /* ------------------------------------------------------------------------------------------
 TASK: update logger file output
 ------------------------------------------------------------------------------------------ */
-void CApp::onUpdateLogFile(CStateManager::CState& state, CTask& task)
+void CApp::onUpdateLogFile(CState& state, CAppTask& task)
 {
 	// if logger to file is disabled, let's quickly reset it and bail
 	if (!m_CONFIG.bLogToFile)
@@ -200,7 +200,7 @@ void CApp::onUpdateLogFile(CStateManager::CState& state, CTask& task)
 /* ------------------------------------------------------------------------------------------
 TASK: to perform initialization
 ------------------------------------------------------------------------------------------ */
-void CApp::onInit(CStateManager::CState& state, CTask& task)
+void CApp::onInit(CState& state, CAppTask& task)
 {
 	m_Log << "Executing onInit() task..." << CUtil::CLog::endl;
 
@@ -229,13 +229,13 @@ void CApp::onInit(CStateManager::CState& state, CTask& task)
 	m_StateMgr.set(m_pStateOnIdle);
 }
 
-void CApp::onConnect(CStateManager::CState& state, CTask& task)
+void CApp::onConnect(CState& state, CAppTask& task)
 {
 	// are we connected to tester? should we try? attempt once
 	if (!isReady()) connect(m_szTesterName, 1);
 }
 
-void CApp::onSelect(CStateManager::CState& state, CTask& task)
+void CApp::onSelect(CState& state, CAppTask& task)
 {
 	// proccess any file descriptor notification on select every second.
 	m_FileDescMgr.select(20);
