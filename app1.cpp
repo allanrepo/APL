@@ -74,13 +74,10 @@ CApp::CApp(int argc, char **argv)
 	// parse command line arguments
 	scan(argc, argv);
 
-	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
-	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, "/home/localuser/Desktop");
-	m_FileDescMgr.add( *m_pMonitorFileDesc );
-
 	// create init state and its tasks
 	m_pStateOnInit = new CAppState("onInit");
 	m_pStateOnInit->add(*this, &CApp::onInit, 0, "onInit");	
+	m_pStateOnInit->add(*this, &CApp::onUpdateLogFile, 0, "onUpdateLogFile");	
 
 	// create idle state and and its tasks
 	m_pStateOnIdle = new CAppState("onIdle");
@@ -158,13 +155,47 @@ get user name
 const std::string CApp::getUserName() const
 { 
 	uid_t uid = getuid();
-	char buf_passw[1024];    
+	char buf_passw[1024];     
 	struct passwd password;
 	struct passwd *passwd_info;
 
 	getpwuid_r(uid, &password, buf_passw, 1024, &passwd_info);
 	return std::string(passwd_info->pw_name);
 } 
+
+/* ------------------------------------------------------------------------------------------
+TASK: update logger file output
+------------------------------------------------------------------------------------------ */
+void CApp::onUpdateLogFile(CStateManager::CState& state, CTask& task)
+{
+	// if logger to file is disabled, let's quickly reset it and bail
+	if (!m_CONFIG.bLogToFile)
+	{
+		m_Log.file("");
+		return;
+	}
+
+	// get the host name
+	char szHostName[32];
+	gethostname(szHostName, 32);
+
+	// get date stamp
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	struct tm* tmNow = localtime(&tv.tv_sec);				
+
+	// set log file to <path>/apl.<hostname>.<yyyymmdd>.log
+	std::stringstream ssLogToFile;
+	ssLogToFile << m_CONFIG.szLogPath << "/apl." << szHostName << "." << (tmNow->tm_year + 1900);
+	ssLogToFile << (tmNow->tm_mon + 1 < 10? "0" : "") << (tmNow->tm_mon + 1) << (tmNow->tm_mday < 10? "0" : "") << tmNow->tm_mday << ".log";
+	
+	// if this new log file name the same one already set in the logger? if yes, then we don't have to do anything
+	if (ssLogToFile.str().compare( m_Log.file() ) == 0) return;
+
+	// otherwise, set this 
+	m_Log.file(ssLogToFile.str());
+	m_Log << "Log is saved to " << ssLogToFile.str() << CUtil::CLog::endl;
+}
 
 /* ------------------------------------------------------------------------------------------
 TASK: to perform initialization
@@ -187,9 +218,9 @@ void CApp::onInit(CStateManager::CState& state, CTask& task)
 	// parse config file
 	config( m_szConfigFullPathName );
 
-	// setup logger file output if this feature is enabled
-//	initLogger(m_CONFIG.bLogToFile);
-
+	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
+	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
+	m_FileDescMgr.add( *m_pMonitorFileDesc );
 
 	// we do this only once	so we disable after
 	task.disable();
@@ -370,4 +401,5 @@ bool CApp::config(const std::string& file)
 	if (root) delete root;
 	return true;
 }
+
 

@@ -90,11 +90,11 @@ protected:
 	CAppState* m_pStateOnInit;
 	CAppState* m_pStateOnIdle;
 
-
 	// tasks/events
 	void onConnect(CStateManager::CState&, CTask&);
 	void onSelect(CStateManager::CState&, CTask&);
 	void onInit(CStateManager::CState&, CTask&);
+	void onUpdateLogFile(CStateManager::CState&, CTask&);
 
 	// process the incoming file from the monitored path
 	void onReceiveFile(const std::string& name);	
@@ -105,6 +105,7 @@ protected:
 	// utility functions. purpose are obvious in their function name and arguments
 	bool scan(int argc, char **argv);
 	const std::string getUserName() const;
+	void setupLogFile();
 
 public:
 	CApp(int argc, char **argv);

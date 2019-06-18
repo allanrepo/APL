@@ -21,7 +21,7 @@
 			<Port>54000</Port>
 		</Binning>
 		<Logging state = "true">
-			<Path>/home/localuser/Desktop/</Path>
+			<Path>/home/localuser/Desktop</Path>
 		</Logging>
 		<STDF state = "true" />
 		<STDF field = "MIR">
