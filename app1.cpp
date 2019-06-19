@@ -79,14 +79,20 @@ CApp::CApp(int argc, char **argv)
 	scan(argc, argv);
 
 	// create init state and its tasks
-	m_pStateOnInit = new CAppState("onInit");
-	m_pStateOnInit->add(*this, &CApp::onInit, 0, "onInit");	
-	m_pStateOnInit->add(*this, &CApp::onUpdateLogFile, 0, "onUpdateLogFile");	
+	m_pStateOnInit = new CState("onInit");
+	CSequence* pseq = new CSequence("onInit");
+	pseq->queue(new CAppTask( *this, &CApp::onInit, 0, "onInit"));
+	pseq->queue(new CAppTask( *this, &CApp::onUpdateLogFile, 0, "onUpdateLogFile"));
+	pseq->queue(new CAppTask( *this, &CApp::onSwitchToIdleState, 0, "onSwitchToIdleState"));
+	m_pStateOnInit->add(pseq);	
 
 	// create idle state and and its tasks
-	m_pStateOnIdle = new CAppState("onIdle");
-	m_pStateOnIdle->add(*this, &CApp::onConnect, 1000, "onConnect"); 
-	m_pStateOnIdle->add(*this, &CApp::onSelect, 0, "onSelect"); 
+	m_pStateOnIdle = new CState("onIdle");
+	pseq = new CSequence("onConnect");
+	pseq->queue(new CAppTask( *this, &CApp::onConnect, 1000, "onConnect"));
+	m_pStateOnIdle->add(pseq); 
+	CTask* ptask = new CAppTask( *this, &CApp::onSelect, 0, "onSelect");
+	m_pStateOnIdle->add(ptask); 
 
 	// add set the first active state 
 	m_StateMgr.set(m_pStateOnInit);
@@ -170,7 +176,7 @@ const std::string CApp::getUserName() const
 /* ------------------------------------------------------------------------------------------
 TASK: update logger file output
 ------------------------------------------------------------------------------------------ */
-void CApp::onUpdateLogFile(CState& state, CAppTask& task)
+void CApp::onUpdateLogFile(CTask& task)
 {
 	// if logger to file is disabled, let's quickly reset it and bail
 	if (!m_CONFIG.bLogToFile)
@@ -204,7 +210,7 @@ void CApp::onUpdateLogFile(CState& state, CAppTask& task)
 /* ------------------------------------------------------------------------------------------
 TASK: to perform initialization
 ------------------------------------------------------------------------------------------ */
-void CApp::onInit(CState& state, CAppTask& task)
+void CApp::onInit(CTask& task)
 {
 	m_Log << "Executing onInit() task..." << CUtil::CLog::endl;
 
@@ -227,22 +233,22 @@ void CApp::onInit(CState& state, CAppTask& task)
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
 
 	// we do this only once	so we disable after
-	task.disable();
+	//task.disable();
 
 	// we also switch to next state: on idle
-	m_StateMgr.set(m_pStateOnIdle);
+	//m_StateMgr.set(m_pStateOnIdle);
 }
 
-void CApp::onConnect(CState& state, CAppTask& task)
+void CApp::onConnect(CTask& task)
 {
 	// are we connected to tester? should we try? attempt once
 	if (!isReady()) connect(m_szTesterName, 1);
 }
 
-void CApp::onSelect(CState& state, CAppTask& task)
+void CApp::onSelect(CTask& task)
 {
 	// proccess any file descriptor notification on select every second.
-	m_FileDescMgr.select(20);
+	m_FileDescMgr.select(200);
 }
 
 void CApp::onReceiveFile(const std::string& name)

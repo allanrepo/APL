@@ -92,10 +92,11 @@ protected:
 	CState* m_pStateOnIdle;
 
 	// tasks/events
-	void onConnect(CState&, CAppTask&);
-	void onSelect(CState&, CAppTask&);
-	void onInit(CState&, CAppTask&);
-	void onUpdateLogFile(CState&, CAppTask&);
+	void onConnect(CTask&);
+	void onSelect(CTask&);
+	void onInit(CTask&);
+	void onUpdateLogFile(CTask&);
+	void onSwitchToIdleState(CTask&){ if (m_pStateOnIdle) m_StateMgr.set(m_pStateOnIdle); }
 
 	// process the incoming file from the monitored path
 	void onReceiveFile(const std::string& name);	
@@ -120,18 +121,18 @@ class CAppTask: public CTask
 {
 protected:
 	CApp& m_App;
-	void (CApp::* m_pRun)(CState&, CTask&);
+	void (CApp::* m_pRun)(CTask&);
 
 public:
-	CAppTask(CApp& app, void (CApp::* p)(CState&, CAppTask&) = 0, long nDelayMS = 0, const std::string& name = ""):
-	CState(name, nDelayMS), m_App(app)
+	CAppTask(CApp& app, void (CApp::* p)(CTask&) = 0, long nDelayMS = 0, const std::string& name = "", bool bLoop = false):
+	CTask(name, nDelayMS, bLoop), m_App(app)
 	{
-		m_pRun = p;
+		m_pRun = p;		
 	}
 	
 	virtual void run()
 	{
-		if (m_pRun) (m_App.*m_pRun)(*m_pState, *this);
+		if (m_pRun) (m_App.*m_pRun)(*this);
 	}
 
 /*

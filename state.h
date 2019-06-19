@@ -115,12 +115,13 @@ protected:
 	std::list< CTask* > m_Tasks;
 	std::list< CTask* >::iterator m_currTask;
 
+	std::string m_szName;
 	struct timeval m_prev;
 	bool m_bFirst;
 	bool m_bLoop;
 
 public:
-	CSequence();
+	CSequence(const std::string& name = "", bool bLoop = false);
 	virtual ~CSequence();
 
 	// virtual functions

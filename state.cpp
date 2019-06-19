@@ -44,7 +44,7 @@ void CState::add( CTask* pTask )
 }
 
 /* ------------------------------------------------------------------------------------------
-
+when loading state, all tasks are enabled and its timer reset
 ------------------------------------------------------------------------------------------ */
 void CState::load()
 {
@@ -139,10 +139,11 @@ void CStateManager::clear()
 constructor
 -	set current task iterator to .end() since tasks list is empty now
 ------------------------------------------------------------------------------------------ */
-CSequence::CSequence()
+CSequence::CSequence(const std::string& name, bool bLoop)
 {
+	m_szName = name;
 	m_currTask = m_Tasks.begin();
-	m_bLoop = true;
+	m_bLoop = bLoop;
 	m_bFirst = true;
 }
 
@@ -150,7 +151,6 @@ CSequence::~CSequence()
 {
 	m_Tasks.clear();
 }
-
 
 /* ------------------------------------------------------------------------------------------
 sequentially execute tasks the sequence contain based on elapsed time
