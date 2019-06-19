@@ -17,12 +17,10 @@ CState::~CState()
 }
 
 /* ------------------------------------------------------------------------------------------
-
+execute all the tasks the state has
 ------------------------------------------------------------------------------------------ */
 void CState::run()
 {
-//	m_Log << "State: " << m_szName << CUtil::CLog::endl;
-
 	for (std::list< CTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
 	{			
 		// is this a valid event?
@@ -37,6 +35,9 @@ void CState::run()
 	}	
 }
 
+/* ------------------------------------------------------------------------------------------
+add to list of stacks for this state
+------------------------------------------------------------------------------------------ */
 void CState::add( CTask* pTask )
 {
 	if (pTask) m_Tasks.push_back(pTask);
@@ -47,6 +48,17 @@ void CState::add( CTask* pTask )
 ------------------------------------------------------------------------------------------ */
 void CState::load()
 {
+	// enable all tasks
+	for (std::list< CTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
+	{
+		// is this a valid event?
+		CTask* pTask = *it;
+		if ( !pTask ) continue;
+
+		// enable and reset its timer
+		pTask->enable();
+		pTask->m_bFirst = true;				
+	}
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -75,20 +87,11 @@ CStateManager::~CStateManager()
 
 /* ------------------------------------------------------------------------------------------
 state manager's loop function
--	right now, let's handle elapsed time calculation internally. by right this 
-	class should not do it because time or elapsed time may be needed by other
-	objects in the application that also uses this class so a timer class must
-	handle this instead. but let's do that later once we realized we need it
-	so we can design the time class the best way we need it to be
 ------------------------------------------------------------------------------------------ */
 void CStateManager::run()
 {
 	while(1)
 	{
-		// snapshot time now
-
-		// is this the first time you run? elapsed time should be 
-
 		// are we switching to new state? 
 		if (m_pNext)
 		{
@@ -132,9 +135,13 @@ void CStateManager::clear()
 {
 }
 
+/* ------------------------------------------------------------------------------------------
+constructor
+-	set current task iterator to .end() since tasks list is empty now
+------------------------------------------------------------------------------------------ */
 CSequence::CSequence()
 {
-	m_currTask = m_Tasks.begin(); // actually sets it to .end() since m_Tasks is empty now
+	m_currTask = m_Tasks.begin();
 	m_bLoop = true;
 	m_bFirst = true;
 }
@@ -144,12 +151,15 @@ CSequence::~CSequence()
 	m_Tasks.clear();
 }
 
+
+/* ------------------------------------------------------------------------------------------
+sequentially execute tasks the sequence contain based on elapsed time
+------------------------------------------------------------------------------------------ */
 void CSequence::run()
 {
 	// snapshot time now
 	struct timeval now;
 	gettimeofday(&now, NULL);
-
 
 	// first time?
 	if (m_bFirst)

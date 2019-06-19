@@ -14,7 +14,6 @@ class CSequence;
 class CState;
 class CTask;
 
-
 //------------------------------------------------------------------------------------------------------
 // task class
 //------------------------------------------------------------------------------------------------------
@@ -32,7 +31,7 @@ protected:
 	CUtil::CLog m_Log;
 	
 public:
-	CTask(const std::string& name = "", long nDelayMS = 0, bool bLoop = true)
+	CTask(const std::string& name = "", long nDelayMS = 0, bool bLoop = false)
 	{
 		m_nDelayMS = nDelayMS;
 		m_szName = name;
@@ -42,13 +41,15 @@ public:
 	}
 	
 	// virtual functions
-	virtual void run(){ m_Log << "Task: " << m_szName << CUtil::CLog::endl; }
+	virtual void run(){} //{ m_Log << "Task: " << m_szName << CUtil::CLog::endl; }
 	virtual void load(){}
 	virtual void unload(){}
 
+	// manage state
 	void enable(){ m_bEnabled = true; }
 	void disable(){ m_bEnabled = false; }
 
+	// let these class access the privates
 	friend class CSequence;
 	friend class CState;
 };
@@ -107,7 +108,6 @@ sequence
 -	is a task
 -	can contain several task to be executed in sequence
 -	task are executed based on elapsed time
-
 ------------------------------------------------------------------------------------------------------*/
 class CSequence: public CTask
 {

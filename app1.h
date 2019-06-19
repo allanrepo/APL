@@ -88,8 +88,8 @@ protected:
 	CStateManager m_StateMgr;
 
 	// states
-	CAppState* m_pStateOnInit;
-	CAppState* m_pStateOnIdle;
+	CState* m_pStateOnInit;
+	CState* m_pStateOnIdle;
 
 	// tasks/events
 	void onConnect(CState&, CAppTask&);
@@ -116,8 +116,25 @@ public:
 /* ------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------------------ */
-class CAppTask
+class CAppTask: public CTask
 {
+protected:
+	CApp& m_App;
+	void (CApp::* m_pRun)(CState&, CTask&);
+
+public:
+	CAppTask(CApp& app, void (CApp::* p)(CState&, CAppTask&) = 0, long nDelayMS = 0, const std::string& name = ""):
+	CState(name, nDelayMS), m_App(app)
+	{
+		m_pRun = p;
+	}
+	
+	virtual void run()
+	{
+		if (m_pRun) (m_App.*m_pRun)(*m_pState, *this);
+	}
+
+/*
 protected:
 	CApp& m_App;
 	std::string m_szName;
@@ -151,8 +168,9 @@ public:
 	void disable(){ m_bEnabled = false; }
 
 	friend class CAppState;
+*/
 };
-
+/*
 class CAppState: public CState
 {
 protected:
@@ -180,6 +198,7 @@ public:
 	};
 
 };
+*/
 
 /* ------------------------------------------------------------------------------------------
 inherit notify file descriptor class and customize event handlers
