@@ -6,6 +6,7 @@ constructor
 CState::CState(const std::string& name)
 {
 	m_szName = name;
+	m_bEnabled = true;
 }
 
 
@@ -23,15 +24,21 @@ void CState::run()
 {
 	for (std::list< CTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
 	{			
+		// if this state is disabled, we skip. 
+		if (!m_bEnabled) continue;
+
 		// is this a valid event?
 		CTask* pTask = *it;
 		if ( !pTask ) continue;
 
 		// is this state enabled?
 		if (!pTask->m_bEnabled) continue;
-	
+
 		// execute event
 		pTask->run();
+
+		// disable if we're not looping this task
+		if (!pTask->m_bLoop) pTask->disable();
 	}	
 }
 
@@ -48,6 +55,9 @@ when loading state, all tasks are enabled and its timer reset
 ------------------------------------------------------------------------------------------ */
 void CState::load()
 {
+	// ensure state is enabled on load
+	enable();
+
 	// enable all tasks
 	for (std::list< CTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
 	{
@@ -55,9 +65,8 @@ void CState::load()
 		CTask* pTask = *it;
 		if ( !pTask ) continue;
 
-		// enable and reset its timer
-		pTask->enable();
-		pTask->m_bFirst = true;				
+		// load task as well
+		pTask->load();
 	}
 }
 
@@ -139,11 +148,9 @@ void CStateManager::clear()
 constructor
 -	set current task iterator to .end() since tasks list is empty now
 ------------------------------------------------------------------------------------------ */
-CSequence::CSequence(const std::string& name, bool bLoop)
+CSequence::CSequence(const std::string& name, bool bLoop): CTask(name, 0, bLoop)
 {
-	m_szName = name;
 	m_currTask = m_Tasks.begin();
-	m_bLoop = bLoop;
 	m_bFirst = true;
 }
 
@@ -173,23 +180,28 @@ void CSequence::run()
 	long nTimeMS = (((long)now.tv_sec - (long)m_prev.tv_sec ) * 1000);
 	nTimeMS += (((long)now.tv_usec - (long)m_prev.tv_usec) / 1000);	
 
+	// execute all asks starting at the current task iterator
 	long nSpentMS = 0;
 	while ( m_currTask != m_Tasks.end() )
 	{
+		// is the elapsed time for this loop enough to execut current task based on its delay?
 		if ( nTimeMS >= (*m_currTask)->m_nDelayMS )
 		{
 			(*m_currTask)->run();
 
-			m_Log << "Seq exec: " << nTimeMS << CUtil::CLog::endl;
-
+			// slice off delay from this task 
 			nTimeMS -= (*m_currTask)->m_nDelayMS;
 			
+			// accumulate used elapsed time. we use this later to increment actual used elapsed time
 			nSpentMS += (*m_currTask)->m_nDelayMS;			
 
+			// move to next task
 			m_currTask++;
 
+			// if we're looping, let's move to starting task again if we reach the end
 			if (m_bLoop && m_currTask == m_Tasks.end()) m_currTask = m_Tasks.begin();
 		}
+		// increment our sequence snapshot time with the actual used elapsed time
 		else
 		{
 			m_prev.tv_sec += (nSpentMS / 1000);
@@ -199,8 +211,13 @@ void CSequence::run()
 	}
 }
 
+/* ------------------------------------------------------------------------------------------
+when loading/reloading sequence, enable and reset its timer
+------------------------------------------------------------------------------------------ */
 void CSequence::load()
 {
+	enable();
+	m_bFirst = true;
 }
 
 void CSequence::unload()

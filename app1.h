@@ -9,7 +9,22 @@
 #include <sys/time.h>
 #include <tester.h>
 #include <xml.h>
+#include <stdf.h>
 
+/* ------------------------------------------------------------------------------------------
+constants
+------------------------------------------------------------------------------------------ */
+#define DELIMITER ':'
+#define JOBFILE "JOBFILE"
+#define VERSION "beta.1.0.20190607"
+#define DEVELOPER "allan asis / allan.asis@gmail.com"
+#define MAXCONNECT 20
+#define KILLAPPCMD "kill.app.sh"
+#define KILLTESTERCMD "kill.tester.sh"
+
+/* ------------------------------------------------------------------------------------------
+class declarations
+------------------------------------------------------------------------------------------ */
 class CApp;
 class CAppTask;
 class CAppState;
@@ -75,10 +90,17 @@ protected:
 	// resources
 	CUtil::CLog m_Log;
 
+	bool m_bIgnoreFile;
+
 	// parameters
 	CONFIG m_CONFIG;
 	std::string m_szConfigFullPathName;
 	std::string m_szTesterName;
+	std::string m_szProgramFullPathName;
+
+	// stdf stuff data holders and functions
+	MIR m_MIR;
+	SDR m_SDR;	
 
 	// file descriptor engine
 	CFileDescriptorManager m_FileDescMgr;
@@ -90,6 +112,7 @@ protected:
 	// states
 	CState* m_pStateOnInit;
 	CState* m_pStateOnIdle;
+	CState* m_pStateOnLaunch;
 
 	// tasks/events
 	void onConnect(CTask&);
@@ -97,6 +120,7 @@ protected:
 	void onInit(CTask&);
 	void onUpdateLogFile(CTask&);
 	void onSwitchToIdleState(CTask&){ if (m_pStateOnIdle) m_StateMgr.set(m_pStateOnIdle); }
+	void onLaunch(CTask&);
 
 	// process the incoming file from the monitored path
 	void onReceiveFile(const std::string& name);	
@@ -108,6 +132,10 @@ protected:
 	bool scan(int argc, char **argv);
 	const std::string getUserName() const;
 	void setupLogFile();
+
+	// functions to parse lotinfo.txt file 
+	bool parse(const std::string& name);
+	bool getFieldValuePair(const std::string& line, const char delimiter, std::string& field, std::string& value);
 
 public:
 	CApp(int argc, char **argv);
@@ -135,71 +163,8 @@ public:
 		if (m_pRun) (m_App.*m_pRun)(*this);
 	}
 
-/*
-protected:
-	CApp& m_App;
-	std::string m_szName;
-	void (CApp::* m_pRun)(CState&, CAppTask&);
-	CUtil::CLog m_Log;
-
-	struct timeval m_prev;
-	bool m_bFirst;
-	long m_nDelayMS;
-	bool m_bEnabled;
-
-	CState* m_pState;
-	
-public:
-	CAppTask(CApp& app, void (CApp::* p)(CState&, CAppTask&) = 0, long nDelayMS = 0, const std::string& name = ""):
-	m_App(app)
-	{
-		m_nDelayMS = nDelayMS;
-		m_pRun = p;
-		m_szName = name;
-		m_bEnabled = true;
-		m_bFirst = true;
-	}
-	
-	virtual void run()
-	{
-		if (m_pRun) (m_App.*m_pRun)(*m_pState, *this);
-	}
-
-	void enable(){ m_bEnabled = true; }
-	void disable(){ m_bEnabled = false; }
-
-	friend class CAppState;
-*/
-};
-/*
-class CAppState: public CState
-{
-protected:
-	std::list<CAppTask*> m_Tasks;
-	CUtil::CLog m_Log;
-
-public:
-	CAppState(const std::string& name = ""):CState(name)
-	{
-	}
-
-	virtual ~CAppState(){}
-
-	virtual void run();
-	virtual void load();
-
-	void add(CApp& app, void (CApp::* p)(CState&, CAppTask&), long nDelayMS = 0, const std::string& name = "")
-	{
-		CAppTask* pTask = new CAppTask(app, p, nDelayMS, name);
-		if (pTask)
-		{
-			m_Tasks.push_back(pTask);
-			pTask->m_pState = this;
-		}
-	};
 
 };
-*/
 
 /* ------------------------------------------------------------------------------------------
 inherit notify file descriptor class and customize event handlers
@@ -214,9 +179,9 @@ public:
 	CMonitorFileDesc(CApp& app, void (CApp::* p)(const std::string&), const std::string& path, unsigned short mask = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM)
 	: CNotifyFileDescriptor(path, mask), m_App(app){ m_pOnReceiveFile = p; }
 
-	virtual	void onFileCreate( const std::string& name ){ if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }	
-	virtual	void onFileMoveTo( const std::string& name ){ if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
-	virtual	void onFileModify( const std::string& name ){ if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
+	virtual	void onFileCreate( const std::string& name ){ m_Log << "onFileCreate" << CUtil::CLog::endl; if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }	
+	virtual	void onFileMoveTo( const std::string& name ){ m_Log << "onFileMoveTo" << CUtil::CLog::endl; if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
+	virtual	void onFileModify( const std::string& name ){ m_Log << "onFileModify" << CUtil::CLog::endl; if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
 };
 
 #endif

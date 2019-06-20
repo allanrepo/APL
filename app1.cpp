@@ -12,18 +12,22 @@ CApp::CApp(int argc, char **argv)
 	// create init state and its tasks
 	m_pStateOnInit = new CState("onInit");
 	CSequence* pseq = new CSequence("onInit");
-	pseq->queue(new CAppTask( *this, &CApp::onInit, 0, "onInit"));
-	pseq->queue(new CAppTask( *this, &CApp::onUpdateLogFile, 0, "onUpdateLogFile"));
-	pseq->queue(new CAppTask( *this, &CApp::onSwitchToIdleState, 0, "onSwitchToIdleState"));
+	pseq->queue(new CAppTask(*this, &CApp::onInit, 0, "onInit"));
+	pseq->queue(new CAppTask(*this, &CApp::onUpdateLogFile, 0, "onUpdateLogFile"));
+	pseq->queue(new CAppTask(*this, &CApp::onSwitchToIdleState, 0, "onSwitchToIdleState"));
 	m_pStateOnInit->add(pseq);	
 
 	// create idle state and and its tasks
 	m_pStateOnIdle = new CState("onIdle");
 	pseq = new CSequence("onConnect", true);
-	pseq->queue(new CAppTask( *this, &CApp::onConnect, 1000, "onConnect"));
+	pseq->queue(new CAppTask(*this, &CApp::onConnect, 1000, "onConnect", true));
 	m_pStateOnIdle->add(pseq); 
-	CTask* ptask = new CAppTask( *this, &CApp::onSelect, 0, "onSelect");
-	m_pStateOnIdle->add(ptask); 
+	m_pStateOnIdle->add(new CAppTask(*this, &CApp::onSelect, 0, "onSelect", true)); 
+
+	// setup launch state and its asks
+	m_pStateOnLaunch = new CState("onLaunch");
+	m_pStateOnLaunch->add(new CAppTask(*this, &CApp::onLaunch, 0, "onLaunch", true)); 
+	m_pStateOnLaunch->add(new CAppTask(*this, &CApp::onSelect, 0, "onSelect", true)); 
 
 	// add set the first active state 
 	m_StateMgr.set(m_pStateOnInit);
@@ -41,7 +45,7 @@ CApp::~CApp()
 }
 
 /* ------------------------------------------------------------------------------------------
-utility function: parse command line arguments
+utility: parse command line arguments
 ------------------------------------------------------------------------------------------ */
 bool CApp::scan(int argc, char **argv)
 {
@@ -91,7 +95,7 @@ bool CApp::scan(int argc, char **argv)
 }
 
 /* ------------------------------------------------------------------------------------------
-utility function: get user name
+utility: get user name
 ------------------------------------------------------------------------------------------ */
 const std::string CApp::getUserName() const
 { 
@@ -153,6 +157,10 @@ void CApp::onInit(CTask& task)
 		m_szTesterName = ss.str();
 	}
 
+	m_szProgramFullPathName = "";
+
+	m_bIgnoreFile = false;
+
 	// if config file is not set, assign default
 	if (m_szConfigFullPathName.empty()){ m_szConfigFullPathName = "./config.xml"; }
 
@@ -162,29 +170,81 @@ void CApp::onInit(CTask& task)
 	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
-
-	// we do this only once	so we disable after
-	//task.disable();
-
-	// we also switch to next state: on idle
-	//m_StateMgr.set(m_pStateOnIdle);
 }
 
+/* ------------------------------------------------------------------------------------------
+TASK: 	attempts to connect to tester
+------------------------------------------------------------------------------------------ */
 void CApp::onConnect(CTask& task)
 {
 	// are we connected to tester? should we try? attempt once
 	if (!isReady()) connect(m_szTesterName, 1);
 }
 
+/* ------------------------------------------------------------------------------------------
+TASK: 	query select(), for input from inotify of incoming file
+------------------------------------------------------------------------------------------ */
 void CApp::onSelect(CTask& task)
 {
 	// proccess any file descriptor notification on select every second.
 	m_FileDescMgr.select(200);
 }
 
+/* ------------------------------------------------------------------------------------------
+TASK: 	end lof if any, unload program if any, kill tester if any,
+	kill all unison threads if any, then launch OICu
+------------------------------------------------------------------------------------------ */
+void CApp::onLaunch(CTask& task)
+{
+	m_Log << "onLaunch State Task" << CUtil::CLog::endl;
+	sleep(1);
+}
+
+/* ------------------------------------------------------------------------------------------
+Utility: check the file if this is lotinfo.txt; parse if yes
+------------------------------------------------------------------------------------------ */
 void CApp::onReceiveFile(const std::string& name)
 {
-	m_Log << "file: " << name << CUtil::CLog::endl;
+	// create string that holds full path + monitor file 
+	std::stringstream ssFullPathMonitorName;
+	ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << name;
+
+	// is this the file we're waiting for? if not, bail out
+	if (name.compare(m_CONFIG.szLotInfoFileName) != 0)
+	{
+		m_Log << "File received but is not what we're waiting for: " << name << CUtil::CLog::endl;
+		return;
+	}
+	else m_Log << "'" << name << "' file received." << CUtil::CLog::endl;
+
+	// are we in launching OICu and loading program state? if yes, bail out.
+	// we still listen to select() for incoming files detected by inotify, but we ignore it.
+	// if we don't listen, the detected files by inotify will "stay in buffer" and we'll end up flushing it
+	// again as soon as we resume listening to select()
+	
+//	if (m_StateMgr.getCurrState().compare("onLaunch") == 0)
+	if (m_bIgnoreFile)
+	{ 
+		m_Log << "Incoming File '" << name << "' received. but we're in '" << m_StateMgr.getCurrState() << "' and will ignore this." << CUtil::CLog::endl;
+		return; 
+	}
+
+	// if this is the file, let's parse it.
+	// does it contain JobFile field? if yes, does it point to a valid unison program? 
+	// if yes, let's use this file contents to load program
+	// from here on, we switch to launch OICu and load program state
+	if (!parse(ssFullPathMonitorName.str()))
+	{
+		m_Log << ssFullPathMonitorName.str() << " file received but didn't find a program to load.";
+		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field. and is valid?" << CUtil::CLog::endl;
+	}		
+	else
+	{
+		m_Log << "successfully parsed '" << ssFullPathMonitorName.str() << "'" << CUtil::CLog::endl;
+		m_bIgnoreFile = true;
+		m_StateMgr.set(m_pStateOnLaunch);
+		return;
+	}
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -343,4 +403,137 @@ bool CApp::config(const std::string& file)
 	return true;
 }
 
+/* ------------------------------------------------------------------------------------------
+parse the lotinfo.txt file
+-	STDF fields and test program will only be acknowledged to use if a JOBFILE
+	field exists and has a valid test program path/name value
+------------------------------------------------------------------------------------------ */
+bool CApp::parse(const std::string& name)
+{
+	// open file and transfer content to string
+	std::fstream fs;
+	fs.open(name.c_str(), std::ios::in);
+	std::stringstream ss;
+	ss << fs.rdbuf();
+	std::string s = ss.str();
+	fs.close();
+
+	// return false if it finds an empty file to allow app to try again
+	if (s.empty()) return false;
+
+	// for debugging purpose, let's dump the contents of the file
+	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
+	m_Log << "Content extracted from " << name << "." << CUtil::CLog::endl;
+	m_Log << "It's file size is " << s.length() << " bytes. Contents: " << CUtil::CLog::endl;
+	m_Log << s << CUtil::CLog::endl;
+	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
+ 
+	MIR l_MIR;
+	SDR l_SDR;
+	std::string szJobFile;
+	while(s.size())  
+	{ 
+		// find next '\n' position 
+		size_t pos = s.find_first_of('\n');
+
+		// get current line
+		std::string l = s.substr(0, pos);
+
+		// remove current line from the file string		
+		s = s.substr(pos + 1);
+
+		// get the field/value pair from the line. empty value is ignored. trail/lead spaces removed
+		std::string field, value;
+		if (getFieldValuePair(l, DELIMITER, field, value))
+		{
+			// extract STDF fields
+			if (field.compare("OPERATOR") == 0){ l_MIR.OperNam = value; continue; }
+			if (field.compare("LOTID") == 0){ l_MIR.LotId = value; continue; }
+			if (field.compare("SUBLOTID") == 0){ l_MIR.SblotId = value; continue; }
+			if (field.compare("DEVICE") == 0){ l_MIR.PartTyp = value; continue; }
+			if (field.compare("PRODUCTID") == 0){ l_MIR.FamlyId = value; continue; }
+			if (field.compare("PACKAGE") == 0){ l_MIR.PkgTyp = value; continue; }
+			if (field.compare("FILENAMEREV") == 0){ l_MIR.JobRev = value; continue; }
+			if (field.compare("TESTMODE") == 0){ l_MIR.ModeCod = value; continue; }
+			if (field.compare("COMMANDMODE") == 0){ l_MIR.CmodCod = value; continue; }
+			if (field.compare("ACTIVEFLOWNAME") == 0){ l_MIR.FlowId = value; continue; }
+			if (field.compare("DATECODE") == 0){ l_MIR.DateCod = value; continue; }
+			if (field.compare("CONTACTORTYPE") == 0){ l_SDR.ContTyp = value; continue; }
+			if (field.compare("CONTACTORID") == 0){ l_SDR.ContId = value; continue; }
+			if (field.compare("FABRICATIONID") == 0){ l_MIR.ProcId = value; continue; }
+			if (field.compare("TESTFLOOR") == 0){ l_MIR.FloorId = value; continue; }
+			if (field.compare("TESTFACILITY") == 0){ l_MIR.FacilId = value; continue; }
+			if (field.compare("PROBERHANDLERID") == 0){ l_SDR.HandId = value; continue; }
+			if (field.compare("TEMPERATURE") == 0){ l_MIR.TestTmp = value; continue; }
+			if (field.compare("BOARDID") == 0){ l_SDR.LoadId = value; continue; }
+
+			// if we didn't find anything we looked for including jobfile, let's move to next field
+			if (field.compare(JOBFILE) == 0)
+			{
+				m_Log << field << " field found, test program to load: '" << value << "'. checking if valid..." << CUtil::CLog::endl;
+
+				// does the program/path in value refer to exising file?
+				if (!CUtil::isFileExist(value))
+				{
+					m_Log << "ERROR: '" << value << "' program cannot be accessed." << CUtil::CLog::endl;
+					continue;
+				}
+				else
+				{
+					m_Log << "'" << value << "' exists. let's try to load it." << CUtil::CLog::endl;
+					szJobFile = value;			
+				}
+			}
+		}
+	
+		// if this is the last line then bail
+		if (pos == std::string::npos) break;		
+	}	
+
+	// ok did we find a valid JobFile in the lotinfo.txt?
+	if (szJobFile.empty()) return false;
+	else
+	{
+		m_szProgramFullPathName = szJobFile;
+		m_MIR = l_MIR;
+		m_SDR = l_SDR;
+		return true;
+	}
+} 
+
+
+/* ------------------------------------------------------------------------------------------
+utility: get field/value pair string of a line from lotinfo.txt 
+	 file content loaded into string
+------------------------------------------------------------------------------------------ */
+bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std::string& field, std::string& value)
+{
+	// strip the 'field' and 'value' of this line
+	size_t pos = line.find_first_of(delimiter);
+	field = line.substr(0, pos);
+
+	// is there field/value pair? if not, bail
+	if (pos == std::string::npos)
+	{
+		m_Log << "WARNING: This line: '" << line << "' doesn't contain delimiter '" << delimiter << "'..." << CUtil::CLog::endl;
+		return false;	
+	}
+
+	// is 'value' empty? if yes, move to next line.
+	value = line.substr(pos + 1);
+	if (value.empty())
+	{
+		m_Log << "WARNING: This line: '" << line << "' has empty value '" << CUtil::CLog::endl;
+		return false;
+	}
+
+	// strip leading/trailing space 
+	field = CUtil::removeLeadingTrailingSpace(field);
+	value = CUtil::removeLeadingTrailingSpace(value);
+
+	// captilaze field
+	for (std::string::size_type i = 0; i < field.size(); i++){ field[i] = CUtil::toUpper(field[i]); }
+
+	return true;
+}
 
