@@ -2,75 +2,6 @@
 #include <unistd.h>
 
 /* ------------------------------------------------------------------------------------------
-overriden state::run() function
------------------------------------------------------------------------------------------- */
-/*
-void CAppState::run()
-{
-	// snapshot time now
-	struct timeval now;
-	gettimeofday(&now, NULL);
-
-	for (std::list< CAppTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
-	{			
-		// is this a valid event?
-		CAppTask* pTask = *it;
-		if ( !pTask ) continue;
-
-		// is this state enabled?
-		if (!pTask->m_bEnabled) continue;
-	
-		// first time?
-		if (pTask->m_bFirst)
-		{
-			pTask->m_bFirst = false;
-			pTask->m_prev.tv_sec = now.tv_sec;
-			pTask->m_prev.tv_usec = now.tv_usec;
-		} 
-
-		// calculate actual delta time (in milliseconds) for this event
-		long nTimeMS = (((long)now.tv_sec - (long)pTask->m_prev.tv_sec ) * 1000);
-		nTimeMS += (((long)now.tv_usec - (long)pTask->m_prev.tv_usec) / 1000);		
-
-		// if elapsed time is already greater than this task's time-out, let's execute this event
-		if ( nTimeMS >= pTask->m_nDelayMS )
-		{
-			// calculate number of times this interval happened within this elapsed time
-			long nStep = pTask->m_nDelayMS > 0? nTimeMS / pTask->m_nDelayMS : 1;
-
-			// execute event
-			pTask->run();
-
-			// update this event's timer
-			nTimeMS = pTask->m_nDelayMS * nStep;
-			pTask->m_prev.tv_sec += (nTimeMS / 1000);
-			pTask->m_prev.tv_usec += (nTimeMS % 1000) * 1000;
-		}
-	}
-}
-*/
-
-/* ------------------------------------------------------------------------------------------
-when state object is loaded
------------------------------------------------------------------------------------------- */
-/*
-void CAppState::load()
-{
-	// enable all tasks
-	for (std::list< CAppTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
-	{
-		// is this a valid event?
-		CAppTask* pTask = *it;
-		if ( !pTask ) continue;
-
-		// enable and reset its timer
-		pTask->enable();
-		pTask->m_bFirst = true;				
-	}
-}
-*/
-
-/* ------------------------------------------------------------------------------------------
 constructor
 ------------------------------------------------------------------------------------------ */
 CApp::CApp(int argc, char **argv)
@@ -88,7 +19,7 @@ CApp::CApp(int argc, char **argv)
 
 	// create idle state and and its tasks
 	m_pStateOnIdle = new CState("onIdle");
-	pseq = new CSequence("onConnect");
+	pseq = new CSequence("onConnect", true);
 	pseq->queue(new CAppTask( *this, &CApp::onConnect, 1000, "onConnect"));
 	m_pStateOnIdle->add(pseq); 
 	CTask* ptask = new CAppTask( *this, &CApp::onSelect, 0, "onSelect");
