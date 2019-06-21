@@ -68,6 +68,8 @@ public:
 
 	// event handler for state notification EOT
 	virtual void onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0){}
+	virtual void onLotChange(const EVX_LOT_STATE state, const std::string& szLotId){}
+	virtual void onWaferChange(const EVX_WAFER_STATE state, const std::string& szWaferId){}
 
 	// let our state notification class access tester's members
 	friend class CStateNotification;
@@ -91,5 +93,8 @@ public:
 	{
 		m_Tester.onEndOfTest(array_size, site, serial, sw_bin, hw_bin, pass, dsp_status);
 	}
+	virtual void lotChange(const EVX_LOT_STATE state, const char *lot_id){ m_Tester.onLotChange(state, lot_id); }
+	virtual void waferChange(const EVX_WAFER_STATE state, const char *wafer_id){ m_Tester.onWaferChange(state, wafer_id); }
+
 };
 #endif

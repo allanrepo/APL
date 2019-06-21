@@ -22,7 +22,7 @@ public:
 		virtual~ CFileDescriptor(){}
 		virtual int get(){ return m_fd; }
 		virtual void set(int fd = -1){ m_fd = fd; }
-		virtual void onSelect() = 0;
+		virtual void onSelect(){};
 	};
 
 protected:

@@ -159,8 +159,6 @@ void CApp::onInit(CTask& task)
 
 	m_szProgramFullPathName = "";
 
-	m_bIgnoreFile = false;
-
 	// if config file is not set, assign default
 	if (m_szConfigFullPathName.empty()){ m_szConfigFullPathName = "./config.xml"; }
 
@@ -170,6 +168,10 @@ void CApp::onInit(CTask& task)
 	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
+
+	// get file descriptor of tester state notification and add to our fd manager		
+	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
+ 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -186,6 +188,16 @@ TASK: 	query select(), for input from inotify of incoming file
 ------------------------------------------------------------------------------------------ */
 void CApp::onSelect(CTask& task)
 {
+	// if the inotify fires up with an incoming file, it will sometimes fire up twice
+	// for the same file. we don't want to process same file more than once so as soon
+	// as we get one, we "ignore" the others by setting this flag to true. only then when
+	// this function is executed again that we enable it.	
+	m_bIgnoreFile = false;
+
+	// before calling select(), update file descriptors of evxa objects. this is to ensure the FD manager
+	// don't use a bad file descriptor. when evxa objects are destroyed, their file descriptors are considered bad.
+	m_pStateNotificationFileDesc->set(m_pState? m_pState->getSocketId(): -1);
+
 	// proccess any file descriptor notification on select every second.
 	m_FileDescMgr.select(200);
 }
@@ -217,15 +229,10 @@ void CApp::onReceiveFile(const std::string& name)
 	}
 	else m_Log << "'" << name << "' file received." << CUtil::CLog::endl;
 
-	// are we in launching OICu and loading program state? if yes, bail out.
-	// we still listen to select() for incoming files detected by inotify, but we ignore it.
-	// if we don't listen, the detected files by inotify will "stay in buffer" and we'll end up flushing it
-	// again as soon as we resume listening to select()
-	
-//	if (m_StateMgr.getCurrState().compare("onLaunch") == 0)
+	// is this that double inotify event trigger? if yes, let's ignore this.	
 	if (m_bIgnoreFile)
 	{ 
-		m_Log << "Incoming File '" << name << "' received. but we're in '" << m_StateMgr.getCurrState() << "' and will ignore this." << CUtil::CLog::endl;
+		m_Log << "Detected multiple events from inotify. ignoring this..." << CUtil::CLog::endl;
 		return; 
 	}
 
@@ -237,8 +244,19 @@ void CApp::onReceiveFile(const std::string& name)
 	{
 		m_Log << ssFullPathMonitorName.str() << " file received but didn't find a program to load.";
 		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field. and is valid?" << CUtil::CLog::endl;
+		return;
 	}		
-	else
+
+	// is there a lot being tested? if yes, let's end the lot.
+	if ( m_pProgCtrl->setEndOfLot(EVXA::WAIT, true) != EVXA::OK)
+	{
+		m_Log << "ERROR: something went wrong in ending lot..." << CUtil::CLog::endl;
+		return;
+	}
+	
+
+
+//	else
 	{
 		m_Log << "successfully parsed '" << ssFullPathMonitorName.str() << "'" << CUtil::CLog::endl;
 		m_bIgnoreFile = true;
@@ -535,5 +553,69 @@ bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std:
 	for (std::string::size_type i = 0; i < field.size(); i++){ field[i] = CUtil::toUpper(field[i]); }
 
 	return true;
+}
+
+/* ------------------------------------------------------------------------------------------
+event handler for state notification EOT
+------------------------------------------------------------------------------------------ */
+void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status)
+{
+	m_Log << "EOT" << CUtil::CLog::endl;
+}
+
+/* ------------------------------------------------------------------------------------------
+event handler for state notification EOL
+------------------------------------------------------------------------------------------ */
+void CApp::onLotChange(const EVX_LOT_STATE state, const std::string& szLotId)
+{
+	switch (state) 
+	{
+		case EVX_LOT_END:
+		{
+			m_Log << "Lot End" << CUtil::CLog::endl;
+			break;
+		}
+		case EVX_LOT_START:
+		{
+			m_Log << "Lot Start" << CUtil::CLog::endl;
+			break;
+		}
+		default: break; 
+	}
+}
+
+/* ------------------------------------------------------------------------------------------
+event handler for state notification EOW
+------------------------------------------------------------------------------------------ */
+void CApp::onWaferChange(const EVX_WAFER_STATE state, const std::string& szWaferId)
+{
+	switch (state) 
+	{
+		case EVX_WAFER_END:
+		{
+			m_Log << "Wafer End" << CUtil::CLog::endl;
+			break;
+		}
+		case EVX_WAFER_START:
+		{
+			m_Log << "Wafer Start" << CUtil::CLog::endl;
+			break;
+		}
+		default: break; 
+	}
+}
+
+
+
+/* ------------------------------------------------------------------------------------------
+handle event for state notification. if error occurs, request tester reconnect
+------------------------------------------------------------------------------------------ */
+void CApp::onStateNotificationResponse(int fd)
+{		
+	if (m_pState->respond(fd) != EVXA::OK) 
+	{
+      		const char *errbuf = m_pState->getStatusBuffer();
+		m_Log << "State Notification Response Not OK: " << errbuf << CUtil::CLog::endl;
+	}  		
 }
 

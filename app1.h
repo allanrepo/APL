@@ -29,7 +29,7 @@ class CApp;
 class CAppTask;
 class CAppState;
 class CMonitorFileDesc;
-
+class CAppFileDesc;
 
 class CApp: public CTester
 {
@@ -104,7 +104,8 @@ protected:
 
 	// file descriptor engine
 	CFileDescriptorManager m_FileDescMgr;
-	CMonitorFileDesc* m_pMonitorFileDesc; 
+	CFileDescriptorManager::CFileDescriptor* m_pMonitorFileDesc; 
+	CFileDescriptorManager::CFileDescriptor* m_pStateNotificationFileDesc;
 
 	// state machine
 	CStateManager m_StateMgr;
@@ -140,6 +141,14 @@ protected:
 public:
 	CApp(int argc, char **argv);
 	virtual ~CApp();
+
+	// event handler for state notification
+	virtual void onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0);
+	virtual void onLotChange(const EVX_LOT_STATE state, const std::string& szLotId);
+	virtual void onWaferChange(const EVX_WAFER_STATE state, const std::string& szWaferId);
+
+	// event handler for state notification 
+	void onStateNotificationResponse(int fd);
 };
 
 /* ------------------------------------------------------------------------------------------
@@ -183,5 +192,27 @@ public:
 	virtual	void onFileMoveTo( const std::string& name ){ m_Log << "onFileMoveTo" << CUtil::CLog::endl; if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
 	virtual	void onFileModify( const std::string& name ){ m_Log << "onFileModify" << CUtil::CLog::endl; if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
 };
+
+/* ------------------------------------------------------------------------------------------
+file desc class specifically for CApp to handle state notification and evxio
+------------------------------------------------------------------------------------------ */
+class CAppFileDesc: public CFileDescriptorManager::CFileDescriptor
+{
+protected:
+	CApp& m_App;
+	void (CApp::* m_onSelectPtr)(int);
+
+public:
+	CAppFileDesc(CApp& app, void (CApp::* p)(int) = 0, int fd = -1): m_App(app)
+	{
+		m_onSelectPtr = p;
+		set(fd);
+	}	
+	virtual void onSelect()
+	{ 
+		if (m_onSelectPtr) (m_App.*m_onSelectPtr)(m_fd);	
+	}
+};
+
 
 #endif
