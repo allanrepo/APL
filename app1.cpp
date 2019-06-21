@@ -12,9 +12,9 @@ CApp::CApp(int argc, char **argv)
 	// create init state and its tasks
 	m_pStateOnInit = new CState("onInit");
 	CSequence* pseq = new CSequence("onInit");
-	pseq->queue(new CAppTask(*this, &CApp::onInit, 0, "onInit"));
-	pseq->queue(new CAppTask(*this, &CApp::onUpdateLogFile, 0, "onUpdateLogFile"));
-	pseq->queue(new CAppTask(*this, &CApp::onSwitchToIdleState, 0, "onSwitchToIdleState"));
+	pseq->queue(new CAppTask(*this, &CApp::onInit, 0, "onInit", false));
+	pseq->queue(new CAppTask(*this, &CApp::onUpdateLogFile, 0, "onUpdateLogFile", false));
+	pseq->queue(new CAppTask(*this, &CApp::onSwitchToIdleState, 0, "onSwitchToIdleState", false));
 	m_pStateOnInit->add(pseq);	
 
 	// create idle state and and its tasks
@@ -26,8 +26,10 @@ CApp::CApp(int argc, char **argv)
 
 	// setup launch state and its asks
 	m_pStateOnLaunch = new CState("onLaunch");
-	m_pStateOnLaunch->add(new CAppTask(*this, &CApp::onLaunch, 0, "onLaunch", true)); 
-	m_pStateOnLaunch->add(new CAppTask(*this, &CApp::onSelect, 0, "onSelect", true)); 
+	pseq = new CSequence("onLaunch", false);
+	pseq->queue(new CAppTask(*this, &CApp::onConnect, 0, "onConnect"));
+	pseq->queue(new CAppTask(*this, &CApp::onLaunch, 0, "onLaunch"));
+	m_pStateOnLaunch->add(pseq); 
 
 	// add set the first active state 
 	m_StateMgr.set(m_pStateOnInit);
@@ -210,6 +212,37 @@ void CApp::onLaunch(CTask& task)
 {
 	m_Log << "onLaunch State Task" << CUtil::CLog::endl;
 	sleep(1);
+
+	// if tester is connected
+
+		// if program is loaded
+
+			// if program is still running
+		
+				// sleep and bail. wait next loop to try again
+
+			// end wafer
+
+			// end lot
+
+		// unload program
+
+	
+
+	// if tester is not connected
+
+		// kill all unison threads
+
+		// kill tester
+
+	
+	// is tester ready and are we connected?
+	
+	// if we're not connected can we try to connect at least for one attempt?
+
+	// if we're able to connect can we check if program is loaded?
+
+		// if program is loaded can we check if lot has ended?	
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -245,16 +278,23 @@ void CApp::onReceiveFile(const std::string& name)
 		m_Log << ssFullPathMonitorName.str() << " file received but didn't find a program to load.";
 		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field. and is valid?" << CUtil::CLog::endl;
 		return;
-	}		
+	}
+
+
 
 	// is there a lot being tested? if yes, let's end the lot.
-	if ( m_pProgCtrl->setEndOfLot(EVXA::WAIT, true) != EVXA::OK)
+	if (m_pProgCtrl->setEndOfLot(EVXA::WAIT, true) != EVXA::OK)
 	{
 		m_Log << "ERROR: something went wrong in ending lot..." << CUtil::CLog::endl;
 		return;
 	}
 	
-
+	// is there a lot being tested? if yes, let's end the lot.
+	if (m_pProgCtrl->setEndOfWafer(EVXA::WAIT) != EVXA::OK)
+	{
+		m_Log << "ERROR: something went wrong in ending lot..." << CUtil::CLog::endl;
+		return;
+	}
 
 //	else
 	{

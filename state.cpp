@@ -27,14 +27,14 @@ void CState::run()
 		// if this state is disabled, we skip. 
 		if (!m_bEnabled) continue;
 
-		// is this a valid event?
+		// is this a valid task?
 		CTask* pTask = *it;
 		if ( !pTask ) continue;
 
-		// is this state enabled?
+		// is this task enabled?
 		if (!pTask->m_bEnabled) continue;
 
-		// execute event
+		// execute task
 		pTask->run();
 
 		// disable if we're not looping this task
@@ -184,10 +184,19 @@ void CSequence::run()
 	long nSpentMS = 0;
 	while ( m_currTask != m_Tasks.end() )
 	{
+		// skip disabled tasks and let enabled tasks eat up the delta time
+		if (!(*m_currTask)->m_bEnabled) 
+		{
+			m_currTask++;
+			continue;
+		}
+
 		// is the elapsed time for this loop enough to execut current task based on its delay?
 		if ( nTimeMS >= (*m_currTask)->m_nDelayMS )
 		{
 			(*m_currTask)->run();
+
+			if (!(*m_currTask)->m_bLoop) (*m_currTask)->disable();
 
 			// slice off delay from this task 
 			nTimeMS -= (*m_currTask)->m_nDelayMS;
@@ -197,9 +206,6 @@ void CSequence::run()
 
 			// move to next task
 			m_currTask++;
-
-			// if we're looping, let's move to starting task again if we reach the end
-			if (m_bLoop && m_currTask == m_Tasks.end()) m_currTask = m_Tasks.begin();
 		}
 		// increment our sequence snapshot time with the actual used elapsed time
 		else

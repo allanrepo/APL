@@ -122,7 +122,11 @@ sequence
 -	can contain several task to be executed in sequence
 -	task are executed based on elapsed time, expects tasks to have delay time as attribute
 -	does not need its own delay time. will execute in state instantly
--	can be looped
+-	cannot be looped. it will be dangerous. imagine queueing a single task with no delay?
+	the delta time between state loop will never decrease. the task will keep running repeatedly
+	within sequence loop. 
+-	execution must always end at the last task on queue. delta time between state loop must
+	not carry over next loop, or the app will end up locked in this class' while loop
 ------------------------------------------------------------------------------------------------------*/
 class CSequence: public CTask
 {

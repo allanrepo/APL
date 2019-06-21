@@ -114,6 +114,7 @@ protected:
 	CState* m_pStateOnInit;
 	CState* m_pStateOnIdle;
 	CState* m_pStateOnLaunch;
+	CState* m_pStateCheckIfProgLoaded;
 
 	// tasks/events
 	void onConnect(CTask&);
@@ -121,6 +122,7 @@ protected:
 	void onInit(CTask&);
 	void onUpdateLogFile(CTask&);
 	void onSwitchToIdleState(CTask&){ if (m_pStateOnIdle) m_StateMgr.set(m_pStateOnIdle); }
+	void onSwitchToLaunchState(CTask&){ if (m_pStateOnIdle) m_StateMgr.set(m_pStateOnLaunch); }
 	void onLaunch(CTask&);
 
 	// process the incoming file from the monitored path

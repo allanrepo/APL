@@ -5,15 +5,19 @@ LFLAGS=-m64 -lcrypt -lnsl -lm -lrt -levxa -L/ltx/customer/lib64 -Wl,-rpath /ltx/
 
 INCDIR=-I.  -I/ltx/customer/include -I/ltx/customer/include/evxa
 
-DEMO_PROGS= demo test
+DEMO_PROGS= demo test state
 
 APL_FILES= demo.cpp app.cpp utility.cpp tester.cpp fd.cpp notify.cpp stdf.cpp socket.cpp xml.cpp event.cpp
 
 APL_OBJS = $(APL_FILES:.cpp=.o)
 
-TEST_FILES = test.cpp app1.cpp state.cpp utility.cpp notify.cpp fd.cpp tester.cpp xml.cpp stdf.cpp
+TEST_FILES = test.cpp app1.cpp state.cpp utility.cpp notify.cpp fd.cpp tester.cpp xml.cpp stdf.cpp 
 
 TEST_OBJS = $(TEST_FILES:.cpp=.o)
+
+STATE_FILES = demo1.cpp engine.cpp utility.cpp
+
+STATE_OBJS = $(STATE_FILES:.cpp=.o)
 
 all : $(DEMO_PROGS)
 
@@ -29,5 +33,11 @@ test.o : $(TEST_FILES)
 
 test : $(TEST_OBJS)
 	$(CC) -o test_exec  $(TEST_OBJS) $(LIB_FILES) $(LFLAGS)
+
+state.o : $(STATE_FILES)
+	$(CC) -c $(CFLAGS) $(INCDIR) $(STATE_FILES)
+
+state : $(STATE_OBJS)
+	$(CC) -o state_exec  $(STATE_OBJS) $(LIB_FILES) $(LFLAGS)
 
 
