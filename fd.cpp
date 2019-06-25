@@ -35,6 +35,14 @@ void CFileDescriptorManager::remove( CFileDescriptor& fd )
 }
 
 /* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+void CFileDescriptorManager::clear()
+{
+	m_FDs.clear();
+}
+
+/* ------------------------------------------------------------------------------------------
 execute select with all file descriptors in the list set
 ------------------------------------------------------------------------------------------ */
 void CFileDescriptorManager::select(unsigned long ms)

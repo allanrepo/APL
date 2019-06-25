@@ -105,7 +105,7 @@ protected:
 
 	// file descriptor engine
 	CFileDescriptorManager m_FileDescMgr;
-	CFileDescriptorManager::CFileDescriptor* m_pMonitorFileDesc; 
+	CNotifyFileDescriptor* m_pMonitorFileDesc; 
 	CFileDescriptorManager::CFileDescriptor* m_pStateNotificationFileDesc;
 
 	// state machine
@@ -115,11 +115,13 @@ protected:
 	CState* m_pStateOnInit;
 	CState* m_pStateOnIdle;
 	CState* m_pStateOnEndLot;
+	CState* m_pStateOnKillTester;
 
 	// state functions
 	void onInitLoadState(CState&);
 	void onIdleLoadState(CState&);
 	void onEndLotLoadState(CState&);
+	void onKillTesterLoadState(CState&);
 
 	// tasks/events
 	void init(CTask&);
@@ -127,6 +129,7 @@ protected:
 	void connect(CTask&);
 	void select(CTask&);
 	void endLot(CTask&);
+	void timeOutEndLot(CTask&);
 
 	// functions executed by file descriptor handlers
 	void onReceiveFile(const std::string& name);	
@@ -150,6 +153,8 @@ public:
 	void setState(CState& state){ m_StateMgr.set(&state); }
 
 	// event handler for state notification
+	virtual void onLotChange(const EVX_LOT_STATE state, const std::string& szLotId);
+	virtual void onWaferChange(const EVX_WAFER_STATE state, const std::string& szWaferId);
 
 	// event handler for state notification 
 

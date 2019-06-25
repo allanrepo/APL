@@ -12,6 +12,7 @@ CApp::CApp(int argc, char **argv)
 	m_pStateOnInit = new CAppState(*this, "onInit", &CApp::onInitLoadState);
 	m_pStateOnIdle = new CAppState(*this, "onIdle", &CApp::onIdleLoadState);
 	m_pStateOnEndLot = new CAppState(*this, "onEndLot", &CApp::onEndLotLoadState);
+	m_pStateOnKillTester = new CAppState(*this, "onKillTester", &CApp::onKillTesterLoadState);
 
 /*
 	// create init state and its tasks
@@ -73,6 +74,18 @@ void CApp::onIdleLoadState(CState& state)
 {
 	m_Log << "state: " << state.getName() << CUtil::CLog::endl;
 
+	m_FileDescMgr.clear();
+
+	if (m_pMonitorFileDesc){ delete m_pMonitorFileDesc; m_pMonitorFileDesc = 0; }
+	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
+
+	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
+	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
+
+	m_FileDescMgr.add( *m_pMonitorFileDesc );
+ 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
+//	m_pMonitorFileDesc->start();
+
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
 	state.add(new CAppTask(*this, &CApp::select, "select", 200, true, true));
 }
@@ -81,6 +94,30 @@ void CApp::onIdleLoadState(CState& state)
 STATE (load): onEndLot
 ------------------------------------------------------------------------------------------ */
 void CApp::onEndLotLoadState(CState& state)
+{
+	m_Log << "state: " << state.getName() << CUtil::CLog::endl;
+
+	// we want to add select() task to monitor end wafer/lot event from state notification. 
+	// but we don't want to monitor inotify.
+	m_FileDescMgr.clear();
+	
+	if (m_pMonitorFileDesc){ delete m_pMonitorFileDesc; m_pMonitorFileDesc = 0; }
+	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
+
+	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
+
+ 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
+//	m_pMonitorFileDesc->stop();
+
+	state.add(new CAppTask(*this, &CApp::select, "select", 200, true, true));
+	state.add(new CAppTask(*this, &CApp::timeOutEndLot, "timeOutEndLot", 10000, true, false));
+	state.add(new CAppTask(*this, &CApp::endLot, "endLot", 0, true, false));
+}
+
+/* ------------------------------------------------------------------------------------------
+STATE (load): onKillTester
+------------------------------------------------------------------------------------------ */
+void CApp::onKillTesterLoadState(CState& state)
 {
 	m_Log << "state: " << state.getName() << CUtil::CLog::endl;
 }
@@ -206,11 +243,11 @@ void CApp::init(CTask& task)
 
 	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
-	m_FileDescMgr.add( *m_pMonitorFileDesc );
+//	m_FileDescMgr.add( *m_pMonitorFileDesc );
 
 	// get file descriptor of tester state notification and add to our fd manager		
 	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
- 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
+// 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -240,6 +277,68 @@ void CApp::select(CTask& task)
 	// proccess any file descriptor notification on select every second.
 	m_FileDescMgr.select(200);
 }
+
+/* ------------------------------------------------------------------------------------------
+TASK: 	end lot only if program exists
+------------------------------------------------------------------------------------------ */
+void CApp::endLot(CTask& task)
+{
+
+	// are we connected? if not, let's do a 1 attempt to connect, if tester exists then we 
+	// should be able to connect at this time.
+	if (!isReady())
+	{
+		m_Log << "We're not connected to tester. let's try connecting before killing it..." << CUtil::CLog::endl;
+		CTester::connect(m_szTesterName, 1);
+	}
+	
+	// if we're still not connected to tester at this point, then we can safely assume tester
+	// is not running. we don't need to end lot or unload program at all
+	if (!isReady() || !m_pProgCtrl)
+	{
+		m_Log << "We're still not connected to tester. It is now safe to assume that tester isn't running at all.Le's go kill and launch now..." << CUtil::CLog::endl;		
+		m_StateMgr.set(m_pStateOnKillTester);
+		return;
+	}
+	else
+	{
+		// is program loaded?
+		if (m_pProgCtrl->isProgramLoaded())
+		{
+			m_Log << "Program '" << m_pProgCtrl->getProgramPath() << "' is loaded. Let's end lot first before unloading it." << CUtil::CLog::endl; 
+			// is there a lot being tested? if yes, let's end the lot.
+			if (m_pProgCtrl->setEndOfLot(EVXA::WAIT, true) != EVXA::OK)
+			{
+				m_Log << "ERROR: something went wrong in ending lot..." << CUtil::CLog::endl;
+				return;
+			}
+	
+			// is there a lot being tested? if yes, let's end the lot.
+			if (m_pProgCtrl->setEndOfWafer(EVXA::WAIT) != EVXA::OK)
+			{
+				m_Log << "ERROR: something went wrong in ending lot..." << CUtil::CLog::endl;
+				return;
+			}			
+		}
+		else
+		{
+			m_Log << "There's no program loaded. We can safely kill tester now, before launching." << CUtil::CLog::endl;
+			m_StateMgr.set(m_pStateOnKillTester);
+			return;
+		}
+	}
+}
+
+/* ------------------------------------------------------------------------------------------
+TASK: 	if this is executed, time-out for wait on end-lot/wafer event expired
+------------------------------------------------------------------------------------------ */
+void CApp::timeOutEndLot(CTask& task)
+{
+	m_Log << "task(" << task.getName() << "): Wait for end lot/wafer expired. moving on to kill state." << CUtil::CLog::endl;
+	//m_StateMgr.set(m_pStateOnKillTester);
+	m_StateMgr.set(m_pStateOnIdle);
+}
+
 
 #if 0
 
@@ -660,6 +759,7 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 {
 	m_Log << "EOT" << CUtil::CLog::endl;
 }
+#endif
 
 /* ------------------------------------------------------------------------------------------
 event handler for state notification EOL
@@ -702,4 +802,4 @@ void CApp::onWaferChange(const EVX_WAFER_STATE state, const std::string& szWafer
 		default: break; 
 	}
 }
-#endif
+

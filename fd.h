@@ -38,6 +38,7 @@ public:
 	// manage fd list
 	bool add( CFileDescriptor& fd );
 	void remove( CFileDescriptor& fd );
+	void clear();
 
 	// run select
 	void select(unsigned long ms = 0);
