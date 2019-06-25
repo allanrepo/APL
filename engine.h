@@ -1,7 +1,8 @@
 #ifndef __ENGINE__
 #define __ENGINE__
-
+ 
 #include <utility.h>
+#include <sys/time.h>
 
 class CState;
 class CStateManager;
@@ -16,15 +17,19 @@ class CState
 protected:
 	std::string m_szName;
 	CUtil::CLog m_Log;
+	std::list< CTask* > m_Tasks;
+
 public:
 	CState(const std::string& name = "");
 	virtual~ CState();
 
 	const std::string& getName() const { return m_szName; }
 
-	virtual void run(){}
-	virtual void load(){}
-	virtual void unload(){}
+	virtual void run();
+	virtual void load();
+	virtual void unload();
+
+	void add(CTask* pTask){ m_Tasks.push_back(pTask); }
 };
 
 /* ------------------------------------------------------------------------------------------
@@ -38,7 +43,6 @@ class CStateManager: public CState
 protected:
 	CState* m_pNext;
 	CState* m_pState;
-	bool m_bNext;
 
 public:
 	CStateManager(const std::string& name = "");
@@ -52,12 +56,40 @@ public:
 /* ------------------------------------------------------------------------------------------
 task class
 ------------------------------------------------------------------------------------------ */
-class CTask: public CState
+class CTask
 {
 protected:
+	std::string m_szName;
+	bool m_bEnabled;
+	bool m_bLoop;
+	long m_nDelayMS;
+
+	struct timeval m_prev;
+	bool m_bFirst;
+
+	CUtil::CLog m_Log;
+
 public:
-	CTask(const std::string& name = "");
+	CTask(const std::string& name = "", long nDelayMS = 0, bool bEnable = true, bool bLoop = true);
 	virtual~ CTask();
+
+	virtual void run()
+	{
+		//m_Log << "task: " << m_szName << ": " << m_prev.tv_sec << CUtil::CLog::endl;
+	}
+	virtual void load(){ m_bFirst = true; }
+
+	void loop(bool b){ m_bLoop = b; }
+	bool loop(){ return m_bLoop; }
+
+	void enable(bool b){ m_bEnabled = b; }
+	bool enable(){ return m_bEnabled; }
+
+	long getDelay(){ return m_nDelayMS; }
+
+	const std::string& getName() const { return m_szName; }
+
+	friend class CState;
 };
 
 /* ------------------------------------------------------------------------------------------
@@ -66,9 +98,16 @@ sequence class
 class CSequence: public CTask
 {
 protected:
+	std::list< CTask* > m_Tasks;
+	std::list< CTask* >::iterator m_currTask;
+
 public:
-	CSequence(const std::string& name = "");
+	CSequence(const std::string& name = "", bool bEnable = true, bool bLoop = true);
 	virtual~ CSequence();
+
+	virtual void run();
+
+	void queue(CTask* pTask);
 };
 
 

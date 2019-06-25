@@ -9,6 +9,11 @@ CApp::CApp(int argc, char **argv)
 	// parse command line arguments
 	scan(argc, argv);
 
+	m_pStateOnInit = new CAppState(*this, "onInit", &CApp::onInitLoadState);
+	m_pStateOnIdle = new CAppState(*this, "onIdle", &CApp::onIdleLoadState);
+	m_pStateOnEndLot = new CAppState(*this, "onEndLot", &CApp::onEndLotLoadState);
+
+/*
 	// create init state and its tasks
 	m_pStateOnInit = new CState("onInit");
 	CSequence* pseq = new CSequence("onInit");
@@ -30,6 +35,7 @@ CApp::CApp(int argc, char **argv)
 	pseq->queue(new CAppTask(*this, &CApp::onConnect, 0, "onConnect"));
 	pseq->queue(new CAppTask(*this, &CApp::onLaunch, 0, "onLaunch"));
 	m_pStateOnLaunch->add(pseq); 
+*/
 
 	// add set the first active state 
 	m_StateMgr.set(m_pStateOnInit);
@@ -44,6 +50,39 @@ destructor
 CApp::~CApp()
 {
 
+}
+
+/* ------------------------------------------------------------------------------------------
+STATE (load): onInit
+------------------------------------------------------------------------------------------ */
+void CApp::onInitLoadState(CState& state)
+{
+	m_Log << "state: " << state.getName() << CUtil::CLog::endl;
+
+	CSequence* pSeq = new CSequence("seq0", true, true );
+	pSeq->queue(new CAppTask(*this, &CApp::init, "init", 1000, true, false));
+	pSeq->queue(new CAppTask(*this, &CApp::setLogFile, "setLogFile", 1000, true, false));
+	pSeq->queue(new CSwitchTask(*this, *m_pStateOnIdle, 1000, true));
+	state.add(pSeq);
+}
+
+/* ------------------------------------------------------------------------------------------
+STATE (load): onIdle
+------------------------------------------------------------------------------------------ */
+void CApp::onIdleLoadState(CState& state)
+{
+	m_Log << "state: " << state.getName() << CUtil::CLog::endl;
+
+	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
+	state.add(new CAppTask(*this, &CApp::select, "select", 200, true, true));
+}
+
+/* ------------------------------------------------------------------------------------------
+STATE (load): onEndLot
+------------------------------------------------------------------------------------------ */
+void CApp::onEndLotLoadState(CState& state)
+{
+	m_Log << "state: " << state.getName() << CUtil::CLog::endl;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -113,7 +152,7 @@ const std::string CApp::getUserName() const
 /* ------------------------------------------------------------------------------------------
 TASK: update logger file output
 ------------------------------------------------------------------------------------------ */
-void CApp::onUpdateLogFile(CTask& task)
+void CApp::setLogFile(CTask& task)
 {
 	// if logger to file is disabled, let's quickly reset it and bail
 	if (!m_CONFIG.bLogToFile)
@@ -147,10 +186,8 @@ void CApp::onUpdateLogFile(CTask& task)
 /* ------------------------------------------------------------------------------------------
 TASK: to perform initialization
 ------------------------------------------------------------------------------------------ */
-void CApp::onInit(CTask& task)
+void CApp::init(CTask& task)
 {
-	m_Log << "Executing onInit() task..." << CUtil::CLog::endl;
-
 	// if tester name is not set through command line argument, assign default name
 	if (m_szTesterName.empty())
 	{
@@ -179,16 +216,16 @@ void CApp::onInit(CTask& task)
 /* ------------------------------------------------------------------------------------------
 TASK: 	attempts to connect to tester
 ------------------------------------------------------------------------------------------ */
-void CApp::onConnect(CTask& task)
+void CApp::connect(CTask& task)
 {
 	// are we connected to tester? should we try? attempt once
-	if (!isReady()) connect(m_szTesterName, 1);
+	if (!isReady()) CTester::connect(m_szTesterName, 1);
 }
 
 /* ------------------------------------------------------------------------------------------
 TASK: 	query select(), for input from inotify of incoming file
 ------------------------------------------------------------------------------------------ */
-void CApp::onSelect(CTask& task)
+void CApp::select(CTask& task)
 {
 	// if the inotify fires up with an incoming file, it will sometimes fire up twice
 	// for the same file. we don't want to process same file more than once so as soon
@@ -203,6 +240,8 @@ void CApp::onSelect(CTask& task)
 	// proccess any file descriptor notification on select every second.
 	m_FileDescMgr.select(200);
 }
+
+#if 0
 
 /* ------------------------------------------------------------------------------------------
 TASK: 	end lof if any, unload program if any, kill tester if any,
@@ -244,6 +283,7 @@ void CApp::onLaunch(CTask& task)
 
 		// if program is loaded can we check if lot has ended?	
 }
+#endif
 
 /* ------------------------------------------------------------------------------------------
 Utility: check the file if this is lotinfo.txt; parse if yes
@@ -280,8 +320,13 @@ void CApp::onReceiveFile(const std::string& name)
 		return;
 	}
 
+	m_Log << "successfully parsed '" << ssFullPathMonitorName.str() << "'" << CUtil::CLog::endl;
+	m_bIgnoreFile = true;
+	m_StateMgr.set(m_pStateOnEndLot);
+	return;
 
-
+	// succeeding codes to be move to end_lot state
+#if 0
 	// is there a lot being tested? if yes, let's end the lot.
 	if (m_pProgCtrl->setEndOfLot(EVXA::WAIT, true) != EVXA::OK)
 	{
@@ -303,6 +348,19 @@ void CApp::onReceiveFile(const std::string& name)
 		m_StateMgr.set(m_pStateOnLaunch);
 		return;
 	}
+#endif
+}
+
+/* ------------------------------------------------------------------------------------------
+handle event for state notification. if error occurs, request tester reconnect
+------------------------------------------------------------------------------------------ */
+void CApp::onStateNotificationResponse(int fd)
+{		
+	if (m_pState->respond(fd) != EVXA::OK) 
+	{
+      		const char *errbuf = m_pState->getStatusBuffer();
+		m_Log << "State Notification Response Not OK: " << errbuf << CUtil::CLog::endl;
+	}  		
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -594,7 +652,7 @@ bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std:
 
 	return true;
 }
-
+#if 0
 /* ------------------------------------------------------------------------------------------
 event handler for state notification EOT
 ------------------------------------------------------------------------------------------ */
@@ -644,18 +702,4 @@ void CApp::onWaferChange(const EVX_WAFER_STATE state, const std::string& szWafer
 		default: break; 
 	}
 }
-
-
-
-/* ------------------------------------------------------------------------------------------
-handle event for state notification. if error occurs, request tester reconnect
------------------------------------------------------------------------------------------- */
-void CApp::onStateNotificationResponse(int fd)
-{		
-	if (m_pState->respond(fd) != EVXA::OK) 
-	{
-      		const char *errbuf = m_pState->getStatusBuffer();
-		m_Log << "State Notification Response Not OK: " << errbuf << CUtil::CLog::endl;
-	}  		
-}
-
+#endif

@@ -2,7 +2,7 @@
 #define __APP1__
 
 #include <utility.h>
-#include <state.h>
+#include <engine.h>
 #include <fd.h>
 #include <notify.h>
 #include <pwd.h>
@@ -90,6 +90,7 @@ protected:
 	// resources
 	CUtil::CLog m_Log;
 
+	// flag to ensure we process only 1 trigger of inotify FD
 	bool m_bIgnoreFile;
 
 	// parameters
@@ -110,23 +111,26 @@ protected:
 	// state machine
 	CStateManager m_StateMgr;
 
-	// states
+	// state objects
 	CState* m_pStateOnInit;
 	CState* m_pStateOnIdle;
-	CState* m_pStateOnLaunch;
-	CState* m_pStateCheckIfProgLoaded;
+	CState* m_pStateOnEndLot;
+
+	// state functions
+	void onInitLoadState(CState&);
+	void onIdleLoadState(CState&);
+	void onEndLotLoadState(CState&);
 
 	// tasks/events
-	void onConnect(CTask&);
-	void onSelect(CTask&);
-	void onInit(CTask&);
-	void onUpdateLogFile(CTask&);
-	void onSwitchToIdleState(CTask&){ if (m_pStateOnIdle) m_StateMgr.set(m_pStateOnIdle); }
-	void onSwitchToLaunchState(CTask&){ if (m_pStateOnIdle) m_StateMgr.set(m_pStateOnLaunch); }
-	void onLaunch(CTask&);
+	void init(CTask&);
+	void setLogFile(CTask&);
+	void connect(CTask&);
+	void select(CTask&);
+	void endLot(CTask&);
 
-	// process the incoming file from the monitored path
+	// functions executed by file descriptor handlers
 	void onReceiveFile(const std::string& name);	
+	void onStateNotificationResponse(int fd);
 
 	// parse XML config file
 	bool config(const std::string& config);
@@ -134,7 +138,6 @@ protected:
 	// utility functions. purpose are obvious in their function name and arguments
 	bool scan(int argc, char **argv);
 	const std::string getUserName() const;
-	void setupLogFile();
 
 	// functions to parse lotinfo.txt file 
 	bool parse(const std::string& name);
@@ -144,13 +147,32 @@ public:
 	CApp(int argc, char **argv);
 	virtual ~CApp();
 
+	void setState(CState& state){ m_StateMgr.set(&state); }
+
 	// event handler for state notification
-	virtual void onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0);
-	virtual void onLotChange(const EVX_LOT_STATE state, const std::string& szLotId);
-	virtual void onWaferChange(const EVX_WAFER_STATE state, const std::string& szWaferId);
 
 	// event handler for state notification 
-	void onStateNotificationResponse(int fd);
+
+};
+
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+class CAppState: public CState
+{
+protected:
+	CApp& m_App;
+	void (CApp::* m_pLoad)(CState&);
+	
+public:
+	CAppState(CApp& app, const std::string& name = "",  void (CApp::* load)(CState&) = 0)
+	:CState(name), m_App(app)
+	{
+		m_pLoad = load;
+	}
+	virtual ~CAppState(){}
+
+	virtual void load(){ if (m_pLoad) (m_App.*m_pLoad)(*this); }
 };
 
 /* ------------------------------------------------------------------------------------------
@@ -163,19 +185,28 @@ protected:
 	void (CApp::* m_pRun)(CTask&);
 
 public:
-	CAppTask(CApp& app, void (CApp::* p)(CTask&) = 0, long nDelayMS = 0, const std::string& name = "", bool bLoop = false):
-	CTask(name, nDelayMS, bLoop), m_App(app)
+	CAppTask(CApp& app, void (CApp::* p)(CTask&) = 0, const std::string& name = "", long nDelayMS = 0, bool bEnable = true, bool bLoop = true)
+	:CTask(name, nDelayMS, bEnable, bLoop), m_App(app)
 	{
 		m_pRun = p;		
 	}
 	
-	virtual void run()
-	{
-		if (m_pRun) (m_App.*m_pRun)(*this);
-	}
-
-
+	virtual void run(){ if (m_pRun) (m_App.*m_pRun)(*this); }
 };
+
+class CSwitchTask: public CTask
+{
+protected:
+	CApp& m_App;
+	CState& m_state;
+public:
+	CSwitchTask(CApp& app, CState& state, long nDelayMS = 0, bool bEnable = true)
+	:CTask(state.getName(), nDelayMS, bEnable, false), m_App(app), m_state(state){}
+
+	virtual void run(){ m_App.setState(m_state); }
+	
+};
+
 
 /* ------------------------------------------------------------------------------------------
 inherit notify file descriptor class and customize event handlers

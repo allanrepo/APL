@@ -22,8 +22,6 @@ class CTask
 protected:
 	std::string m_szName;
 
-//	struct timeval m_prev;
-//	bool m_bFirst;
 	long m_nDelayMS;
 	bool m_bEnabled;
 	bool m_bLoop;
@@ -31,12 +29,11 @@ protected:
 	CUtil::CLog m_Log;
 	
 public:
-	CTask(const std::string& name = "", long nDelayMS = 0, bool bLoop = false)
+	CTask(const std::string& name = "", long nDelayMS = 0, bool bEnabled = true, bool bLoop = false)
 	{
 		m_nDelayMS = nDelayMS;
 		m_szName = name;
-		m_bEnabled = true;
-//		m_bFirst = true;
+		m_bEnabled = bEnabled;
 		m_bLoop = bLoop;		
 	}
 	
@@ -96,7 +93,6 @@ public:
 protected:
 	CState* m_pNext;
 	CState* m_pState;
-	bool m_bNext;
 
 public:
 	// constructors
