@@ -105,7 +105,7 @@ protected:
 
 	// file descriptor engine
 	CFileDescriptorManager m_FileDescMgr;
-	CNotifyFileDescriptor* m_pMonitorFileDesc; 
+	CFileDescriptorManager::CFileDescriptor* m_pMonitorFileDesc; 
 	CFileDescriptorManager::CFileDescriptor* m_pStateNotificationFileDesc;
 
 	// state machine
@@ -115,13 +115,20 @@ protected:
 	CState* m_pStateOnInit;
 	CState* m_pStateOnIdle;
 	CState* m_pStateOnEndLot;
+	CState* m_pStateOnUnloadProg;
 	CState* m_pStateOnKillTester;
 
-	// state functions
+	// state functions (load)
 	void onInitLoadState(CState&);
 	void onIdleLoadState(CState&);
 	void onEndLotLoadState(CState&);
 	void onKillTesterLoadState(CState&);
+	void onUnloadProgLoadState(CState&);
+
+	// state functions (unload)
+	void onIdleUnloadState(CState&);
+	void onEndLotUnloadState(CState&);
+	void onUnloadProgUnloadState(CState&);
 
 	// tasks/events
 	void init(CTask&);
@@ -130,6 +137,7 @@ protected:
 	void select(CTask&);
 	void endLot(CTask&);
 	void timeOutEndLot(CTask&);
+	void killTester(CTask&);
 
 	// functions executed by file descriptor handlers
 	void onReceiveFile(const std::string& name);	
@@ -168,16 +176,28 @@ class CAppState: public CState
 protected:
 	CApp& m_App;
 	void (CApp::* m_pLoad)(CState&);
+	void (CApp::* m_pUnload)(CState&);
 	
 public:
-	CAppState(CApp& app, const std::string& name = "",  void (CApp::* load)(CState&) = 0)
+	CAppState(CApp& app, const std::string& name = "", void (CApp::* load)(CState&) = 0, void (CApp::* unload)(CState&) = 0)
 	:CState(name), m_App(app)
 	{
 		m_pLoad = load;
+		m_pUnload = unload;
 	}
 	virtual ~CAppState(){}
 
-	virtual void load(){ if (m_pLoad) (m_App.*m_pLoad)(*this); }
+	virtual void load()
+	{ 
+		m_Log << "loading state: " << getName() << CUtil::CLog::endl;
+		if (m_pLoad) (m_App.*m_pLoad)(*this); 
+	}
+	virtual void unload()
+	{
+		m_Log << "unloading state: " << getName() << CUtil::CLog::endl; 
+		if (m_pUnload) (m_App.*m_pUnload)(*this); 
+		CState::unload(); 
+	}
 };
 
 /* ------------------------------------------------------------------------------------------

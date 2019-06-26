@@ -6,12 +6,18 @@ constructor
 ------------------------------------------------------------------------------------------ */
 CApp::CApp(int argc, char **argv)
 {
+	// initialize some of the members here to be safe
+	m_pMonitorFileDesc = 0;
+	m_pStateNotificationFileDesc = 0;
+	m_szProgramFullPathName = "";
+
 	// parse command line arguments
 	scan(argc, argv);
 
 	m_pStateOnInit = new CAppState(*this, "onInit", &CApp::onInitLoadState);
-	m_pStateOnIdle = new CAppState(*this, "onIdle", &CApp::onIdleLoadState);
-	m_pStateOnEndLot = new CAppState(*this, "onEndLot", &CApp::onEndLotLoadState);
+	m_pStateOnIdle = new CAppState(*this, "onIdle", &CApp::onIdleLoadState, &CApp::onIdleUnloadState);
+	m_pStateOnEndLot = new CAppState(*this, "onEndLot", &CApp::onEndLotLoadState, &CApp::onEndLotUnloadState);
+	m_pStateOnUnloadProg = new CAppState(*this, "onUnloadProg", &CApp::onUnloadProgLoadState, &CApp::onUnloadProgUnloadState);
 	m_pStateOnKillTester = new CAppState(*this, "onKillTester", &CApp::onKillTesterLoadState);
 
 /*
@@ -58,8 +64,6 @@ STATE (load): onInit
 ------------------------------------------------------------------------------------------ */
 void CApp::onInitLoadState(CState& state)
 {
-	m_Log << "state: " << state.getName() << CUtil::CLog::endl;
-
 	CSequence* pSeq = new CSequence("seq0", true, true );
 	pSeq->queue(new CAppTask(*this, &CApp::init, "init", 1000, true, false));
 	pSeq->queue(new CAppTask(*this, &CApp::setLogFile, "setLogFile", 1000, true, false));
@@ -72,22 +76,29 @@ STATE (load): onIdle
 ------------------------------------------------------------------------------------------ */
 void CApp::onIdleLoadState(CState& state)
 {
-	m_Log << "state: " << state.getName() << CUtil::CLog::endl;
-
-	m_FileDescMgr.clear();
-
-	if (m_pMonitorFileDesc){ delete m_pMonitorFileDesc; m_pMonitorFileDesc = 0; }
-	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
-
+	// create the fd objects for both inotify and state notification. we need them both for this state
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
 	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
 
+	// add them to FD manager so we'll use them in select() task
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
-//	m_pMonitorFileDesc->start();
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
 	state.add(new CAppTask(*this, &CApp::select, "select", 200, true, true));
+}
+
+/* ------------------------------------------------------------------------------------------
+STATE (unload): onIdle
+------------------------------------------------------------------------------------------ */
+void CApp::onIdleUnloadState(CState& state)
+{
+	// remove the FD objects (pointers)
+	m_FileDescMgr.clear();
+
+	// now delete FD objects 
+	if (m_pMonitorFileDesc){ delete m_pMonitorFileDesc; m_pMonitorFileDesc = 0; }
+	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -95,19 +106,9 @@ STATE (load): onEndLot
 ------------------------------------------------------------------------------------------ */
 void CApp::onEndLotLoadState(CState& state)
 {
-	m_Log << "state: " << state.getName() << CUtil::CLog::endl;
-
-	// we want to add select() task to monitor end wafer/lot event from state notification. 
-	// but we don't want to monitor inotify.
-	m_FileDescMgr.clear();
-	
-	if (m_pMonitorFileDesc){ delete m_pMonitorFileDesc; m_pMonitorFileDesc = 0; }
-	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
-
+	// create fd object only for state notification and add to FD manager
 	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
-
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
-//	m_pMonitorFileDesc->stop();
 
 	state.add(new CAppTask(*this, &CApp::select, "select", 200, true, true));
 	state.add(new CAppTask(*this, &CApp::timeOutEndLot, "timeOutEndLot", 10000, true, false));
@@ -115,11 +116,45 @@ void CApp::onEndLotLoadState(CState& state)
 }
 
 /* ------------------------------------------------------------------------------------------
+STATE (unload): onEndLot
+------------------------------------------------------------------------------------------ */
+void CApp::onEndLotUnloadState(CState& state)
+{
+	// clear FD manager and delete the fd object we used for this state
+	m_FileDescMgr.clear();
+	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
+}
+
+/* ------------------------------------------------------------------------------------------
+STATE (load): onUnloadProg
+------------------------------------------------------------------------------------------ */
+void CApp::onUnloadProgLoadState(CState& state)
+{
+	// create fd object only for state notification and add to FD manager
+	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
+ 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
+
+	state.add(new CAppTask(*this, &CApp::select, "select", 200, true, true));
+}
+
+/* ------------------------------------------------------------------------------------------
+STATE (unload): onUnloadProg
+------------------------------------------------------------------------------------------ */
+void CApp::onUnloadProgUnloadState(CState& state)
+{
+	// clear FD manager and delete the fd object we used for this state
+	m_FileDescMgr.clear();
+	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
+}
+
+
+
+/* ------------------------------------------------------------------------------------------
 STATE (load): onKillTester
 ------------------------------------------------------------------------------------------ */
 void CApp::onKillTesterLoadState(CState& state)
 {
-	m_Log << "state: " << state.getName() << CUtil::CLog::endl;
+	
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -233,21 +268,11 @@ void CApp::init(CTask& task)
 		m_szTesterName = ss.str();
 	}
 
-	m_szProgramFullPathName = "";
-
 	// if config file is not set, assign default
 	if (m_szConfigFullPathName.empty()){ m_szConfigFullPathName = "./config.xml"; }
 
 	// parse config file
 	config( m_szConfigFullPathName );
-
-	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
-	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
-//	m_FileDescMgr.add( *m_pMonitorFileDesc );
-
-	// get file descriptor of tester state notification and add to our fd manager		
-	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
-// 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -272,7 +297,7 @@ void CApp::select(CTask& task)
 
 	// before calling select(), update file descriptors of evxa objects. this is to ensure the FD manager
 	// don't use a bad file descriptor. when evxa objects are destroyed, their file descriptors are considered bad.
-	m_pStateNotificationFileDesc->set(m_pState? m_pState->getSocketId(): -1);
+	if (m_pStateNotificationFileDesc) m_pStateNotificationFileDesc->set(m_pState? m_pState->getSocketId(): -1);
 
 	// proccess any file descriptor notification on select every second.
 	m_FileDescMgr.select(200);
@@ -283,7 +308,6 @@ TASK: 	end lot only if program exists
 ------------------------------------------------------------------------------------------ */
 void CApp::endLot(CTask& task)
 {
-
 	// are we connected? if not, let's do a 1 attempt to connect, if tester exists then we 
 	// should be able to connect at this time.
 	if (!isReady())
@@ -297,7 +321,7 @@ void CApp::endLot(CTask& task)
 	if (!isReady() || !m_pProgCtrl)
 	{
 		m_Log << "We're still not connected to tester. It is now safe to assume that tester isn't running at all.Le's go kill and launch now..." << CUtil::CLog::endl;		
-		m_StateMgr.set(m_pStateOnKillTester);
+		m_StateMgr.set(m_pStateOnUnloadProg);
 		return;
 	}
 	else
@@ -323,7 +347,7 @@ void CApp::endLot(CTask& task)
 		else
 		{
 			m_Log << "There's no program loaded. We can safely kill tester now, before launching." << CUtil::CLog::endl;
-			m_StateMgr.set(m_pStateOnKillTester);
+			m_StateMgr.set(m_pStateOnUnloadProg);
 			return;
 		}
 	}
@@ -335,8 +359,7 @@ TASK: 	if this is executed, time-out for wait on end-lot/wafer event expired
 void CApp::timeOutEndLot(CTask& task)
 {
 	m_Log << "task(" << task.getName() << "): Wait for end lot/wafer expired. moving on to kill state." << CUtil::CLog::endl;
-	//m_StateMgr.set(m_pStateOnKillTester);
-	m_StateMgr.set(m_pStateOnIdle);
+	m_StateMgr.set(m_pStateOnUnloadProg);
 }
 
 
@@ -423,31 +446,6 @@ void CApp::onReceiveFile(const std::string& name)
 	m_bIgnoreFile = true;
 	m_StateMgr.set(m_pStateOnEndLot);
 	return;
-
-	// succeeding codes to be move to end_lot state
-#if 0
-	// is there a lot being tested? if yes, let's end the lot.
-	if (m_pProgCtrl->setEndOfLot(EVXA::WAIT, true) != EVXA::OK)
-	{
-		m_Log << "ERROR: something went wrong in ending lot..." << CUtil::CLog::endl;
-		return;
-	}
-	
-	// is there a lot being tested? if yes, let's end the lot.
-	if (m_pProgCtrl->setEndOfWafer(EVXA::WAIT) != EVXA::OK)
-	{
-		m_Log << "ERROR: something went wrong in ending lot..." << CUtil::CLog::endl;
-		return;
-	}
-
-//	else
-	{
-		m_Log << "successfully parsed '" << ssFullPathMonitorName.str() << "'" << CUtil::CLog::endl;
-		m_bIgnoreFile = true;
-		m_StateMgr.set(m_pStateOnLaunch);
-		return;
-	}
-#endif
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -771,11 +769,13 @@ void CApp::onLotChange(const EVX_LOT_STATE state, const std::string& szLotId)
 		case EVX_LOT_END:
 		{
 			m_Log << "Lot End" << CUtil::CLog::endl;
+			if (m_StateMgr.get() == m_pStateOnEndLot) m_StateMgr.set(m_pStateOnUnloadProg);
 			break;
 		}
 		case EVX_LOT_START:
 		{
 			m_Log << "Lot Start" << CUtil::CLog::endl;
+			if (m_StateMgr.get() == m_pStateOnEndLot) m_StateMgr.set(m_pStateOnUnloadProg);
 			break;
 		}
 		default: break; 
@@ -792,11 +792,13 @@ void CApp::onWaferChange(const EVX_WAFER_STATE state, const std::string& szWafer
 		case EVX_WAFER_END:
 		{
 			m_Log << "Wafer End" << CUtil::CLog::endl;
+			if (m_StateMgr.get() == m_pStateOnEndLot) m_StateMgr.set(m_pStateOnUnloadProg);
 			break;
 		}
 		case EVX_WAFER_START:
 		{
 			m_Log << "Wafer Start" << CUtil::CLog::endl;
+			if (m_StateMgr.get() == m_pStateOnEndLot) m_StateMgr.set(m_pStateOnUnloadProg);
 			break;
 		}
 		default: break; 

@@ -51,6 +51,7 @@ public:
 	virtual void run();
 
 	void set(CState* pstate);
+	const CState* get()const { return m_pState; }
 };
 
 /* ------------------------------------------------------------------------------------------
@@ -73,10 +74,7 @@ public:
 	CTask(const std::string& name = "", long nDelayMS = 0, bool bEnable = true, bool bLoop = true);
 	virtual~ CTask();
 
-	virtual void run()
-	{
-		//m_Log << "task: " << m_szName << ": " << m_prev.tv_sec << CUtil::CLog::endl;
-	}
+	virtual void run(){}
 	virtual void load(){ m_bFirst = true; }
 
 	void loop(bool b){ m_bLoop = b; }
