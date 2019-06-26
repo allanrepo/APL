@@ -13,6 +13,9 @@
 // linux specific include for access()
 #include <unistd.h>
 
+// linux specific include for dir
+#include <dirent.h>
+
 
 namespace CUtil
 {
@@ -87,6 +90,7 @@ namespace CUtil
 	const std::string removeLeadingTrailingSpace(const std::string& str);
 	bool isFileExist(const std::string& szFile);
 	const std::string toUpper(const std::string& str);
+	int getFirstPIDByName( const std::string& name );
 
 };
 

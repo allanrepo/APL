@@ -77,6 +77,28 @@ void CState::unload()
 	}
 }
 
+
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+CTask* CState::get(const std::string& name)
+{
+	for (std::list< CTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
+	{			
+		// is this a valid task?
+		CTask* pTask = *it;
+		if ( !pTask ) continue;
+
+		if (pTask->getName().compare(name) == 0)
+		{
+			return pTask;
+		}		
+	}	
+
+	return 0;
+}
+
+
 /* ------------------------------------------------------------------------------------------
 constructor
 ------------------------------------------------------------------------------------------ */
@@ -191,7 +213,14 @@ void CSequence::run()
 	m_prev.tv_usec += (nSpentMS % 1000) * 1000;
 
 	// if we're to loop and we already are at the end of the task list, let's loop back to beginning of list
-	if (m_currTask == m_Tasks.end() && loop()){ m_currTask = m_Tasks.begin(); }
+	if (m_currTask == m_Tasks.end() && loop())
+	{ 
+		m_currTask = m_Tasks.begin(); 
+
+		// if we reach end of sequence, we throw any remaining elapsed time. 
+		m_prev.tv_sec = now.tv_sec;
+		m_prev.tv_usec = now.tv_usec;
+	}
 	
 }
 

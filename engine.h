@@ -30,6 +30,8 @@ public:
 	virtual void unload();
 
 	void add(CTask* pTask){ m_Tasks.push_back(pTask); }
+
+	CTask* get(const std::string& name);
 };
 
 /* ------------------------------------------------------------------------------------------

@@ -19,6 +19,7 @@ CApp::CApp(int argc, char **argv)
 	m_pStateOnEndLot = new CAppState(*this, "onEndLot", &CApp::onEndLotLoadState, &CApp::onEndLotUnloadState);
 	m_pStateOnUnloadProg = new CAppState(*this, "onUnloadProg", &CApp::onUnloadProgLoadState, &CApp::onUnloadProgUnloadState);
 	m_pStateOnKillTester = new CAppState(*this, "onKillTester", &CApp::onKillTesterLoadState);
+	m_pStateOnLaunch = new CAppState(*this, "onLaunch", &CApp::onLaunchLoadState, &CApp::onLaunchUnloadState);
 
 /*
 	// create init state and its tasks
@@ -85,7 +86,7 @@ void CApp::onIdleLoadState(CState& state)
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
-	state.add(new CAppTask(*this, &CApp::select, "select", 200, true, true));
+	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -110,7 +111,7 @@ void CApp::onEndLotLoadState(CState& state)
 	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 
-	state.add(new CAppTask(*this, &CApp::select, "select", 200, true, true));
+	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
 	state.add(new CAppTask(*this, &CApp::timeOutEndLot, "timeOutEndLot", 10000, true, false));
 	state.add(new CAppTask(*this, &CApp::endLot, "endLot", 0, true, false));
 }
@@ -134,7 +135,9 @@ void CApp::onUnloadProgLoadState(CState& state)
 	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 
-	state.add(new CAppTask(*this, &CApp::select, "select", 200, true, true));
+	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
+	state.add(new CAppTask(*this, &CApp::timeOutUnloadProg, "timeOutUnloadProg", 10000, true, false));
+	state.add(new CAppTask(*this, &CApp::unloadProg, "unloadProg", 0, true, false));
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -147,79 +150,144 @@ void CApp::onUnloadProgUnloadState(CState& state)
 	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
 }
 
-
-
 /* ------------------------------------------------------------------------------------------
 STATE (load): onKillTester
 ------------------------------------------------------------------------------------------ */
 void CApp::onKillTesterLoadState(CState& state)
 {
-	
+	CSequence* pSeq = new CSequence("seqKillTester", true, true );
+	pSeq->queue(new CAppTask(*this, &CApp::killTester, "killTester", 0, true, false));
+	pSeq->queue(new CAppTask(*this, &CApp::isTesterDead, "isTesterDead", 1000, true, true));
+	state.add(pSeq);
+
+	state.add(new CSwitchTask(*this, *m_pStateOnLaunch, 10000, false));
 }
 
 /* ------------------------------------------------------------------------------------------
-utility: parse command line arguments
+STATE (load): onLaunch
 ------------------------------------------------------------------------------------------ */
-bool CApp::scan(int argc, char **argv)
+void CApp::onLaunchLoadState(CState& state)
 {
-	// move all args into list
-	std::list< std::string > args;
-	for (int i = 1; i < argc; i++) args.push_back( argv[i] );
+	// reset launch counter
+	m_nLaunchAttempt = 0;
 
-	// loop through all args
-	for (std::list< std::string >::iterator it = args.begin(); it != args.end(); it++)
-	{
-		// look for -tester arg. if partial match is at first char, we found it
-		std::string s("-tester");
-		if (s.find(*it) == 0)
-		{
-			// expect the next arg (and it must exist) to be tester name
-			it++;
-			if (it == args.end())
-			{
-				m_Log << "ERROR: " << s << " argument found but option is missing." << CUtil::CLog::endl;
-				return false;
-			}
-			else
-			{
-				m_szTesterName = *it;
-				continue;
-			}
-		}	
-		// look for -config arg. if partial match is at first char, we found it
-		s = "-config";
-		if (s.find(*it) == 0)
-		{
-			// expect the next arg (and it must exist) to be path/name of the config file
-			it++;
-			if (it == args.end())
-			{
-				m_Log << "ERROR: " << s << " argument found but option is missing." << CUtil::CLog::endl;
-				return false;
-			}
-			else
-			{
-				m_szConfigFullPathName = *it;
-				continue;
-			}	
-		}
-	}	
-	return true;
+	// create fd object only for state notification and add to FD manager
+	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
+ 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
+
+	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
+	state.add(new CAppTask(*this, &CApp::timeOutLaunch, "timeOutLaunch", 10000, true, false));
+	state.add(new CAppTask(*this, &CApp::launch, "launch", 0, true, false));
 }
 
 /* ------------------------------------------------------------------------------------------
-utility: get user name
+STATE (unload): onLaunch
 ------------------------------------------------------------------------------------------ */
-const std::string CApp::getUserName() const
-{ 
-	uid_t uid = getuid();
-	char buf_passw[1024];     
-	struct passwd password;
-	struct passwd *passwd_info;
+void CApp::onLaunchUnloadState(CState& state)
+{
+	// reset launch counter
+	m_nLaunchAttempt = 0;
 
-	getpwuid_r(uid, &password, buf_passw, 1024, &passwd_info);
-	return std::string(passwd_info->pw_name);
-} 
+	// clear FD manager and delete the fd object we used for this state
+	m_FileDescMgr.clear();
+	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
+}
+
+/* ------------------------------------------------------------------------------------------
+TASK: unload program
+------------------------------------------------------------------------------------------ */
+void CApp::unloadProg(CTask& task)
+{
+	// not really part of this state's flow but for safety reasons, we do sanity check
+	if (!isReady())
+	{
+		m_Log << "Not connected to tester..." << CUtil::CLog::endl;
+		m_StateMgr.set(m_pStateOnKillTester);
+		return;
+	}
+
+	// if program is not loaded, switch to kill state now
+	if (!m_pProgCtrl->isProgramLoaded())
+	{
+		m_Log << "No program loaded. nothing to unload." << CUtil::CLog::endl;
+		m_StateMgr.set(m_pStateOnKillTester);
+		return;
+	}
+
+	// get program name to unload for logging later
+	m_Log << "Program '" << m_pProgCtrl->getProgramPath() << "' is loaded. Let's unload it." << CUtil::CLog::endl; 
+
+	// unload program with evxa command
+	if (m_pProgCtrl->unload( EVXA::NO_WAIT, 0, true ) != EVXA::OK)
+	{
+		m_Log << "Error occured unloading test program." << CUtil::CLog::endl;
+		m_StateMgr.set(m_pStateOnKillTester);
+	}
+}
+
+/* ------------------------------------------------------------------------------------------
+TASK: 	if this is executed, time-out for wait on program unload expired
+------------------------------------------------------------------------------------------ */
+void CApp::timeOutUnloadProg(CTask& task)
+{
+	m_Log << "task(" << task.getName() << "): Wait for program unload expired. moving on to kill state." << CUtil::CLog::endl;
+	m_StateMgr.set(m_pStateOnKillTester);
+}
+
+
+/* ------------------------------------------------------------------------------------------
+TASK: disconnect, kill unison execs - oicu, optool, dataviewer, bintool, etc...
+------------------------------------------------------------------------------------------ */
+void CApp::killTester(CTask& task)
+{
+	// in case we're connected from previous OICu load, let's make sure we're disconnected now.
+	disconnect();
+
+	// kill the following apps that has these names
+	std::string apps[] = { "oicu", "optool", "dataviewer", "binTool", "testTool", "flowtool", "errorTool" };
+	for (unsigned i = 0; i < sizeof(apps)/sizeof(*apps); i++)
+	{
+		
+		std::stringstream ssCmd;
+		ssCmd << "./" << KILLAPPCMD << " " << apps[i];
+		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+	}
+/*
+	// kill tester
+	std::stringstream ssCmd;
+	ssCmd << "./" << KILLTESTERCMD << " " << m_szTesterName;
+	m_Log << "END TESTER: " << ssCmd.str() << CUtil::CLog::endl;		
+	system(ssCmd.str().c_str());
+*/
+
+	// after killing unison threads, let's enable the task in current state that time-out wait for unison execs getting killed
+	if ( m_StateMgr.get() == m_pStateOnKillTester)
+	{
+		CTask* pTask = m_pStateOnKillTester->get("onLaunch");
+		if (pTask) pTask->enable(true);
+	}
+}
+
+/* ------------------------------------------------------------------------------------------
+TASK: check if tester is still running or not
+------------------------------------------------------------------------------------------ */
+void CApp::isTesterDead(CTask& task)
+{
+	if ( CUtil::getFirstPIDByName("optool") != -1)
+	{
+		m_Log << "WARNING: it seems like optool (" << CUtil::getFirstPIDByName("optool") << ") is still running after attempt to kill it." << CUtil::CLog::endl;
+		return;
+	}
+
+	if ( CUtil::getFirstPIDByName("oicu") != -1)
+	{
+		m_Log << "WARNING: it seems like oicu (" << CUtil::getFirstPIDByName("optool") << ") is still running after attempt to kill it." << CUtil::CLog::endl;
+		return;
+	}
+	m_Log << "Looks like OICU and/or optool is not running anymore. let's launch!" << CUtil::CLog::endl;
+	m_StateMgr.set(m_pStateOnLaunch);
+}
 
 /* ------------------------------------------------------------------------------------------
 TASK: update logger file output
@@ -358,54 +426,114 @@ TASK: 	if this is executed, time-out for wait on end-lot/wafer event expired
 ------------------------------------------------------------------------------------------ */
 void CApp::timeOutEndLot(CTask& task)
 {
-	m_Log << "task(" << task.getName() << "): Wait for end lot/wafer expired. moving on to kill state." << CUtil::CLog::endl;
+	m_Log << "task(" << task.getName() << "): Wait for end lot/wafer expired. moving on to program unload state." << CUtil::CLog::endl;
 	m_StateMgr.set(m_pStateOnUnloadProg);
 }
 
 
-#if 0
+/* ------------------------------------------------------------------------------------------
+TASK: launch OICu
+------------------------------------------------------------------------------------------ */
+void CApp::launch(CTask& task)
+{
+	// let's incrementer launch attempt
+	m_nLaunchAttempt++;
+
+	// have we made more launch attempts that we're allowed?
+	if (m_nLaunchAttempt > m_CONFIG.nRelaunchAttempt)
+	{
+		m_Log << "WARNING: APL has already made " << m_nLaunchAttempt << " attempts to launch OICu and load program since receiving ";
+		m_Log << m_CONFIG.szLotInfoFileName << " file. We'll stop now. Check for issue please." << CUtil::CLog::endl;
+		m_StateMgr.set(m_pStateOnIdle);
+		return;
+	}
+
+	// setup system command to launch OICu
+	m_Log << "launching(" << m_nLaunchAttempt << ") OICu and loading '" << m_szProgramFullPathName << "'..." << CUtil::CLog::endl;
+
+	// >launcher -nodisplay -prod -load <program> -T <tester> -qual
+	std::stringstream ssCmd;
+	ssCmd.str(std::string());
+	ssCmd.clear();
+	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
+	ssCmd << (m_szProgramFullPathName.empty()? "": "-load ") << (m_szProgramFullPathName.empty()? "" : m_szProgramFullPathName);
+	ssCmd << " -qual " << " -T " << m_szTesterName;
+	system(ssCmd.str().c_str());	
+	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
+}
 
 /* ------------------------------------------------------------------------------------------
-TASK: 	end lof if any, unload program if any, kill tester if any,
-	kill all unison threads if any, then launch OICu
+TASK: 	if this is executed, time-out for launch OICu and load program expired
 ------------------------------------------------------------------------------------------ */
-void CApp::onLaunch(CTask& task)
+void CApp::timeOutLaunch(CTask& task)
 {
-	m_Log << "onLaunch State Task" << CUtil::CLog::endl;
-	sleep(1);
-
-	// if tester is connected
-
-		// if program is loaded
-
-			// if program is still running
-		
-				// sleep and bail. wait next loop to try again
-
-			// end wafer
-
-			// end lot
-
-		// unload program
-
-	
-
-	// if tester is not connected
-
-		// kill all unison threads
-
-		// kill tester
-
-	
-	// is tester ready and are we connected?
-	
-	// if we're not connected can we try to connect at least for one attempt?
-
-	// if we're able to connect can we check if program is loaded?
-
-		// if program is loaded can we check if lot has ended?	
+	m_Log << "task(" << task.getName() << "): Wait for program load expired. moving on to idle state." << CUtil::CLog::endl;
+	m_StateMgr.set(m_pStateOnIdle);
 }
-#endif
+
+/* ------------------------------------------------------------------------------------------
+utility: parse command line arguments
+------------------------------------------------------------------------------------------ */
+bool CApp::scan(int argc, char **argv)
+{
+	// move all args into list
+	std::list< std::string > args;
+	for (int i = 1; i < argc; i++) args.push_back( argv[i] );
+
+	// loop through all args
+	for (std::list< std::string >::iterator it = args.begin(); it != args.end(); it++)
+	{
+		// look for -tester arg. if partial match is at first char, we found it
+		std::string s("-tester");
+		if (s.find(*it) == 0)
+		{
+			// expect the next arg (and it must exist) to be tester name
+			it++;
+			if (it == args.end())
+			{
+				m_Log << "ERROR: " << s << " argument found but option is missing." << CUtil::CLog::endl;
+				return false;
+			}
+			else
+			{
+				m_szTesterName = *it;
+				continue;
+			}
+		}	
+		// look for -config arg. if partial match is at first char, we found it
+		s = "-config";
+		if (s.find(*it) == 0)
+		{
+			// expect the next arg (and it must exist) to be path/name of the config file
+			it++;
+			if (it == args.end())
+			{
+				m_Log << "ERROR: " << s << " argument found but option is missing." << CUtil::CLog::endl;
+				return false;
+			}
+			else
+			{
+				m_szConfigFullPathName = *it;
+				continue;
+			}	
+		}
+	}	
+	return true;
+}
+
+/* ------------------------------------------------------------------------------------------
+utility: get user name
+------------------------------------------------------------------------------------------ */
+const std::string CApp::getUserName() const
+{ 
+	uid_t uid = getuid();
+	char buf_passw[1024];     
+	struct passwd password;
+	struct passwd *passwd_info;
+
+	getpwuid_r(uid, &password, buf_passw, 1024, &passwd_info);
+	return std::string(passwd_info->pw_name);
+} 
 
 /* ------------------------------------------------------------------------------------------
 Utility: check the file if this is lotinfo.txt; parse if yes
@@ -804,4 +932,62 @@ void CApp::onWaferChange(const EVX_WAFER_STATE state, const std::string& szWafer
 		default: break; 
 	}
 }
+
+/* ------------------------------------------------------------------------------------------
+event handler called by state notification class when something happens in test program
+------------------------------------------------------------------------------------------ */
+void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg)
+{
+	// make sure we have valid evxa object
+	if (!m_pProgCtrl) return;
+
+	switch(state)
+	{
+		case EVX_PROGRAM_LOADING:
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOADING" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_LOAD_FAILED:
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOAD_FAILED" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_LOADED:
+		{
+		    	m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOADED" << CUtil::CLog::endl;
+			break;
+		}
+		case EVX_PROGRAM_START: 
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_START" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_RUNNING:
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_RUNNING" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_UNLOADING:
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_UNLOADING" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_UNLOADED: 
+		{
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_UNLOADED" << CUtil::CLog::endl;
+			if (m_StateMgr.get() == m_pStateOnUnloadProg) m_StateMgr.set(m_pStateOnKillTester);
+			
+		    	EVXAStatus status = m_pProgCtrl->UnblockRobot();
+			if (status != EVXA::OK) m_Log << "Error PROGRAM_UNLAODED UnblockRobot(): status: " << status << " " << m_pProgCtrl->getStatusBuffer() << CUtil::CLog::endl;
+			break;
+		}
+		case EVX_PROGRAM_ABORT_LOAD:
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_ABORT_LOAD" << CUtil::CLog::endl;
+			break;
+		case EVX_PROGRAM_READY:
+			m_Log << "programChange[" << state << "]: EVX_PROGRAM_READY" << CUtil::CLog::endl;
+			break;
+		default:
+		{
+			if(m_pProgCtrl->getStatus() !=  EVXA::OK)
+			{
+				m_Log << "An Error occured[" << state << "]: " << m_pProgCtrl->getStatusBuffer() << CUtil::CLog::endl;
+				m_pProgCtrl->clearStatus();
+			}
+			break;
+		}
+	}
+}
+
 

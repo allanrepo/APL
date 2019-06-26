@@ -93,6 +93,9 @@ protected:
 	// flag to ensure we process only 1 trigger of inotify FD
 	bool m_bIgnoreFile;
 
+	// count how many launch attempts we made
+	long m_nLaunchAttempt;
+
 	// parameters
 	CONFIG m_CONFIG;
 	std::string m_szConfigFullPathName;
@@ -117,6 +120,7 @@ protected:
 	CState* m_pStateOnEndLot;
 	CState* m_pStateOnUnloadProg;
 	CState* m_pStateOnKillTester;
+	CState* m_pStateOnLaunch;
 
 	// state functions (load)
 	void onInitLoadState(CState&);
@@ -124,11 +128,13 @@ protected:
 	void onEndLotLoadState(CState&);
 	void onKillTesterLoadState(CState&);
 	void onUnloadProgLoadState(CState&);
+	void onLaunchLoadState(CState&);
 
 	// state functions (unload)
 	void onIdleUnloadState(CState&);
 	void onEndLotUnloadState(CState&);
 	void onUnloadProgUnloadState(CState&);
+	void onLaunchUnloadState(CState&);
 
 	// tasks/events
 	void init(CTask&);
@@ -137,7 +143,12 @@ protected:
 	void select(CTask&);
 	void endLot(CTask&);
 	void timeOutEndLot(CTask&);
+	void unloadProg(CTask&);
+	void timeOutUnloadProg(CTask&);
 	void killTester(CTask&);
+	void isTesterDead(CTask&);
+	void launch(CTask&);
+	void timeOutLaunch(CTask&);
 
 	// functions executed by file descriptor handlers
 	void onReceiveFile(const std::string& name);	
@@ -163,6 +174,7 @@ public:
 	// event handler for state notification
 	virtual void onLotChange(const EVX_LOT_STATE state, const std::string& szLotId);
 	virtual void onWaferChange(const EVX_WAFER_STATE state, const std::string& szWaferId);
+	virtual void onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg);
 
 	// event handler for state notification 
 

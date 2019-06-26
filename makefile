@@ -5,7 +5,7 @@ LFLAGS=-m64 -lcrypt -lnsl -lm -lrt -levxa -L/ltx/customer/lib64 -Wl,-rpath /ltx/
 
 INCDIR=-I.  -I/ltx/customer/include -I/ltx/customer/include/evxa
 
-DEMO_PROGS= demo test 
+DEMO_PROGS= demo test clean
 
 APL_FILES= demo.cpp app.cpp utility.cpp tester.cpp fd.cpp notify.cpp stdf.cpp socket.cpp xml.cpp event.cpp
 
@@ -32,4 +32,5 @@ test : $(TEST_OBJS)
 	$(CC) -o test_exec  $(TEST_OBJS) $(LIB_FILES) $(LFLAGS)
 
 
-
+clean :
+	-rm *.o
