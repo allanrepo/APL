@@ -639,14 +639,14 @@ bool CApp::config(const std::string& file)
 
 		// let's find the <SiteConfiguration> that matches <CurrentSiteConfiguration>
 		XML_Node *pConfig = 0;
-		m_Log << "<SiteConfiguration> : ";
+		//m_Log << "<SiteConfiguration> : ";
 		for( int i = 0; i < root->numChildren(); i++ )
 		{
 			// only <SiteConfiguration> is handled, we ignore everything else
 			if (!root->fetchChild(i)) continue;
 			if (root->fetchChild(i)->fetchTag().compare("SiteConfiguration") != 0) continue;
 
-			m_Log << "'" << root->fetchChild(i)->fetchVal("name") <<  "', ";
+		//	m_Log << "'" << root->fetchChild(i)->fetchVal("name") <<  "', ";
 
 			// we take only the first <CurrentSiteConfiguration> match, ignore succeeding ones
 			if ( root->fetchChild(i)->fetchVal("name").compare( pCurrSiteConfig->fetchText() ) == 0 ){ if (!pConfig) pConfig = root->fetchChild(i); }
@@ -711,6 +711,7 @@ bool CApp::config(const std::string& file)
 		}
 
 		// lets extract STDF stuff
+
 		for (int i = 0; i < pConfig->numChildren(); i++)
 		{
 			if (!pConfig->fetchChild(i)) continue;
@@ -765,6 +766,11 @@ bool CApp::config(const std::string& file)
 	}	
 
 	if (root) delete root;
+
+	// print config values here
+	m_Log << 
+
+
 	return true;
 }
 
@@ -1014,5 +1020,82 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 		}
 	}
 }
+
+
+/* ------------------------------------------------------------------------------------------
+event handler for state notification EOT
+------------------------------------------------------------------------------------------ */
+void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status)
+{
+	// if we're not sending bin, bail out
+	if (!m_CONFIG.bSendBin) return;
+
+	// set host/tester name
+	std::stringstream send;
+	send << m_szTesterName;
+
+	// as per Amkor specs, if wafer test, insert wafer id (lot id) here
+	if (m_CONFIG.nTestType == CONFIG::APL_WAFER) send << "," <<  m_pProgCtrl->getLotInformation(EVX_LotLotID);
+
+	// if wafer test, extract x/y coords. needed as per Amkor specs
+	int *sites = 0;
+	int *xCoords = 0;
+	int *yCoords = 0;
+
+	if (m_CONFIG.nTestType == CONFIG::APL_WAFER)
+	{	
+		m_Log << "wafer test" << CUtil::CLog::endl;
+		// initialize arrays and set to defaults
+		sites = new int[array_size];
+		xCoords = new int[array_size];
+		yCoords = new int[array_size];
+
+		if ( m_pProgCtrl->getWaferCoords(array_size, sites, xCoords, yCoords) != EVXA::OK )
+		{
+			m_Log << "Error: Something went wrong int qerying Unison for X/Y coords." << CUtil::CLog::endl;
+		}
+	}
+
+	// loop through all loaded sites, start at 1. for unison, site 1 = 1
+	for (int i = 1; i < m_pProgCtrl->getNumberOfLoadedSites(); i++)
+	{
+		// if there's at least 1 site, let's print the comma before first site as separator to host name
+		if (i == 1)
+		{
+			send << ",";
+		}
+
+		// if this site is beyond array size, or is this is not selected, we skip it
+		if (i >= array_size || site[i] == 0)
+		{
+			send << ""; 
+		}
+
+		// otherwise, this is a selected site with valid bin. print it
+		else
+		{
+			if (m_CONFIG.nTestType == CONFIG::APL_WAFER) send << xCoords[i] << "/" << yCoords[i] << "/";
+			send << (m_CONFIG.bUseHardBin? hw_bin[i] : sw_bin[i]);
+		}	
+		// if this is the last site, insert asterisk as end char for string to send. otherwise, a coma separator
+		send << (i == m_pProgCtrl->getNumberOfLoadedSites() - 1? "*" : ",");
+	}
+
+	// if we used these arrays, destroy them on the way
+	if (sites) delete []sites;
+	if (xCoords) delete []xCoords;
+	if (yCoords) delete []yCoords;
+
+	// finally, send the string to remote host
+	CClient c;
+	if (!c.connect(m_CONFIG.IP, m_CONFIG.nPort)) 
+	{
+		m_Log << "ERROR: Failed to connect to server." << CUtil::CLog::endl;
+		return;
+	}
+	c.send(send.str());
+	c.disconnect();
+}
+
 
 

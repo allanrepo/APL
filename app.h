@@ -10,6 +10,7 @@
 #include <tester.h>
 #include <xml.h>
 #include <stdf.h>
+#include <socket.h>
 
 /* ------------------------------------------------------------------------------------------
 constants
@@ -182,8 +183,7 @@ public:
 	virtual void onLotChange(const EVX_LOT_STATE state, const std::string& szLotId);
 	virtual void onWaferChange(const EVX_WAFER_STATE state, const std::string& szWaferId);
 	virtual void onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg);
-
-	// event handler for state notification 
+	virtual void onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0);
 
 };
 

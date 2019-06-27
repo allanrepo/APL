@@ -18,7 +18,7 @@
 		<Binning state = "true">
 			<BinType>soft</BinType> <!-- hard, soft -->	
 			<TestType>wafer</TestType> <!-- final, wafer -->		
-			<SocketType>udp</SocketType>
+			<SocketType>tcp</SocketType>
 			<IP>127.0.0.1</IP>
 			<Port>54000</Port>
 		</Binning>

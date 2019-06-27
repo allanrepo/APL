@@ -7,7 +7,7 @@ INCDIR=-I.  -I/ltx/customer/include -I/ltx/customer/include/evxa
 
 DEMO_PROGS= demo test clean
 
-APL_FILES  = demo.cpp app.cpp utility.cpp tester.cpp fd.cpp notify.cpp stdf.cpp socket.cpp xml.cpp state.cpp
+APL_FILES  = demo.cpp app.cpp utility.cpp tester.cpp fd.cpp notify.cpp stdf.cpp socket.cpp xml.cpp state.cpp 
 
 APL_OBJS = $(APL_FILES:.cpp=.o)
 
