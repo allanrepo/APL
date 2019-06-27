@@ -8,11 +8,33 @@ class CState;
 class CStateManager;
 class CTask;
 class CSequence;
+class CRef;
+
+
+class CRef
+{
+protected:
+	CUtil::CLog m_Log;
+	static int s_nInstance;
+public:
+	CRef()
+	{
+		s_nInstance++;
+		m_Log << "Ref Object created: " << s_nInstance << CUtil::CLog::endl;
+	}
+
+	virtual~ CRef()
+	{
+		s_nInstance--;
+		m_Log << "Ref Object destroyed: " << s_nInstance << CUtil::CLog::endl;
+	}
+
+};
 
 /* ------------------------------------------------------------------------------------------
 state class
 ------------------------------------------------------------------------------------------ */
-class CState
+class CState: public CRef
 {
 protected:
 	std::string m_szName;
@@ -59,7 +81,7 @@ public:
 /* ------------------------------------------------------------------------------------------
 task class
 ------------------------------------------------------------------------------------------ */
-class CTask
+class CTask: public CRef
 {
 protected:
 	std::string m_szName;

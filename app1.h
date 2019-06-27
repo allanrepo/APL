@@ -47,6 +47,9 @@ protected:
 		bool 		bProd;
 		int		nRelaunchTimeOutMS;
 		int		nRelaunchAttempt;
+		int		nEndLotTimeOutMS;
+		int		nUnloadProgTimeOutMS;
+		int		nKillTesterTimeOutMS;
 
 		// binning parameters
 		bool 		bSendBin;
@@ -72,6 +75,9 @@ protected:
 			bProd = true;
 			nRelaunchTimeOutMS = 120000;
 			nRelaunchAttempt = 3;
+			nEndLotTimeOutMS = 30000;
+			nUnloadProgTimeOutMS = 30000;
+			nKillTesterTimeOutMS = 10000;
 			bSendInfo = false;
 			bSendBin = false;
 			bUseHardBin = false;
@@ -231,6 +237,9 @@ public:
 	virtual void run(){ if (m_pRun) (m_App.*m_pRun)(*this); }
 };
 
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
 class CSwitchTask: public CTask
 {
 protected:

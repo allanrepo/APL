@@ -1,5 +1,7 @@
 #include <engine.h>
 
+int CRef::s_nInstance = 0;
+
 CState::CState(const std::string& name)
 {
 	m_szName = name;
@@ -142,6 +144,12 @@ CSequence::CSequence(const std::string& name, bool bEnable, bool bLoop)
 ------------------------------------------------------------------------------------------ */
 CSequence::~CSequence()
 {
+	while ( m_Tasks.size() )
+	{
+		CTask* p = m_Tasks.front();
+		m_Tasks.pop_front();
+		if (p) delete p;
+	}
 }
 
 /* ------------------------------------------------------------------------------------------

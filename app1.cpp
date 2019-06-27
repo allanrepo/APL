@@ -21,30 +21,6 @@ CApp::CApp(int argc, char **argv)
 	m_pStateOnKillTester = new CAppState(*this, "onKillTester", &CApp::onKillTesterLoadState);
 	m_pStateOnLaunch = new CAppState(*this, "onLaunch", &CApp::onLaunchLoadState, &CApp::onLaunchUnloadState);
 
-/*
-	// create init state and its tasks
-	m_pStateOnInit = new CState("onInit");
-	CSequence* pseq = new CSequence("onInit");
-	pseq->queue(new CAppTask(*this, &CApp::onInit, 0, "onInit", false));
-	pseq->queue(new CAppTask(*this, &CApp::onUpdateLogFile, 0, "onUpdateLogFile", false));
-	pseq->queue(new CAppTask(*this, &CApp::onSwitchToIdleState, 0, "onSwitchToIdleState", false));
-	m_pStateOnInit->add(pseq);	
-
-	// create idle state and and its tasks
-	m_pStateOnIdle = new CState("onIdle");
-	pseq = new CSequence("onConnect", true);
-	pseq->queue(new CAppTask(*this, &CApp::onConnect, 1000, "onConnect", true));
-	m_pStateOnIdle->add(pseq); 
-	m_pStateOnIdle->add(new CAppTask(*this, &CApp::onSelect, 0, "onSelect", true)); 
-
-	// setup launch state and its asks
-	m_pStateOnLaunch = new CState("onLaunch");
-	pseq = new CSequence("onLaunch", false);
-	pseq->queue(new CAppTask(*this, &CApp::onConnect, 0, "onConnect"));
-	pseq->queue(new CAppTask(*this, &CApp::onLaunch, 0, "onLaunch"));
-	m_pStateOnLaunch->add(pseq); 
-*/
-
 	// add set the first active state 
 	m_StateMgr.set(m_pStateOnInit);
 
@@ -66,9 +42,9 @@ STATE (load): onInit
 void CApp::onInitLoadState(CState& state)
 {
 	CSequence* pSeq = new CSequence("seq0", true, true );
-	pSeq->queue(new CAppTask(*this, &CApp::init, "init", 1000, true, false));
-	pSeq->queue(new CAppTask(*this, &CApp::setLogFile, "setLogFile", 1000, true, false));
-	pSeq->queue(new CSwitchTask(*this, *m_pStateOnIdle, 1000, true));
+	pSeq->queue(new CAppTask(*this, &CApp::init, "init", 0, true, false));
+	pSeq->queue(new CAppTask(*this, &CApp::setLogFile, "setLogFile", 200, true, false));
+	pSeq->queue(new CSwitchTask(*this, *m_pStateOnIdle, 200, true));
 	state.add(pSeq);
 }
 
@@ -112,7 +88,7 @@ void CApp::onEndLotLoadState(CState& state)
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 
 	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
-	state.add(new CAppTask(*this, &CApp::timeOutEndLot, "timeOutEndLot", 10000, true, false));
+	state.add(new CAppTask(*this, &CApp::timeOutEndLot, "timeOutEndLot", m_CONFIG.nEndLotTimeOutMS, true, false));
 	state.add(new CAppTask(*this, &CApp::endLot, "endLot", 0, true, false));
 }
 
@@ -136,7 +112,7 @@ void CApp::onUnloadProgLoadState(CState& state)
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 
 	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
-	state.add(new CAppTask(*this, &CApp::timeOutUnloadProg, "timeOutUnloadProg", 10000, true, false));
+	state.add(new CAppTask(*this, &CApp::timeOutUnloadProg, "timeOutUnloadProg", m_CONFIG.nUnloadProgTimeOutMS, true, false));
 	state.add(new CAppTask(*this, &CApp::unloadProg, "unloadProg", 0, true, false));
 }
 
@@ -160,7 +136,7 @@ void CApp::onKillTesterLoadState(CState& state)
 	pSeq->queue(new CAppTask(*this, &CApp::isTesterDead, "isTesterDead", 1000, true, true));
 	state.add(pSeq);
 
-	state.add(new CSwitchTask(*this, *m_pStateOnLaunch, 10000, false));
+	state.add(new CSwitchTask(*this, *m_pStateOnLaunch, m_CONFIG.nKillTesterTimeOutMS, false));
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -176,7 +152,7 @@ void CApp::onLaunchLoadState(CState& state)
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 
 	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
-	state.add(new CAppTask(*this, &CApp::timeOutLaunch, "timeOutLaunch", 10000, true, false));
+	state.add(new CAppTask(*this, &CApp::timeOutLaunch, "timeOutLaunch", m_CONFIG.nRelaunchTimeOutMS, true, false));
 	state.add(new CAppTask(*this, &CApp::launch, "launch", 0, true, false));
 }
 
@@ -648,8 +624,10 @@ bool CApp::config(const std::string& file)
 				if (pLaunch->fetchChild(i)->fetchTag().compare("Param") != 0) continue;
 
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Type") == 0){ m_CONFIG.bProd = pLaunch->fetchChild(i)->fetchText().compare("prod") == 0? true: false; }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Relaunch") == 0){ m_CONFIG.nRelaunchTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Max Attempt to Relaunch") == 0){ m_CONFIG.nRelaunchAttempt = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ); }				
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Launch") == 0){ m_CONFIG.nRelaunchTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Max Attempt To Launch") == 0){ m_CONFIG.nRelaunchAttempt = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ); }				
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To End Lot") == 0){ m_CONFIG.nEndLotTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Unload Program") == 0){ m_CONFIG.nUnloadProgTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
 			}
 		}
 		else m_Log << "Warning: Didn't find <Launch>. " << CUtil::CLog::endl;
