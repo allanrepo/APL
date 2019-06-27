@@ -5,14 +5,14 @@ PROCESS="$1"
 #
 #################################################################################
 
-echo "Executing App Killer  by Allan Asis"
+#echo "Executing App Killer  by Allan Asis"
 
 #################################################################################
 # finds and list all $PROCESS that are running. kills them all if it can
 # note that if caller is not admin, it can't kill $PROCESS owned by someone
 # else
 #################################################################################
-echo "Searching for processes with $PROCESS name on it..."
+#echo "Searching for processes with $PROCESS name on it..."
 i=0
 for entry in `ps -ce | grep $PROCESS | grep -v grep | awk '{print $1}'`
 do

@@ -8,7 +8,7 @@
 
 int main(int argc, char **argv)  
 {
-	CUtil::CLog::silent = true; // logging silent by default
+	CUtil::CLog::silent = false; // logging silent by default
 	CApp App(argc, argv);
 	return 0;
 }

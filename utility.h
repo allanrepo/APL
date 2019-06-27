@@ -91,11 +91,7 @@ namespace CUtil
 	bool isFileExist(const std::string& szFile);
 	const std::string toUpper(const std::string& str);
 	int getFirstPIDByName( const std::string& name );
-
 };
-
-
-
 
 
 #endif

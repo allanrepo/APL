@@ -6,7 +6,7 @@
 	<SiteConfiguration name = "Singapore">
 		<Launch>
 			<Param name = "Type">prod</Param> <!-- prod, engr-->
-			<Param name = "Wait Time To Launch">20</Param>
+			<Param name = "Wait Time To Launch">120</Param>
 			<Param name = "Max Attempt To Launch">5</Param>
 			<Param name = "Wait Time To End Lot">10</Param>
 			<Param name = "Wait Time To Unload Program">10</Param>

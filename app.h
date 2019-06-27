@@ -1,58 +1,15 @@
-/* ---------------------------------------------------------------------------------------------------------------------
-version beta.1.20190607 release notes:
--	
-
-version beta.1.20190530 release notes: 
--	fixed a bug where APL crashes if config.xml set <binning> disabled
--	added an attribute in <STDF state="true"> where state=true enables lotinfo fields to be set to 
-	unison's STDF. this is disabled by default now.
--	setting up file to save log (if enabled) is now actively updated through the app loop. this is to
-	ensure the file name changes when time stamp (next day) occurs.
--	some variables are now moved into CONFIG structure for more elegant coding design
-
-version beta.1.20190529 release notes:
-
--	added a new feature following Amkor Bin Solution specificatios Revision 1.3 where APL sends a string 
-	containing bin results for all sites tested every test cycle (EOT) to Amkor's remote host via UDP
-	-	this feature is disabled by default. this can be enabled through APL's XML config file
-	-	IP, port, and socket type can be specified in APL's XML config file as well. Amkor specifies
-		socket type to be UDP but APL can be configured to use TCP-IP through APL's XML config file.
-	-	bin type to be send (hard or soft) can also be specified in APL's XML config file
-
--	because there are so many settings to set now, using command line arguments is too much therefore
-	APL can now be configured via XML config file. a separate documentation will be provided to describe
-	in detail all the parameters that can be set.
-	- 	launching APL now is a simpe as >apl -config /home/user/test/config.xml where /home/user/test
-		is the path where the config file is located and apl.xml is the name of the config file.
-	- 	note that the tag names such as <Field> or <BinType> are case sensitve. but the values they
-		contain are not. so <BinType>hard</BinType> has same value as <BinType>HARD</BinType>
-	
--	in production, APL will be running in the background, therefore it's logs will not be visible. there
-	is now an option to store in into a file. the file and the path to save it can be set in APL XML
-	config file
-
-TO-DO list
--	fd manage's add() function implementation is dangerous. it adds new fd directly which you can call in one 
-	an fd object's process while that same fd object is being processed by fd manager in it's select() loop.
-	bad idea. this will cause instant crash. must fix this by making add() to queue for adding new fd's 
-	and peform the actual add only outside of select() loop
--	put a god damn mutex in some of the system calls to synchronize with the app!!!
--	need to mutex logger class. not critical, low priority, but must be done for a more elegant code.
-	
-
---------------------------------------------------------------------------------------------------------------------- */
-
 #ifndef __APP__
 #define __APP__
+
+#include <utility.h>
+#include <state.h>
 #include <fd.h>
-#include <tester.h>
 #include <notify.h>
 #include <pwd.h>
-#include <evxa/EVXA.hxx>
-#include <stdf.h>
-#include <socket.h>
+#include <sys/time.h>
+#include <tester.h>
 #include <xml.h>
-#include <event.h>
+#include <stdf.h>
 
 /* ------------------------------------------------------------------------------------------
 constants
@@ -65,44 +22,15 @@ constants
 #define KILLAPPCMD "kill.app.sh"
 #define KILLTESTERCMD "kill.tester.sh"
 
-
 /* ------------------------------------------------------------------------------------------
-declarations
+class declarations
 ------------------------------------------------------------------------------------------ */
 class CApp;
-class CAppFileDesc;
+class CAppTask;
+class CAppState;
 class CMonitorFileDesc;
-class CAppEvent;
+class CAppFileDesc;
 
-/* ------------------------------------------------------------------------------------------
-event class inherited specifically to allow CApp class methods to be executed 
-at onTimeOut.
------------------------------------------------------------------------------------------- */
-class CAppEvent: public CEventManager::CEvent
-{
-protected:
-	CApp& m_App;
-	void (CApp::* m_onTimeOutPtr)(CEvent*);
-	CUtil::CLog m_Log;
-public:
-	CAppEvent(CApp& app, void (CApp::* p)(CEvent*) = 0, long nTimeOut = 0):
-	CEvent(nTimeOut), m_App(app)
-	{
-		m_onTimeOutPtr = p;
-	}
-	virtual ~CAppEvent(){}
-
-	// overwritten to allow it to execute a method from CApp class
-	virtual void onTimeOut(long n)
-	{
-		if (m_onTimeOutPtr) (m_App.*m_onTimeOutPtr)(this);
-	}
-};
-
-/* ------------------------------------------------------------------------------------------
-app class. this is where stuff happens. 
-inherited CTester class so as to make it a lot easier to access EVXA objects
------------------------------------------------------------------------------------------- */
 class CApp: public CTester
 {
 protected:
@@ -119,6 +47,9 @@ protected:
 		bool 		bProd;
 		int		nRelaunchTimeOutMS;
 		int		nRelaunchAttempt;
+		int		nEndLotTimeOutMS;
+		int		nUnloadProgTimeOutMS;
+		int		nKillTesterTimeOutMS;
 
 		// binning parameters
 		bool 		bSendBin;
@@ -144,6 +75,9 @@ protected:
 			bProd = true;
 			nRelaunchTimeOutMS = 120000;
 			nRelaunchAttempt = 3;
+			nEndLotTimeOutMS = 30000;
+			nUnloadProgTimeOutMS = 30000;
+			nKillTesterTimeOutMS = 10000;
 			bSendInfo = false;
 			bSendBin = false;
 			bUseHardBin = false;
@@ -159,81 +93,185 @@ protected:
 	};
 
 protected:
-	CFileDescriptorManager m_FileDescMgr;
+	// resources
+	CUtil::CLog m_Log;
 
-	// config
-	CONFIG m_CONFIG;
+	// flag to ensure we process only 1 trigger of inotify FD
+	bool m_bIgnoreFile;
 
+	// count how many launch attempts we made
 	long m_nLaunchAttempt;
 
 	// parameters
-	std::string m_szProgramFullPathName;
-	std::string m_szTesterName;
+	CONFIG m_CONFIG;
 	std::string m_szConfigFullPathName;
+	std::string m_szTesterName;
+	std::string m_szProgramFullPathName;
 
-	// file descriptor for inotify to monitor path where lotinfo.txt will be sent
-	CMonitorFileDesc* m_pMonitorFileDesc;
-
-	// STDF field holders
+	// stdf stuff data holders and functions
 	MIR m_MIR;
-	SDR m_SDR;
-	bool setSTDF();
-	bool m_bSTDF;
-	bool setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce = false);
+	SDR m_SDR;	
 
-	// initialize variabls, reset stuff
-	void init();
+	// file descriptor engine
+	CFileDescriptorManager m_FileDescMgr;
+	CFileDescriptorManager::CFileDescriptor* m_pMonitorFileDesc; 
+	CFileDescriptorManager::CFileDescriptor* m_pStateNotificationFileDesc;
 
-	void initLogger(bool bEnable = false);
+	// state machine
+	CStateManager m_StateMgr;
 
-	// utility function that acquire linux login username
-	const std::string getUserName() const;
-	
-	// parse xml config file and extract this software's settings
+	// state objects
+	CState* m_pStateOnInit;
+	CState* m_pStateOnIdle;
+	CState* m_pStateOnEndLot;
+	CState* m_pStateOnUnloadProg;
+	CState* m_pStateOnKillTester;
+	CState* m_pStateOnLaunch;
+
+	// state functions (load)
+	void onInitLoadState(CState&);
+	void onIdleLoadState(CState&);
+	void onEndLotLoadState(CState&);
+	void onKillTesterLoadState(CState&);
+	void onUnloadProgLoadState(CState&);
+	void onLaunchLoadState(CState&);
+
+	// state functions (unload)
+	void onIdleUnloadState(CState&);
+	void onEndLotUnloadState(CState&);
+	void onUnloadProgUnloadState(CState&);
+	void onLaunchUnloadState(CState&);
+
+	// tasks/events
+	void init(CTask&);
+	void setLogFile(CTask&);
+	void connect(CTask&);
+	void select(CTask&);
+	void endLot(CTask&);
+	void timeOutEndLot(CTask&);
+	void unloadProg(CTask&);
+	void timeOutUnloadProg(CTask&);
+	void killTester(CTask&);
+	void isTesterDead(CTask&);
+	void launch(CTask&);
+	void timeOutLaunch(CTask&);
+	void timeOutKillTester(CTask&);
+
+	// functions executed by file descriptor handlers
+	void onReceiveFile(const std::string& name);	
+	void onStateNotificationResponse(int fd);
+
+	// parse XML config file
 	bool config(const std::string& config);
+	
+	// utility functions. purpose are obvious in their function name and arguments
+	bool scan(int argc, char **argv);
+	const std::string getUserName() const;
 
-	// event manager
-	CEventManager m_EventMgr;
-
-	// event objects
-	CEventManager::CEvent* m_pLaunchOICu;
-	CEventManager::CEvent* m_pConnect;
-	CEventManager::CEvent* m_pSetLotInfo;
-	CEventManager::CEvent* m_pCheckProgramLoaded;
-	CEventManager::CEvent* m_pProgramLoad;
+	// functions to parse lotinfo.txt file 
+	bool parse(const std::string& name);
+	bool getFieldValuePair(const std::string& line, const char delimiter, std::string& field, std::string& value);
 
 public:
 	CApp(int argc, char **argv);
 	virtual ~CApp();
 
-	bool scan(int argc, char **argv);
- 
-	// even handlers for evxa response
-	void onStateNotificationResponse(int fd);
-	void onEvxioResponse(int fd);
-	void onErrorResponse(int fd);
+	void setState(CState& state){ m_StateMgr.set(&state); }
 
-	// process the incoming file from the monitored path
-	void onReceiveFile(const std::string& name);
-	
-	// parse the incoming file from the monitored path
-	bool parse(const std::string& name);
-	bool getFieldValuePair(const std::string& line, const char delimiter, std::string& field, std::string& value);
-
-	// event handler for state notification program change
+	// event handler for state notification
+	virtual void onLotChange(const EVX_LOT_STATE state, const std::string& szLotId);
+	virtual void onWaferChange(const EVX_WAFER_STATE state, const std::string& szWaferId);
 	virtual void onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg);
 
-	// event handler for state notification EOT
-	virtual void onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0);
+	// event handler for state notification 
 
-	// events. what they do is pretty obvious with their function name
-	void onLaunchOICU(CEventManager::CEvent* p = 0);
-	void onCheckProgramLoaded(CEventManager::CEvent* p = 0);
-	void onConnect(CEventManager::CEvent* p = 0);
-	void onSetLotInfo(CEventManager::CEvent* p = 0);
-	void onProgramLoad(CEventManager::CEvent* p = 0);
 };
 
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+class CAppState: public CState
+{
+protected:
+	CApp& m_App;
+	void (CApp::* m_pLoad)(CState&);
+	void (CApp::* m_pUnload)(CState&);
+	
+public:
+	CAppState(CApp& app, const std::string& name = "", void (CApp::* load)(CState&) = 0, void (CApp::* unload)(CState&) = 0)
+	:CState(name), m_App(app)
+	{
+		m_pLoad = load;
+		m_pUnload = unload;
+	}
+	virtual ~CAppState(){}
+
+	virtual void load()
+	{ 
+		m_Log << "loading state: " << getName() << CUtil::CLog::endl;
+		if (m_pLoad) (m_App.*m_pLoad)(*this); 
+	}
+	virtual void unload()
+	{
+		m_Log << "unloading state: " << getName() << CUtil::CLog::endl; 
+		if (m_pUnload) (m_App.*m_pUnload)(*this); 
+		CState::unload(); 
+	}
+};
+
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+class CAppTask: public CTask
+{
+protected:
+	CApp& m_App;
+	void (CApp::* m_pRun)(CTask&);
+
+public:
+	CAppTask(CApp& app, void (CApp::* p)(CTask&) = 0, const std::string& name = "", long nDelayMS = 0, bool bEnable = true, bool bLoop = true)
+	:CTask(name, nDelayMS, bEnable, bLoop), m_App(app)
+	{
+		m_pRun = p;		
+	}
+	
+	virtual void run(){ if (m_pRun) (m_App.*m_pRun)(*this); }
+};
+
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+class CSwitchTask: public CTask
+{
+protected:
+	CApp& m_App;
+	CState& m_state;
+public:
+	CSwitchTask(CApp& app, CState& state, long nDelayMS = 0, bool bEnable = true)
+	:CTask(state.getName(), nDelayMS, bEnable, false), m_App(app), m_state(state){}
+
+	virtual void run(){ m_App.setState(m_state); }
+	
+};
+
+
+/* ------------------------------------------------------------------------------------------
+inherit notify file descriptor class and customize event handlers
+------------------------------------------------------------------------------------------ */
+class CMonitorFileDesc: public CNotifyFileDescriptor
+{
+protected:
+	CApp& m_App;
+	void (CApp::* m_pOnReceiveFile)(const std::string& name);
+
+public:
+	CMonitorFileDesc(CApp& app, void (CApp::* p)(const std::string&), const std::string& path, unsigned short mask = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM)
+	: CNotifyFileDescriptor(path, mask), m_App(app){ m_pOnReceiveFile = p; }
+
+	virtual	void onFileCreate( const std::string& name ){ m_Log << "onFileCreate" << CUtil::CLog::endl; if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }	
+	virtual	void onFileMoveTo( const std::string& name ){ m_Log << "onFileMoveTo" << CUtil::CLog::endl; if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
+	virtual	void onFileModify( const std::string& name ){ m_Log << "onFileModify" << CUtil::CLog::endl; if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
+};
 
 /* ------------------------------------------------------------------------------------------
 file desc class specifically for CApp to handle state notification and evxio
@@ -255,26 +293,6 @@ public:
 		if (m_onSelectPtr) (m_App.*m_onSelectPtr)(m_fd);	
 	}
 };
-
-
-
-/* ------------------------------------------------------------------------------------------
-inherit notify file descriptor class and customize event handlers
------------------------------------------------------------------------------------------- */
-class CMonitorFileDesc: public CNotifyFileDescriptor
-{
-protected:
-	CApp& m_App;
-public:
-	CMonitorFileDesc(CApp& app, const std::string& path, unsigned short mask = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM)
-	: CNotifyFileDescriptor(path, mask), m_App(app){}
-
-	virtual	void onFileCreate( const std::string& name ){ m_Log << " onFileCreate" << CUtil::CLog::endl; m_App.onReceiveFile(name); }	
-	virtual	void onFileMoveTo( const std::string& name ){ m_Log << " onFileMoveTo" << CUtil::CLog::endl; m_App.onReceiveFile(name); }
-	virtual	void onFileModify( const std::string& name ){ m_Log << " onFileModify" << CUtil::CLog::endl; m_App.onReceiveFile(name); }
-};
-
-
 
 
 #endif

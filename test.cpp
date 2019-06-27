@@ -1,9 +1,8 @@
-#include <app1.h>
+#include <app.h>
 #include <utility.h>
-#include <engine.h>
+#include <state.h>
 /*
 action item:
--	when destroying CSequence, must destroy all its child tasks too
 -	should we execute killtester state if we time-out on launch?
 
 
