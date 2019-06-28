@@ -1,31 +1,136 @@
-#include <app1.h>
-#include <unistd.h>
+#include <app.h>
 
 /* ------------------------------------------------------------------------------------------
 constructor
 ------------------------------------------------------------------------------------------ */
 CApp::CApp(int argc, char **argv)
 {
-	// initialize some of the members here to be safe
-	m_pMonitorFileDesc = 0;
-	m_pStateNotificationFileDesc = 0;
-	m_szProgramFullPathName = "";
+	// initialize variables
+	init();
 
-	// parse command line arguments
+	// scan command line args
 	scan(argc, argv);
 
-	m_pStateOnInit = new CAppState(*this, "onInit", &CApp::onInitLoadState);
-	m_pStateOnIdle = new CAppState(*this, "onIdle", &CApp::onIdleLoadState, &CApp::onIdleUnloadState);
-	m_pStateOnEndLot = new CAppState(*this, "onEndLot", &CApp::onEndLotLoadState, &CApp::onEndLotUnloadState);
-	m_pStateOnUnloadProg = new CAppState(*this, "onUnloadProg", &CApp::onUnloadProgLoadState, &CApp::onUnloadProgUnloadState);
-	m_pStateOnKillTester = new CAppState(*this, "onKillTester", &CApp::onKillTesterLoadState);
-	m_pStateOnLaunch = new CAppState(*this, "onLaunch", &CApp::onLaunchLoadState, &CApp::onLaunchUnloadState);
+	// if tester name is not set, assign default name
+	if (m_szTesterName.empty())
+	{
+		std::stringstream ss;
+		getUserName().empty()? (ss << "sim") : (ss << getUserName() << "_sim");
+		m_szTesterName = ss.str();
+	}
 
-	// add set the first active state 
-	m_StateMgr.set(m_pStateOnInit);
+	// if file name to monitor is not set, assign default
+	if (m_CONFIG.szLotInfoFileName.empty()){ m_CONFIG.szLotInfoFileName = "lotinfo.txt"; }
 
-	// run the state machine
-	m_StateMgr.run(); 
+	// if path to monitor is not set, assign default
+	if (m_CONFIG.szLotInfoFilePath.empty()){ m_CONFIG.szLotInfoFilePath = "/tmp"; }
+
+	// if config file is not set, assign default
+	if (m_szConfigFullPathName.empty()){ m_szConfigFullPathName = "./config.xml"; }
+
+	// force logger to log everything from here onwards
+	m_Log.silent = false;
+
+	// parse xml config file. default is ./config.xml
+	config( m_szConfigFullPathName );
+
+	// setup logger file output if this feature is enabled
+	initLogger(m_CONFIG.bLogToFile);
+
+	// create events
+	m_pLaunchOICu = new CAppEvent(*this, &CApp::onLaunchOICU, 60000);
+	m_pConnect = new CAppEvent(*this, &CApp::onConnect, 0);
+
+	// we connect to tester on APL launch by default. we trigger this event for it
+	m_EventMgr.add( m_pConnect );
+
+	// print out settings 
+	m_Log << "Version: " << VERSION << CUtil::CLog::endl;
+	m_Log << "Developer: " << DEVELOPER << CUtil::CLog::endl;
+	m_Log << "Tester: " << m_szTesterName << CUtil::CLog::endl; 
+	m_Log << "Path: " << m_CONFIG.szLotInfoFilePath << CUtil::CLog::endl;
+	m_Log << "File: " << m_CONFIG.szLotInfoFileName << CUtil::CLog::endl;
+	m_Log << "Config File: " << m_szConfigFullPathName << CUtil::CLog::endl;
+	m_Log << "Binning: " << (m_CONFIG.bSendBin? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Bin type (if binning enabled): " << (m_CONFIG.bUseHardBin? "hard" : "soft") << CUtil::CLog::endl;
+	m_Log << "Test type (if binning enabled): ";
+	switch (m_CONFIG.nTestType)
+	{
+		case CONFIG::APL_WAFER: m_Log << "wafer test" << CUtil::CLog::endl; break;
+		case CONFIG::APL_FINAL: m_Log << "final test" << CUtil::CLog::endl; break;
+		default: m_Log << "unknown" << CUtil::CLog::endl; break;
+	};
+	m_Log << "IP: " << m_CONFIG.IP << CUtil::CLog::endl;
+	m_Log << "Port: " << m_CONFIG.nPort << CUtil::CLog::endl;
+	m_Log << "Socket type (if binning enabled): ";
+	switch (m_CONFIG.nSocketType)
+	{
+		case SOCK_DGRAM: m_Log << "UDP" << CUtil::CLog::endl; break;
+		case SOCK_STREAM: m_Log << "TCP" << CUtil::CLog::endl; break;
+		case SOCK_RAW: m_Log << "RAW" << CUtil::CLog::endl; break;
+		default: m_Log << "unknown" << CUtil::CLog::endl; break;
+	};
+	m_Log << "Log To File: " << (m_CONFIG.bLogToFile? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Log Path (if enabled): " << m_CONFIG.szLogPath << CUtil::CLog::endl;
+	m_Log << "LotInfo to STDF: " << (m_CONFIG.bSendInfo? "enabled" : "disabled") << CUtil::CLog::endl;
+	
+	// create notify file descriptor and add to fd manager. this will monitor incoming lotinfo.txt file
+	m_pMonitorFileDesc = new CMonitorFileDesc(*this, m_CONFIG.szLotInfoFilePath);
+	m_FileDescMgr.add( *m_pMonitorFileDesc );
+
+	// get file descriptor of tester state notification and add to our fd manager		
+	CAppFileDesc StateNotificationFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
+ 	m_FileDescMgr.add( StateNotificationFileDesc );
+
+	// get file descriptor of tester evxio stream and add to our fd manager		
+	CAppFileDesc StateEvxioStreamFileDesc(*this, &CApp::onEvxioResponse, m_pEvxio? m_pEvxio->getEvxioSocketId(): -1);
+	m_FileDescMgr.add( StateEvxioStreamFileDesc );
+
+	// get file descriptor of tester evxio error and add to our fd manager		
+	CAppFileDesc StateEvxioErrorFileDesc(*this, &CApp::onErrorResponse, m_pEvxio? m_pEvxio->getErrorSocketId(): -1);
+	m_FileDescMgr.add( StateEvxioErrorFileDesc );
+
+	//m_EventMgr.add( new CAppEvent(*this, &CApp::onLaunchTimeOut, 3100) );
+	//m_EventMgr.add( new CAppEvent(*this, &CApp::onProgramLoadTimeOut, 6300) );
+
+	// run the application loop
+	while(1) 
+	{
+		// are we connected to tester? should we try? attempt once
+		//if(m_bReconnect){ if (connect(m_szTesterName, 1)) m_bReconnect = false; }
+/*
+		// if we're connected to tester now and we need to send STDF 	
+		if (!m_bReconnect && m_bSTDFAftReconnect && m_pProgCtrl)
+		{
+			if (m_pProgCtrl->isProgramLoaded())
+			{
+				// if we failed to send STDF fields again, let's keep reconnecting...
+				m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
+				if (!setSTDF())
+				{ 
+					m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
+					m_bReconnect = true; 
+				}
+				else m_bSTDFAftReconnect = false;
+			}
+		}
+*/
+		// before calling select(), update file descriptors of evxa objects. this is to ensure the FD manager
+		// don't use a bad file descriptor. when evxa objects are destroyed, their file descriptors are considered bad.
+		StateNotificationFileDesc.set(m_pState? m_pState->getSocketId(): -1);
+		StateEvxioStreamFileDesc.set(m_pEvxio? m_pEvxio->getEvxioSocketId(): -1);
+		StateEvxioErrorFileDesc.set(m_pEvxio? m_pEvxio->getErrorSocketId(): -1);
+
+		// proccess any file descriptor notification on select every second.
+		m_FileDescMgr.select(1000);
+
+		// file where logs are to be saved (if enabled) doesn't automatically change its name to updated timestamp so this is the only
+		// place in the app where we can do that. so if we reach this point in the app loop, let's take the opportunity to update
+		// log file's name
+		initLogger(m_CONFIG.bLogToFile);
+
+		m_EventMgr.update();
+	}
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -33,245 +138,55 @@ destructor
 ------------------------------------------------------------------------------------------ */
 CApp::~CApp()
 {
-
+	
 }
 
 /* ------------------------------------------------------------------------------------------
-STATE (load): onInit
+initialize variables, reset params
 ------------------------------------------------------------------------------------------ */
-void CApp::onInitLoadState(CState& state)
+void CApp::init()
 {
-	CSequence* pSeq = new CSequence("seq0", true, true );
-	pSeq->queue(new CAppTask(*this, &CApp::init, "init", 0, true, false));
-	pSeq->queue(new CAppTask(*this, &CApp::setLogFile, "setLogFile", 200, true, false));
-	pSeq->queue(new CSwitchTask(*this, *m_pStateOnIdle, 200, true));
-	state.add(pSeq);
+	// config.xml by default is found within APL's base folder (here executable is)
+	m_szConfigFullPathName = "./config.xml";
+
+	// these variables will hold tester stuff. clear by default
+	m_szProgramFullPathName = "";
+	m_szTesterName = "";
+	
+	// used for telling this app that it's ready to set lotinfo params
+	m_bSTDF = false;
+	m_bSTDFAftReconnect = false;
+
+	// flag used to request for tester reconnect, true by default so it tries to connect on launch
+	//m_bReconnect = true;
+
+	// set lotinfo file parameters to default
+	m_CONFIG.szLotInfoFileName = "lotinfo.txt";
+	m_CONFIG.szLotInfoFilePath = "/tmp";
+
+	// binning @EOT is disabled by default
+	m_CONFIG.bSendBin = false;
+	m_CONFIG.bUseHardBin = false;
+	m_CONFIG.nTestType = CONFIG::APL_FINAL;
+	m_CONFIG.IP = "127.0.0.1";
+	m_CONFIG.nPort = 54000;	
+	m_CONFIG.nSocketType = SOCK_STREAM;
+
+	// logging to file is disabled by default
+	m_CONFIG.bLogToFile = false;
+	m_CONFIG.szLogPath = "/tmp";
+
+	// sending data from lotinfo to unison's lotinformation/stdf is disabled by default
+	m_CONFIG.bSendInfo = false;
 }
-
+ 
 /* ------------------------------------------------------------------------------------------
-STATE (load): onIdle
+initialize logger file 
 ------------------------------------------------------------------------------------------ */
-void CApp::onIdleLoadState(CState& state)
-{
-	// create the fd objects for both inotify and state notification. we need them both for this state
-	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
-	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
-
-	// add them to FD manager so we'll use them in select() task
-	m_FileDescMgr.add( *m_pMonitorFileDesc );
- 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
-
-	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
-	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
-}
-
-/* ------------------------------------------------------------------------------------------
-STATE (unload): onIdle
------------------------------------------------------------------------------------------- */
-void CApp::onIdleUnloadState(CState& state)
-{
-	// remove the FD objects (pointers)
-	m_FileDescMgr.clear();
-
-	// now delete FD objects 
-	if (m_pMonitorFileDesc){ delete m_pMonitorFileDesc; m_pMonitorFileDesc = 0; }
-	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
-}
-
-/* ------------------------------------------------------------------------------------------
-STATE (load): onEndLot
------------------------------------------------------------------------------------------- */
-void CApp::onEndLotLoadState(CState& state)
-{
-	// create fd object only for state notification and add to FD manager
-	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
- 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
-
-	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
-	state.add(new CAppTask(*this, &CApp::timeOutEndLot, "timeOutEndLot", m_CONFIG.nEndLotTimeOutMS, true, false));
-	state.add(new CAppTask(*this, &CApp::endLot, "endLot", 0, true, false));
-}
-
-/* ------------------------------------------------------------------------------------------
-STATE (unload): onEndLot
------------------------------------------------------------------------------------------- */
-void CApp::onEndLotUnloadState(CState& state)
-{
-	// clear FD manager and delete the fd object we used for this state
-	m_FileDescMgr.clear();
-	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
-}
-
-/* ------------------------------------------------------------------------------------------
-STATE (load): onUnloadProg
------------------------------------------------------------------------------------------- */
-void CApp::onUnloadProgLoadState(CState& state)
-{
-	// create fd object only for state notification and add to FD manager
-	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
- 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
-
-	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
-	state.add(new CAppTask(*this, &CApp::timeOutUnloadProg, "timeOutUnloadProg", m_CONFIG.nUnloadProgTimeOutMS, true, false));
-	state.add(new CAppTask(*this, &CApp::unloadProg, "unloadProg", 0, true, false));
-}
-
-/* ------------------------------------------------------------------------------------------
-STATE (unload): onUnloadProg
------------------------------------------------------------------------------------------- */
-void CApp::onUnloadProgUnloadState(CState& state)
-{
-	// clear FD manager and delete the fd object we used for this state
-	m_FileDescMgr.clear();
-	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
-}
-
-/* ------------------------------------------------------------------------------------------
-STATE (load): onKillTester
------------------------------------------------------------------------------------------- */
-void CApp::onKillTesterLoadState(CState& state)
-{
-	CSequence* pSeq = new CSequence("seqKillTester", true, true );
-	pSeq->queue(new CAppTask(*this, &CApp::killTester, "killTester", 0, true, false));
-	pSeq->queue(new CAppTask(*this, &CApp::isTesterDead, "isTesterDead", 1000, true, true));
-	state.add(pSeq);
-
-	state.add(new CSwitchTask(*this, *m_pStateOnLaunch, m_CONFIG.nKillTesterTimeOutMS, false));
-}
-
-/* ------------------------------------------------------------------------------------------
-STATE (load): onLaunch
------------------------------------------------------------------------------------------- */
-void CApp::onLaunchLoadState(CState& state)
-{
-	// reset launch counter
-	m_nLaunchAttempt = 0;
-
-	// create fd object only for state notification and add to FD manager
-	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
- 	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
-
-	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
-	state.add(new CAppTask(*this, &CApp::timeOutLaunch, "timeOutLaunch", m_CONFIG.nRelaunchTimeOutMS, true, false));
-	state.add(new CAppTask(*this, &CApp::launch, "launch", 0, true, false));
-}
-
-/* ------------------------------------------------------------------------------------------
-STATE (unload): onLaunch
------------------------------------------------------------------------------------------- */
-void CApp::onLaunchUnloadState(CState& state)
-{
-	// reset launch counter
-	m_nLaunchAttempt = 0;
-
-	// clear FD manager and delete the fd object we used for this state
-	m_FileDescMgr.clear();
-	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
-}
-
-/* ------------------------------------------------------------------------------------------
-TASK: unload program
------------------------------------------------------------------------------------------- */
-void CApp::unloadProg(CTask& task)
-{
-	// not really part of this state's flow but for safety reasons, we do sanity check
-	if (!isReady())
-	{
-		m_Log << "Not connected to tester..." << CUtil::CLog::endl;
-		m_StateMgr.set(m_pStateOnKillTester);
-		return;
-	}
-
-	// if program is not loaded, switch to kill state now
-	if (!m_pProgCtrl->isProgramLoaded())
-	{
-		m_Log << "No program loaded. nothing to unload." << CUtil::CLog::endl;
-		m_StateMgr.set(m_pStateOnKillTester);
-		return;
-	}
-
-	// get program name to unload for logging later
-	m_Log << "Program '" << m_pProgCtrl->getProgramPath() << "' is loaded. Let's unload it." << CUtil::CLog::endl; 
-
-	// unload program with evxa command
-	if (m_pProgCtrl->unload( EVXA::NO_WAIT, 0, true ) != EVXA::OK)
-	{
-		m_Log << "Error occured unloading test program." << CUtil::CLog::endl;
-		m_StateMgr.set(m_pStateOnKillTester);
-	}
-}
-
-/* ------------------------------------------------------------------------------------------
-TASK: 	if this is executed, time-out for wait on program unload expired
------------------------------------------------------------------------------------------- */
-void CApp::timeOutUnloadProg(CTask& task)
-{
-	m_Log << "task(" << task.getName() << "): Wait for program unload expired. moving on to kill state." << CUtil::CLog::endl;
-	m_StateMgr.set(m_pStateOnKillTester);
-}
-
-
-/* ------------------------------------------------------------------------------------------
-TASK: disconnect, kill unison execs - oicu, optool, dataviewer, bintool, etc...
------------------------------------------------------------------------------------------- */
-void CApp::killTester(CTask& task)
-{
-	// in case we're connected from previous OICu load, let's make sure we're disconnected now.
-	disconnect();
-
-	// kill the following apps that has these names
-	std::string apps[] = { "oicu", "optool", "dataviewer", "binTool", "testTool", "flowtool", "errorTool" };
-	for (unsigned i = 0; i < sizeof(apps)/sizeof(*apps); i++)
-	{
-		
-		std::stringstream ssCmd;
-		ssCmd << "./" << KILLAPPCMD << " " << apps[i];
-		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
-		system(ssCmd.str().c_str());
-	}
-/*
-	// kill tester
-	std::stringstream ssCmd;
-	ssCmd << "./" << KILLTESTERCMD << " " << m_szTesterName;
-	m_Log << "END TESTER: " << ssCmd.str() << CUtil::CLog::endl;		
-	system(ssCmd.str().c_str());
-*/
-
-	// after killing unison threads, let's enable the task in current state that time-out wait for unison execs getting killed
-	if ( m_StateMgr.get() == m_pStateOnKillTester)
-	{
-		CTask* pTask = m_pStateOnKillTester->get("onLaunch");
-		if (pTask) pTask->enable(true);
-	}
-}
-
-/* ------------------------------------------------------------------------------------------
-TASK: check if tester is still running or not
------------------------------------------------------------------------------------------- */
-void CApp::isTesterDead(CTask& task)
-{
-	if ( CUtil::getFirstPIDByName("optool") != -1)
-	{
-		m_Log << "WARNING: it seems like optool (" << CUtil::getFirstPIDByName("optool") << ") is still running after attempt to kill it." << CUtil::CLog::endl;
-		return;
-	}
-
-	if ( CUtil::getFirstPIDByName("oicu") != -1)
-	{
-		m_Log << "WARNING: it seems like oicu (" << CUtil::getFirstPIDByName("optool") << ") is still running after attempt to kill it." << CUtil::CLog::endl;
-		return;
-	}
-	m_Log << "Looks like OICU and/or optool is not running anymore. let's launch!" << CUtil::CLog::endl;
-	m_StateMgr.set(m_pStateOnLaunch);
-}
-
-/* ------------------------------------------------------------------------------------------
-TASK: update logger file output
------------------------------------------------------------------------------------------- */
-void CApp::setLogFile(CTask& task)
+void CApp::initLogger( bool bEnable )
 {
 	// if logger to file is disabled, let's quickly reset it and bail
-	if (!m_CONFIG.bLogToFile)
+	if (!bEnable)
 	{
 		m_Log.file("");
 		return;
@@ -297,271 +212,6 @@ void CApp::setLogFile(CTask& task)
 	// otherwise, set this 
 	m_Log.file(ssLogToFile.str());
 	m_Log << "Log is saved to " << ssLogToFile.str() << CUtil::CLog::endl;
-}
-
-/* ------------------------------------------------------------------------------------------
-TASK: to perform initialization
------------------------------------------------------------------------------------------- */
-void CApp::init(CTask& task)
-{
-	// if tester name is not set through command line argument, assign default name
-	if (m_szTesterName.empty())
-	{
-		std::stringstream ss;
-		getUserName().empty()? (ss << "sim") : (ss << getUserName() << "_sim");
-		m_szTesterName = ss.str();
-	}
-
-	// if config file is not set, assign default
-	if (m_szConfigFullPathName.empty()){ m_szConfigFullPathName = "./config.xml"; }
-
-	// parse config file
-	config( m_szConfigFullPathName );
-}
-
-/* ------------------------------------------------------------------------------------------
-TASK: 	attempts to connect to tester
------------------------------------------------------------------------------------------- */
-void CApp::connect(CTask& task)
-{
-	// are we connected to tester? should we try? attempt once
-	if (!isReady()) CTester::connect(m_szTesterName, 1);
-}
-
-/* ------------------------------------------------------------------------------------------
-TASK: 	query select(), for input from inotify of incoming file
------------------------------------------------------------------------------------------- */
-void CApp::select(CTask& task)
-{
-	// if the inotify fires up with an incoming file, it will sometimes fire up twice
-	// for the same file. we don't want to process same file more than once so as soon
-	// as we get one, we "ignore" the others by setting this flag to true. only then when
-	// this function is executed again that we enable it.	
-	m_bIgnoreFile = false;
-
-	// before calling select(), update file descriptors of evxa objects. this is to ensure the FD manager
-	// don't use a bad file descriptor. when evxa objects are destroyed, their file descriptors are considered bad.
-	if (m_pStateNotificationFileDesc) m_pStateNotificationFileDesc->set(m_pState? m_pState->getSocketId(): -1);
-
-	// proccess any file descriptor notification on select every second.
-	m_FileDescMgr.select(200);
-}
-
-/* ------------------------------------------------------------------------------------------
-TASK: 	end lot only if program exists
------------------------------------------------------------------------------------------- */
-void CApp::endLot(CTask& task)
-{
-	// are we connected? if not, let's do a 1 attempt to connect, if tester exists then we 
-	// should be able to connect at this time.
-	if (!isReady())
-	{
-		m_Log << "We're not connected to tester. let's try connecting before killing it..." << CUtil::CLog::endl;
-		CTester::connect(m_szTesterName, 1);
-	}
-	
-	// if we're still not connected to tester at this point, then we can safely assume tester
-	// is not running. we don't need to end lot or unload program at all
-	if (!isReady() || !m_pProgCtrl)
-	{
-		m_Log << "We're still not connected to tester. It is now safe to assume that tester isn't running at all.Le's go kill and launch now..." << CUtil::CLog::endl;		
-		m_StateMgr.set(m_pStateOnUnloadProg);
-		return;
-	}
-	else
-	{
-		// is program loaded?
-		if (m_pProgCtrl->isProgramLoaded())
-		{
-			m_Log << "Program '" << m_pProgCtrl->getProgramPath() << "' is loaded. Let's end lot first before unloading it." << CUtil::CLog::endl; 
-			// is there a lot being tested? if yes, let's end the lot.
-			if (m_pProgCtrl->setEndOfLot(EVXA::WAIT, true) != EVXA::OK)
-			{
-				m_Log << "ERROR: something went wrong in ending lot..." << CUtil::CLog::endl;
-				return;
-			}
-	
-			// is there a lot being tested? if yes, let's end the lot.
-			if (m_pProgCtrl->setEndOfWafer(EVXA::WAIT) != EVXA::OK)
-			{
-				m_Log << "ERROR: something went wrong in ending lot..." << CUtil::CLog::endl;
-				return;
-			}			
-		}
-		else
-		{
-			m_Log << "There's no program loaded. We can safely kill tester now, before launching." << CUtil::CLog::endl;
-			m_StateMgr.set(m_pStateOnUnloadProg);
-			return;
-		}
-	}
-}
-
-/* ------------------------------------------------------------------------------------------
-TASK: 	if this is executed, time-out for wait on end-lot/wafer event expired
------------------------------------------------------------------------------------------- */
-void CApp::timeOutEndLot(CTask& task)
-{
-	m_Log << "task(" << task.getName() << "): Wait for end lot/wafer expired. moving on to program unload state." << CUtil::CLog::endl;
-	m_StateMgr.set(m_pStateOnUnloadProg);
-}
-
-
-/* ------------------------------------------------------------------------------------------
-TASK: launch OICu
------------------------------------------------------------------------------------------- */
-void CApp::launch(CTask& task)
-{
-	// let's incrementer launch attempt
-	m_nLaunchAttempt++;
-
-	// have we made more launch attempts that we're allowed?
-	if (m_nLaunchAttempt > m_CONFIG.nRelaunchAttempt)
-	{
-		m_Log << "WARNING: APL has already made " << m_nLaunchAttempt << " attempts to launch OICu and load program since receiving ";
-		m_Log << m_CONFIG.szLotInfoFileName << " file. We'll stop now. Check for issue please." << CUtil::CLog::endl;
-		m_StateMgr.set(m_pStateOnIdle);
-		return;
-	}
-
-	// setup system command to launch OICu
-	m_Log << "launching(" << m_nLaunchAttempt << ") OICu and loading '" << m_szProgramFullPathName << "'..." << CUtil::CLog::endl;
-
-	// >launcher -nodisplay -prod -load <program> -T <tester> -qual
-	std::stringstream ssCmd;
-	ssCmd.str(std::string());
-	ssCmd.clear();
-	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
-	ssCmd << (m_szProgramFullPathName.empty()? "": "-load ") << (m_szProgramFullPathName.empty()? "" : m_szProgramFullPathName);
-	ssCmd << " -qual " << " -T " << m_szTesterName;
-	system(ssCmd.str().c_str());	
-	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
-}
-
-/* ------------------------------------------------------------------------------------------
-TASK: 	if this is executed, time-out for launch OICu and load program expired
------------------------------------------------------------------------------------------- */
-void CApp::timeOutLaunch(CTask& task)
-{
-	m_Log << "task(" << task.getName() << "): Wait for program load expired. moving on to idle state." << CUtil::CLog::endl;
-	m_StateMgr.set(m_pStateOnIdle);
-}
-
-/* ------------------------------------------------------------------------------------------
-utility: parse command line arguments
------------------------------------------------------------------------------------------- */
-bool CApp::scan(int argc, char **argv)
-{
-	// move all args into list
-	std::list< std::string > args;
-	for (int i = 1; i < argc; i++) args.push_back( argv[i] );
-
-	// loop through all args
-	for (std::list< std::string >::iterator it = args.begin(); it != args.end(); it++)
-	{
-		// look for -tester arg. if partial match is at first char, we found it
-		std::string s("-tester");
-		if (s.find(*it) == 0)
-		{
-			// expect the next arg (and it must exist) to be tester name
-			it++;
-			if (it == args.end())
-			{
-				m_Log << "ERROR: " << s << " argument found but option is missing." << CUtil::CLog::endl;
-				return false;
-			}
-			else
-			{
-				m_szTesterName = *it;
-				continue;
-			}
-		}	
-		// look for -config arg. if partial match is at first char, we found it
-		s = "-config";
-		if (s.find(*it) == 0)
-		{
-			// expect the next arg (and it must exist) to be path/name of the config file
-			it++;
-			if (it == args.end())
-			{
-				m_Log << "ERROR: " << s << " argument found but option is missing." << CUtil::CLog::endl;
-				return false;
-			}
-			else
-			{
-				m_szConfigFullPathName = *it;
-				continue;
-			}	
-		}
-	}	
-	return true;
-}
-
-/* ------------------------------------------------------------------------------------------
-utility: get user name
------------------------------------------------------------------------------------------- */
-const std::string CApp::getUserName() const
-{ 
-	uid_t uid = getuid();
-	char buf_passw[1024];     
-	struct passwd password;
-	struct passwd *passwd_info;
-
-	getpwuid_r(uid, &password, buf_passw, 1024, &passwd_info);
-	return std::string(passwd_info->pw_name);
-} 
-
-/* ------------------------------------------------------------------------------------------
-Utility: check the file if this is lotinfo.txt; parse if yes
------------------------------------------------------------------------------------------- */
-void CApp::onReceiveFile(const std::string& name)
-{
-	// create string that holds full path + monitor file 
-	std::stringstream ssFullPathMonitorName;
-	ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << name;
-
-	// is this the file we're waiting for? if not, bail out
-	if (name.compare(m_CONFIG.szLotInfoFileName) != 0)
-	{
-		m_Log << "File received but is not what we're waiting for: " << name << CUtil::CLog::endl;
-		return;
-	}
-	else m_Log << "'" << name << "' file received." << CUtil::CLog::endl;
-
-	// is this that double inotify event trigger? if yes, let's ignore this.	
-	if (m_bIgnoreFile)
-	{ 
-		m_Log << "Detected multiple events from inotify. ignoring this..." << CUtil::CLog::endl;
-		return; 
-	}
-
-	// if this is the file, let's parse it.
-	// does it contain JobFile field? if yes, does it point to a valid unison program? 
-	// if yes, let's use this file contents to load program
-	// from here on, we switch to launch OICu and load program state
-	if (!parse(ssFullPathMonitorName.str()))
-	{
-		m_Log << ssFullPathMonitorName.str() << " file received but didn't find a program to load.";
-		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field. and is valid?" << CUtil::CLog::endl;
-		return;
-	}
-
-	m_Log << "successfully parsed '" << ssFullPathMonitorName.str() << "'" << CUtil::CLog::endl;
-	m_bIgnoreFile = true;
-	m_StateMgr.set(m_pStateOnEndLot);
-	return;
-}
-
-/* ------------------------------------------------------------------------------------------
-handle event for state notification. if error occurs, request tester reconnect
------------------------------------------------------------------------------------------- */
-void CApp::onStateNotificationResponse(int fd)
-{		
-	if (m_pState->respond(fd) != EVXA::OK) 
-	{
-      		const char *errbuf = m_pState->getStatusBuffer();
-		m_Log << "State Notification Response Not OK: " << errbuf << CUtil::CLog::endl;
-	}  		
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -615,25 +265,6 @@ bool CApp::config(const std::string& file)
 		}	
 
 		// let's now find the <Binning> from <SiteConfiguration> 
-		XML_Node* pLaunch = pConfig->fetchChild("Launch");
-		if (pLaunch)
-		{ 
-			for (int i = 0; i < pLaunch->numChildren(); i++)
-			{
-				if (!pLaunch->fetchChild(i)) continue;
-				if (pLaunch->fetchChild(i)->fetchTag().compare("Param") != 0) continue;
-
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Type") == 0){ m_CONFIG.bProd = pLaunch->fetchChild(i)->fetchText().compare("prod") == 0? true: false; }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Launch") == 0){ m_CONFIG.nRelaunchTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Max Attempt To Launch") == 0){ m_CONFIG.nRelaunchAttempt = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ); }				
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To End Lot") == 0){ m_CONFIG.nEndLotTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Unload Program") == 0){ m_CONFIG.nUnloadProgTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
-			}
-		}
-		else m_Log << "Warning: Didn't find <Launch>. " << CUtil::CLog::endl;
-
-
-		// let's now find the <Binning> from <SiteConfiguration> 
 		XML_Node* pBinning = 0;
 		if (pConfig->fetchChild("Binning")){ if ( CUtil::toUpper( pConfig->fetchChild("Binning")->fetchVal("state") ).compare("TRUE") == 0) pBinning = pConfig->fetchChild("Binning"); }
 		else m_Log << "Warning: Didn't find <Binning>. " << CUtil::CLog::endl;
@@ -675,11 +306,11 @@ bool CApp::config(const std::string& file)
 			// if an <STDF> tag is found with attribute state = true, enable STDF feature	
 			if (CUtil::toUpper( pStdf->fetchVal("state") ).compare("TRUE") == 0){ m_CONFIG.bSendInfo = true; }
 
-			m_Log << "<STDF>: '" << pStdf->fetchVal("Param") << "'" << CUtil::CLog::endl;
+			m_Log << "<STDF>: '" << pStdf->fetchVal("field") << "'" << CUtil::CLog::endl;
 			for (int j = 0; j < pStdf->numChildren(); j++)
 			{
 				if (!pStdf->fetchChild(j)) continue;
-				if (pStdf->fetchChild(j)->fetchTag().compare("Param") != 0) continue;					
+				if (pStdf->fetchChild(j)->fetchTag().compare("Field") != 0) continue;					
 				
 				m_Log << "	" << pStdf->fetchChild(j)->fetchVal("name") << ": " << pStdf->fetchChild(j)->fetchText() << CUtil::CLog::endl;
 			}			
@@ -723,9 +354,247 @@ bool CApp::config(const std::string& file)
 }
 
 /* ------------------------------------------------------------------------------------------
+parse command line arguments
+------------------------------------------------------------------------------------------ */
+bool CApp::scan(int argc, char **argv)
+{
+	// move all args into list
+	std::list< std::string > args;
+	for (int i = 1; i < argc; i++) args.push_back( argv[i] );
+
+	// loop through all args
+	for (std::list< std::string >::iterator it = args.begin(); it != args.end(); it++)
+	{
+		// look for -tester arg. if partial match is at first char, we found it
+		std::string s("-tester");
+		if (s.find(*it) == 0)
+		{
+			// expect the next arg (and it must exist) to be tester name
+			it++;
+			if (it == args.end())
+			{
+				m_Log << "ERROR: " << s << " argument found but option is missing." << CUtil::CLog::endl;
+				return false;
+			}
+			else
+			{
+				m_szTesterName = *it;
+				continue;
+			}
+		}	
+		// look for -config arg. if partial match is at first char, we found it
+		s = "-config";
+		if (s.find(*it) == 0)
+		{
+			// expect the next arg (and it must exist) to be path/name of the config file
+			it++;
+			if (it == args.end())
+			{
+				m_Log << "ERROR: " << s << " argument found but option is missing." << CUtil::CLog::endl;
+				return false;
+			}
+			else
+			{
+				m_szConfigFullPathName = *it;
+				continue;
+			}	
+		}
+	}	
+	return true;
+}
+
+/* ------------------------------------------------------------------------------------------
+get user name
+------------------------------------------------------------------------------------------ */
+const std::string CApp::getUserName() const
+{ 
+	uid_t uid = getuid();
+	char buf_passw[1024];    
+	struct passwd password;
+	struct passwd *passwd_info;
+
+	getpwuid_r(uid, &password, buf_passw, 1024, &passwd_info);
+	return std::string(passwd_info->pw_name);
+} 
+ 
+/* ------------------------------------------------------------------------------------------
+process the incoming file from the monitored path
+------------------------------------------------------------------------------------------ */
+void CApp::onReceiveFile(const std::string& name)
+{
+	// create string that holds full path + monitor file 
+	std::stringstream ssFullPathMonitorName;
+	ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << name;
+
+	// is this file lotinfo.txt?   
+	if (name.compare(m_CONFIG.szLotInfoFileName) != 0)
+	{
+		m_Log << "File received but is not what we're waiting for: " << name << CUtil::CLog::endl;
+		return;
+	}
+	else m_Log << name << " file received." << CUtil::CLog::endl;
+
+	// parse lotinfo.txt file 
+	m_szProgramFullPathName.clear();
+	parse(ssFullPathMonitorName.str());
+
+	// do we have the 'PROGRAM' field and its value from lotinfo.txt?
+	if (m_szProgramFullPathName.empty()) 
+	{
+		m_Log << ssFullPathMonitorName.str() << " file received but didn't find a program to load.";
+		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field." << CUtil::CLog::endl;
+	}
+	// look's like we're good to launch OICu and load program. let's do it
+	else
+	{
+		// are we connected?
+		if (isReady())
+		{
+			m_Log << "We're connected and will try to disconnect. " << CUtil::CLog::endl;
+
+			// any program loaded? unload it
+			if (m_pProgCtrl->isProgramLoaded()) 
+			{
+				m_Log << "But first, we will unload current program loaded... " << CUtil::CLog::endl;
+				unload(true, 10);
+			}
+		}
+
+		// let's queue a time-out event that when expires, it will attempt to launch OICu and load program
+		// again if at that point, OICu and/or test program is not yet loaded.
+		// we set it to immediate so its count down starts now.
+		m_EventMgr.add( m_pLaunchOICu, true );
+
+		// launch OICu and load program
+		onLaunchOICU();
+		//launch(m_szTesterName, m_szProgramFullPathName, true);
+
+		// let app know we are setting STDF fields. do it only if this feature is enabled
+		m_bSTDF = m_CONFIG.bSendInfo;
+	}
+ 
+	// delete the lotinfo.txt
+	unlink(ssFullPathMonitorName.str().c_str());
+}
+
+/* ------------------------------------------------------------------------------------------
+event that handles setting lotinfo from lotinfo.tx file
+------------------------------------------------------------------------------------------ */
+void CApp::onSetLotInfo(CEventManager::CEvent* p)
+{
+}
+
+/* ------------------------------------------------------------------------------------------
+event where app attempt to connect to tester 
+------------------------------------------------------------------------------------------ */
+void CApp::onConnect(CEventManager::CEvent* p)
+{
+	// are we connected to tester? should we try? attempt once
+	if (!isReady()) connect(m_szTesterName, 1);
+}
+
+/* ------------------------------------------------------------------------------------------
+event where it attempts to launch OICu and load test program.
+-	"disconnects" from tester by destroying evxa objects
+-	tries to kill apps/thread owned by a currently running unison (if any)
+-	launch OICu and load specified test program via command line
+-	sets a flag to let app reconnect evxa objects to tester
+------------------------------------------------------------------------------------------ */
+void CApp::onLaunchOICU(CEventManager::CEvent* p)
+{
+	m_Log << "Executing onLaunchOICU event..." << CUtil::CLog::endl;
+
+	// is tester ready and our evxa object valid? 
+	// do we have reference to event object? if not, force launch OICu
+	if (isReady() && m_pProgCtrl && p)
+	{
+		// is program loaded?
+		if (m_pProgCtrl->isProgramLoaded())
+		{
+			// is the program loaded the same as program we're trying to load?
+			if (true)
+			{
+				// looks like we already launched OICu and loaded the right program
+				m_Log << "Program " << "" << " is already loaded, NICE! we're we don't need this time-out event anymore." << CUtil::CLog::endl;
+				if (p) m_EventMgr.remove(p);			
+				return;
+			}
+		}
+	}
+
+	// in case we're connected from previous OICu load, let's make sure we're disconnected now.
+	disconnect();
+
+	// kill the following apps that has these names
+	std::string apps[] = { "oicu", "optool", "dataviewer", "binTool", "testTool", "flowtool", "errorTool" };
+	for (unsigned i = 0; i < sizeof(apps)/sizeof(*apps); i++)
+	{
+		std::stringstream ssCmd;
+		ssCmd << "./" << KILLAPPCMD << " " << apps[i];
+		m_Log << "KILL: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+	}
+
+	// kill tester
+	std::stringstream ssCmd;
+	ssCmd << "./" << KILLTESTERCMD << " " << m_szTesterName;
+	m_Log << "END TESTER: " << ssCmd.str() << CUtil::CLog::endl;		
+	system(ssCmd.str().c_str());
+
+	// setup system command to launch OICu
+	m_Log << "launching OICu and loading '" << m_szProgramFullPathName << "'..." << CUtil::CLog::endl;
+
+	// >launcher -nodisplay -prod -load <program> -T <tester> -qual
+	ssCmd.str(std::string());
+	ssCmd.clear();
+	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
+	ssCmd << (m_szProgramFullPathName.empty()? "": "-load ") << (m_szProgramFullPathName.empty()? "" : m_szProgramFullPathName);
+	ssCmd << " -qual " << " -T " << m_szTesterName ;
+	system(ssCmd.str().c_str());	
+	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
+}
+
+/* ------------------------------------------------------------------------------------------
+handle event for state notification. if error occurs, request tester reconnect
+------------------------------------------------------------------------------------------ */
+void CApp::onStateNotificationResponse(int fd)
+{		
+	if (m_pState->respond(fd) != EVXA::OK) 
+	{
+      		const char *errbuf = m_pState->getStatusBuffer();
+		m_Log << "State Notification Response Not OK: " << errbuf << CUtil::CLog::endl;
+		m_bReconnect = true;
+	}  		
+}
+
+/* ------------------------------------------------------------------------------------------
+handle event for evxio stream. if error occurs, request tester reconnect
+------------------------------------------------------------------------------------------ */
+void CApp::onEvxioResponse(int fd)
+{		
+	if (m_pEvxio->streamsRespond() != EVXA::OK) 
+	{
+      		const char *errbuf = m_pState->getStatusBuffer();
+		m_Log << "EVXIO Stream Response Not OK: " << errbuf << CUtil::CLog::endl;
+		m_bReconnect = true;
+	}  		
+}
+
+/* ------------------------------------------------------------------------------------------
+handle event for evxio errors. if error occurs, request tester reconnect
+------------------------------------------------------------------------------------------ */
+void CApp::onErrorResponse(int fd)
+{		
+	if (m_pEvxio->ErrorRespond() != EVXA::OK) 
+	{
+      		const char *errbuf = m_pState->getStatusBuffer();
+		m_Log << "EVXIO Error Response Not OK: " << errbuf << CUtil::CLog::endl;
+		m_bReconnect = true;
+	}  		
+}
+ 
+/* ------------------------------------------------------------------------------------------
 parse the lotinfo.txt file
--	STDF fields and test program will only be acknowledged to use if a JOBFILE
-	field exists and has a valid test program path/name value
 ------------------------------------------------------------------------------------------ */
 bool CApp::parse(const std::string& name)
 {
@@ -740,6 +609,10 @@ bool CApp::parse(const std::string& name)
 	// return false if it finds an empty file to allow app to try again
 	if (s.empty()) return false;
 
+	// before parsing, let's reset STDF field variables
+	m_MIR.clear();
+	m_SDR.clear();
+
 	// for debugging purpose, let's dump the contents of the file
 	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
 	m_Log << "Content extracted from " << name << "." << CUtil::CLog::endl;
@@ -747,9 +620,6 @@ bool CApp::parse(const std::string& name)
 	m_Log << s << CUtil::CLog::endl;
 	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
  
-	MIR l_MIR;
-	SDR l_SDR;
-	std::string szJobFile;
 	while(s.size())  
 	{ 
 		// find next '\n' position 
@@ -766,25 +636,25 @@ bool CApp::parse(const std::string& name)
 		if (getFieldValuePair(l, DELIMITER, field, value))
 		{
 			// extract STDF fields
-			if (field.compare("OPERATOR") == 0){ l_MIR.OperNam = value; continue; }
-			if (field.compare("LOTID") == 0){ l_MIR.LotId = value; continue; }
-			if (field.compare("SUBLOTID") == 0){ l_MIR.SblotId = value; continue; }
-			if (field.compare("DEVICE") == 0){ l_MIR.PartTyp = value; continue; }
-			if (field.compare("PRODUCTID") == 0){ l_MIR.FamlyId = value; continue; }
-			if (field.compare("PACKAGE") == 0){ l_MIR.PkgTyp = value; continue; }
-			if (field.compare("FILENAMEREV") == 0){ l_MIR.JobRev = value; continue; }
-			if (field.compare("TESTMODE") == 0){ l_MIR.ModeCod = value; continue; }
-			if (field.compare("COMMANDMODE") == 0){ l_MIR.CmodCod = value; continue; }
-			if (field.compare("ACTIVEFLOWNAME") == 0){ l_MIR.FlowId = value; continue; }
-			if (field.compare("DATECODE") == 0){ l_MIR.DateCod = value; continue; }
-			if (field.compare("CONTACTORTYPE") == 0){ l_SDR.ContTyp = value; continue; }
-			if (field.compare("CONTACTORID") == 0){ l_SDR.ContId = value; continue; }
-			if (field.compare("FABRICATIONID") == 0){ l_MIR.ProcId = value; continue; }
-			if (field.compare("TESTFLOOR") == 0){ l_MIR.FloorId = value; continue; }
-			if (field.compare("TESTFACILITY") == 0){ l_MIR.FacilId = value; continue; }
-			if (field.compare("PROBERHANDLERID") == 0){ l_SDR.HandId = value; continue; }
-			if (field.compare("TEMPERATURE") == 0){ l_MIR.TestTmp = value; continue; }
-			if (field.compare("BOARDID") == 0){ l_SDR.LoadId = value; continue; }
+			if (field.compare("OPERATOR") == 0){ m_MIR.OperNam = value; continue; }
+			if (field.compare("LOTID") == 0){ m_MIR.LotId = value; continue; }
+			if (field.compare("SUBLOTID") == 0){ m_MIR.SblotId = value; continue; }
+			if (field.compare("DEVICE") == 0){ m_MIR.PartTyp = value; continue; }
+			if (field.compare("PRODUCTID") == 0){ m_MIR.FamlyId = value; continue; }
+			if (field.compare("PACKAGE") == 0){ m_MIR.PkgTyp = value; continue; }
+			if (field.compare("FILENAMEREV") == 0){ m_MIR.JobRev = value; continue; }
+			if (field.compare("TESTMODE") == 0){ m_MIR.ModeCod = value; continue; }
+			if (field.compare("COMMANDMODE") == 0){ m_MIR.CmodCod = value; continue; }
+			if (field.compare("ACTIVEFLOWNAME") == 0){ m_MIR.FlowId = value; continue; }
+			if (field.compare("DATECODE") == 0){ m_MIR.DateCod = value; continue; }
+			if (field.compare("CONTACTORTYPE") == 0){ m_SDR.ContTyp = value; continue; }
+			if (field.compare("CONTACTORID") == 0){ m_SDR.ContId = value; continue; }
+			if (field.compare("FABRICATIONID") == 0){ m_MIR.ProcId = value; continue; }
+			if (field.compare("TESTFLOOR") == 0){ m_MIR.FloorId = value; continue; }
+			if (field.compare("TESTFACILITY") == 0){ m_MIR.FacilId = value; continue; }
+			if (field.compare("PROBERHANDLERID") == 0){ m_SDR.HandId = value; continue; }
+			if (field.compare("TEMPERATURE") == 0){ m_MIR.TestTmp = value; continue; }
+			if (field.compare("BOARDID") == 0){ m_SDR.LoadId = value; continue; }
 
 			// if we didn't find anything we looked for including jobfile, let's move to next field
 			if (field.compare(JOBFILE) == 0)
@@ -800,7 +670,7 @@ bool CApp::parse(const std::string& name)
 				else
 				{
 					m_Log << "'" << value << "' exists. let's try to load it." << CUtil::CLog::endl;
-					szJobFile = value;			
+					m_szProgramFullPathName = value;			
 				}
 			}
 		}
@@ -809,21 +679,11 @@ bool CApp::parse(const std::string& name)
 		if (pos == std::string::npos) break;		
 	}	
 
-	// ok did we find a valid JobFile in the lotinfo.txt?
-	if (szJobFile.empty()) return false;
-	else
-	{
-		m_szProgramFullPathName = szJobFile;
-		m_MIR = l_MIR;
-		m_SDR = l_SDR;
-		return true;
-	}
+	return true;
 } 
 
-
 /* ------------------------------------------------------------------------------------------
-utility: get field/value pair string of a line from lotinfo.txt 
-	 file content loaded into string
+get field/value pair string of a line from lotinfo.txt file content loaded into string
 ------------------------------------------------------------------------------------------ */
 bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std::string& field, std::string& value)
 {
@@ -855,60 +715,101 @@ bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std:
 
 	return true;
 }
-#if 0
-/* ------------------------------------------------------------------------------------------
-event handler for state notification EOT
------------------------------------------------------------------------------------------- */
-void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status)
-{
-	m_Log << "EOT" << CUtil::CLog::endl;
-}
-#endif
 
 /* ------------------------------------------------------------------------------------------
-event handler for state notification EOL
+wraps progctrl method to set lotinfo/stdf
+-	returns false if it fails to set, true otherwise
 ------------------------------------------------------------------------------------------ */
-void CApp::onLotChange(const EVX_LOT_STATE state, const std::string& szLotId)
+bool CApp::setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce)
 {
-	switch (state) 
+	if (!m_pProgCtrl) return false;
+
+	// if field is empty, we won't set it, unless we're forced to, which clears the lot information instead
+   	if (!field.empty() || bForce) 
 	{
-		case EVX_LOT_END:
+		// set to unison
+		m_pProgCtrl->setLotInformation(type, field.c_str());
+
+		// check if successful
+		if (field.compare( m_pProgCtrl->getLotInformation(type) ) != 0)
 		{
-			m_Log << "Lot End" << CUtil::CLog::endl;
-			if (m_StateMgr.get() == m_pStateOnEndLot) m_StateMgr.set(m_pStateOnUnloadProg);
-			break;
+			m_Log << "ERROR: Failed to set Lot Information to '" << field << "'" << CUtil::CLog::endl;
+			return false;
 		}
-		case EVX_LOT_START:
-		{
-			m_Log << "Lot Start" << CUtil::CLog::endl;
-			if (m_StateMgr.get() == m_pStateOnEndLot) m_StateMgr.set(m_pStateOnUnloadProg);
-			break;
-		}
-		default: break; 
+		// otherwise it's successful
+		m_Log << "Successfully set " << label << " to '" << m_pProgCtrl->getLotInformation(type) << "'" << CUtil::CLog::endl;
+		return true;
+   	}
+	// if field is empty from XTRF, let's leave this field with whatever its current value is
+	else
+	{ 
+		m_Log << "Field is empty. " << label << " will not be set." << CUtil::CLog::endl; 
+		return true;
 	}
 }
 
 /* ------------------------------------------------------------------------------------------
-event handler for state notification EOW
+
 ------------------------------------------------------------------------------------------ */
-void CApp::onWaferChange(const EVX_WAFER_STATE state, const std::string& szWaferId)
+bool CApp::setSTDF()
 {
-	switch (state) 
-	{
-		case EVX_WAFER_END:
-		{
-			m_Log << "Wafer End" << CUtil::CLog::endl;
-			if (m_StateMgr.get() == m_pStateOnEndLot) m_StateMgr.set(m_pStateOnUnloadProg);
-			break;
-		}
-		case EVX_WAFER_START:
-		{
-			m_Log << "Wafer Start" << CUtil::CLog::endl;
-			if (m_StateMgr.get() == m_pStateOnEndLot) m_StateMgr.set(m_pStateOnUnloadProg);
-			break;
-		}
-		default: break; 
-	}
+	if (!m_pProgCtrl) return false;
+	bool bRslt = true;
+
+	// set MIR
+	if ( !setLotInformation(EVX_LotLotID, 			m_MIR.LotId, 	"MIR.LotLotID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCommandMode, 		m_MIR.CmodCod, 	"MIR.LotCommandMode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotActiveFlowName, 		m_MIR.FlowId, 	"MIR.LotActiveFlowName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDesignRev, 		m_MIR.DsgnRev, 	"MIR.LotDesignRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDateCode, 		m_MIR.DateCod, 	"MIR.LotDateCode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotOperFreq, 		m_MIR.OperFrq, 	"MIR.LotOperFreq")) bRslt = false;
+	if ( !setLotInformation(EVX_LotOperator, 		m_MIR.OperNam, 	"MIR.LotOperator")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTcName, 			m_MIR.NodeNam, 	"MIR.LotTcName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDevice, 			m_MIR.PartTyp, 	"MIR.LotDevice")) bRslt = false;
+	if ( !setLotInformation(EVX_LotEngrLotId, 		m_MIR.EngId, 	"MIR.LotEngrLotId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestTemp, 		m_MIR.TestTmp, 	"MIR.LotTestTemp")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestFacility, 		m_MIR.FacilId, 	"MIR.LotTestFacility")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestFloor, 		m_MIR.FloorId, 	"MIR.LotTestFloor")) bRslt = false;
+	if ( !setLotInformation(EVX_LotHead, 			m_MIR.StatNum, 	"MIR.LotHead")) bRslt = false;
+	if ( !setLotInformation(EVX_LotFabricationID, 		m_MIR.ProcId, 	"MIR.LotFabricationID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestMode, 		m_MIR.ModeCod, 	"MIR.LotTestMode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProductID, 		m_MIR.FamlyId,  "MIR.LotProductID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotPackage, 		m_MIR.PkgTyp, 	"MIR.LotPackage")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSublotID, 		m_MIR.SblotId, 	"MIR.LotSublotID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSetup, 		m_MIR.SetupId, 	"MIR.LotTestSetup")) bRslt = false;
+	if ( !setLotInformation(EVX_LotFileNameRev, 		m_MIR.JobRev, 	"MIR.LotFileNameRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotAuxDataFile, 		m_MIR.AuxFile, 	"MIR.LotAuxDataFile")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestPhase, 		m_MIR.TestCod, 	"MIR.LotTestPhase")) bRslt = false;
+	if ( !setLotInformation(EVX_LotUserText, 		m_MIR.UserText, "MIR.LotUserText")) bRslt = false;
+	if ( !setLotInformation(EVX_LotRomCode, 		m_MIR.RomCod, 	"MIR.LotRomCode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTesterSerNum, 		m_MIR.SerlNum, 	"MIR.LotTesterSerNum")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTesterType, 		m_MIR.TstrTyp, 	"MIR.LotTesterType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSupervisor, 		m_MIR.SuprNam, 	"MIR.LotSupervisor")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSystemName, 		m_MIR.ExecTyp, 	"MIR.LotSystemName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTargetName, 		m_MIR.ExecVer, 	"MIR.LotTargetName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSpecName, 		m_MIR.SpecNam, 	"MIR.LotTestSpecName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSpecRev, 		m_MIR.SpecVer, 	"MIR.LotTestSpecRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProtectionCode, 		m_MIR.ProtCod, 	"MIR.LotProtectionCode")) bRslt = false;
+
+	// set SDR
+	if ( !setLotInformation(EVX_LotHandlerType, 		m_SDR.HandTyp, 	"SDR.LotHandlerType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCardId, 			m_SDR.CardId, 	"SDR.LotCardId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLoadBrdId, 		m_SDR.LoadId, 	"SDR.LotLoadBrdId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProberHandlerID, 	m_SDR.HandId, 	"SDR.LotProberHandlerID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDIBType, 		m_SDR.DibTyp, 	"SDR.LotDIBType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotIfCableId, 		m_SDR.CableId, 	"SDR.LotIfCableId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotContactorType, 		m_SDR.ContTyp, 	"SDR.LotContactorType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLoadBrdType, 		m_SDR.LoadTyp, 	"SDR.LotLoadBrdType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotContactorId, 		m_SDR.ContId, 	"SDR.LotContactorId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLaserType, 		m_SDR.LaserTyp, "SDR.LotLaserType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLaserId, 		m_SDR.LaserId, 	"SDR.LotLaserId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotExtEquipType, 		m_SDR.ExtrTyp, 	"SDR.LotExtEquipType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotExtEquipId, 		m_SDR.ExtrId, 	"SDR.LotExtEquipId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotActiveLoadBrdName, 	m_SDR.DibId, 	"SDR.LotActiveLoadBrdName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCardType, 		m_SDR.CardTyp, 	"SDR.LotCardType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotIfCableType, 		m_SDR.CableTyp, "SDR.LotIfCableType")) bRslt = false;
+
+	return bRslt;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -930,6 +831,20 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 		case EVX_PROGRAM_LOADED:
 		{
 		    	m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOADED" << CUtil::CLog::endl;
+
+			// let's set STDF fields here from lotinfo.txt after program is loaded
+			if (m_bSTDF)
+			{
+				m_Log << "Program is loaded, setting lot information..." <<CUtil::CLog::endl;
+				if (!setSTDF())
+				{
+					m_Log << "ERROR: Something went wrong in trying to set LotInformation..." << CUtil::CLog::endl;
+					m_bReconnect = true;
+					m_bSTDFAftReconnect = true;	
+				}
+				m_bSTDF = false;	
+			}
+
 			break;
 		}
 		case EVX_PROGRAM_START: 
@@ -944,8 +859,6 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 		case EVX_PROGRAM_UNLOADED: 
 		{
 			m_Log << "programChange[" << state << "]: EVX_PROGRAM_UNLOADED" << CUtil::CLog::endl;
-			if (m_StateMgr.get() == m_pStateOnUnloadProg) m_StateMgr.set(m_pStateOnKillTester);
-			
 		    	EVXAStatus status = m_pProgCtrl->UnblockRobot();
 			if (status != EVXA::OK) m_Log << "Error PROGRAM_UNLAODED UnblockRobot(): status: " << status << " " << m_pProgCtrl->getStatusBuffer() << CUtil::CLog::endl;
 			break;
@@ -966,6 +879,81 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 			break;
 		}
 	}
+}
+
+/* ------------------------------------------------------------------------------------------
+event handler for state notification EOT
+------------------------------------------------------------------------------------------ */
+void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status)
+{
+	// if we're not sending bin, bail out
+	if (!m_CONFIG.bSendBin) return;
+
+	// set host/tester name
+	std::stringstream send;
+	send << m_szTesterName;
+
+	// as per Amkor specs, if wafer test, insert wafer id (lot id) here
+	if (m_CONFIG.nTestType == CONFIG::APL_WAFER) send << "," <<  m_pProgCtrl->getLotInformation(EVX_LotLotID);
+
+	// if wafer test, extract x/y coords. needed as per Amkor specs
+	int *sites = 0;
+	int *xCoords = 0;
+	int *yCoords = 0;
+
+	if (m_CONFIG.nTestType == CONFIG::APL_WAFER)
+	{	
+		m_Log << "wafer test" << CUtil::CLog::endl;
+		// initialize arrays and set to defaults
+		sites = new int[array_size];
+		xCoords = new int[array_size];
+		yCoords = new int[array_size];
+
+		if ( m_pProgCtrl->getWaferCoords(array_size, sites, xCoords, yCoords) != EVXA::OK )
+		{
+			m_Log << "Error: Something went wrong int qerying Unison for X/Y coords." << CUtil::CLog::endl;
+		}
+	}
+
+	// loop through all loaded sites, start at 1. for unison, site 1 = 1
+	for (int i = 1; i < m_pProgCtrl->getNumberOfLoadedSites(); i++)
+	{
+		// if there's at least 1 site, let's print the comma before first site as separator to host name
+		if (i == 1)
+		{
+			send << ",";
+		}
+
+		// if this site is beyond array size, or is this is not selected, we skip it
+		if (i >= array_size || site[i] == 0)
+		{
+			send << ""; 
+		}
+
+		// otherwise, this is a selected site with valid bin. print it
+		else
+		{
+			if (m_CONFIG.nTestType == CONFIG::APL_WAFER) send << xCoords[i] << "/" << yCoords[i] << "/";
+			send << (m_CONFIG.bUseHardBin? hw_bin[i] : sw_bin[i]);
+		}	
+		// if this is the last site, insert asterisk as end char for string to send. otherwise, a coma separator
+		send << (i == m_pProgCtrl->getNumberOfLoadedSites() - 1? "*" : ",");
+	}
+
+	// if we used these arrays, destroy them on the way
+	if (sites) delete []sites;
+	if (xCoords) delete []xCoords;
+	if (yCoords) delete []yCoords;
+
+	// finally, send the string to remote host
+	CClient c;
+	if (!c.connect(m_CONFIG.IP, m_CONFIG.nPort)) 
+	{
+		m_Log << "ERROR: Failed to connect to server." << CUtil::CLog::endl;
+		return;
+	}
+	c.send(send.str());
+	c.disconnect();
 }
 
 

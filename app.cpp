@@ -33,7 +33,6 @@ destructor
 ------------------------------------------------------------------------------------------ */
 CApp::~CApp()
 {
-
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -63,6 +62,7 @@ void CApp::onIdleLoadState(CState& state)
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
 	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
+	state.add(new CAppTask(*this, &CApp::setLogFile, "setLogFile", 60000, true, false));
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -651,7 +651,7 @@ bool CApp::config(const std::string& file)
 			// we take only the first <CurrentSiteConfiguration> match, ignore succeeding ones
 			if ( root->fetchChild(i)->fetchVal("name").compare( pCurrSiteConfig->fetchText() ) == 0 ){ if (!pConfig) pConfig = root->fetchChild(i); }
 		}
-		m_Log << CUtil::CLog::endl;
+//		m_Log << CUtil::CLog::endl;
 	
 		// bail out if we didn't find <SiteConfiguration> with <CurrentSiteConfiguration>
 		if (!pConfig)
@@ -699,6 +699,7 @@ bool CApp::config(const std::string& file)
 
 
 		// for debug purposes, print out all the parameters of <Binning>
+/*
 		if (pBinning)
 		{
 			for (int i = 0; i < pBinning->numChildren(); i++)
@@ -709,7 +710,7 @@ bool CApp::config(const std::string& file)
 				}
 			}
 		}
-
+*/
 		// lets extract STDF stuff
 
 		for (int i = 0; i < pConfig->numChildren(); i++)
@@ -722,13 +723,13 @@ bool CApp::config(const std::string& file)
 			// if an <STDF> tag is found with attribute state = true, enable STDF feature	
 			if (CUtil::toUpper( pStdf->fetchVal("state") ).compare("TRUE") == 0){ m_CONFIG.bSendInfo = true; }
 
-			m_Log << "<STDF>: '" << pStdf->fetchVal("Param") << "'" << CUtil::CLog::endl;
+//			m_Log << "<STDF>: '" << pStdf->fetchVal("Param") << "'" << CUtil::CLog::endl;
 			for (int j = 0; j < pStdf->numChildren(); j++)
 			{
 				if (!pStdf->fetchChild(j)) continue;
 				if (pStdf->fetchChild(j)->fetchTag().compare("Param") != 0) continue;					
 				
-				m_Log << "	" << pStdf->fetchChild(j)->fetchVal("name") << ": " << pStdf->fetchChild(j)->fetchText() << CUtil::CLog::endl;
+//				m_Log << "	" << pStdf->fetchChild(j)->fetchVal("name") << ": " << pStdf->fetchChild(j)->fetchText() << CUtil::CLog::endl;
 			}			
 		}
 
@@ -768,9 +769,44 @@ bool CApp::config(const std::string& file)
 	if (root) delete root;
 
 	// print config values here
-	m_Log << 
+	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
+	m_Log << "Version: " << VERSION << CUtil::CLog::endl;
+	m_Log << "Developer: " << DEVELOPER << CUtil::CLog::endl;
+	m_Log << "Tester: " << m_szTesterName << CUtil::CLog::endl; 
+	m_Log << "Path: " << m_CONFIG.szLotInfoFilePath << CUtil::CLog::endl;
+	m_Log << "File: " << m_CONFIG.szLotInfoFileName << CUtil::CLog::endl;
+	m_Log << "Config File: " << m_szConfigFullPathName << CUtil::CLog::endl;
+	m_Log << "Binning: " << (m_CONFIG.bSendBin? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Bin type (if binning enabled): " << (m_CONFIG.bUseHardBin? "hard" : "soft") << CUtil::CLog::endl;
+	m_Log << "Test type (if binning enabled): ";
+	switch (m_CONFIG.nTestType)
+	{
+		case CONFIG::APL_WAFER: m_Log << "wafer test" << CUtil::CLog::endl; break;
+		case CONFIG::APL_FINAL: m_Log << "final test" << CUtil::CLog::endl; break;
+		default: m_Log << "unknown" << CUtil::CLog::endl; break;
+	};
+	m_Log << "IP: " << m_CONFIG.IP << CUtil::CLog::endl;
+	m_Log << "Port: " << m_CONFIG.nPort << CUtil::CLog::endl;
+	m_Log << "Socket type (if binning enabled): ";
+	switch (m_CONFIG.nSocketType)
+	{
+		case SOCK_DGRAM: m_Log << "UDP" << CUtil::CLog::endl; break;
+		case SOCK_STREAM: m_Log << "TCP" << CUtil::CLog::endl; break;
+		case SOCK_RAW: m_Log << "RAW" << CUtil::CLog::endl; break;
+		default: m_Log << "unknown" << CUtil::CLog::endl; break;
+	};
+	m_Log << "Log To File: " << (m_CONFIG.bLogToFile? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Log Path (if enabled): " << m_CONFIG.szLogPath << CUtil::CLog::endl;
+	m_Log << "LotInfo to STDF: " << (m_CONFIG.bSendInfo? "enabled" : "disabled") << CUtil::CLog::endl;
 
+	m_Log << "Launch Type: " << (m_CONFIG.bProd? "OICu" : "OpTool") << CUtil::CLog::endl;
+	m_Log << "Launch Attempt Time-out (s): " << (m_CONFIG.nRelaunchTimeOutMS /1000) << CUtil::CLog::endl;
+	m_Log << "End Lot Time-out (s): " << (m_CONFIG.nEndLotTimeOutMS /1000)<< CUtil::CLog::endl;
+	m_Log << "Unload Program Time-out (s): " << (m_CONFIG.nUnloadProgTimeOutMS /1000)<< CUtil::CLog::endl;
+	m_Log << "Kill Tester Time-out (s): " << (m_CONFIG.nKillTesterTimeOutMS /1000)<< CUtil::CLog::endl;
+	m_Log << "Max Launch Attempts: " << (m_CONFIG.bProd? "OICu" : "OpTool") << CUtil::CLog::endl;	
 
+	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
 	return true;
 }
 
