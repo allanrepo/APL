@@ -25,7 +25,7 @@
 		<Logging state = "true">
 			<Path>/home/localuser/Desktop</Path>
 		</Logging>
-		<STDF state = "true" />
+		<STDF state = "false" />
 		<STDF field = "MIR">
 			<Param name = "LOT_ID">lotid</Param>
 			<Param name = "PART_TYP">device</Param>

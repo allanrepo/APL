@@ -128,6 +128,7 @@ protected:
 	CState* m_pStateOnUnloadProg;
 	CState* m_pStateOnKillTester;
 	CState* m_pStateOnLaunch;
+	CState* m_pSendLotInfo;
 
 	// state functions (load)
 	void onInitLoadState(CState&);
@@ -136,6 +137,7 @@ protected:
 	void onKillTesterLoadState(CState&);
 	void onUnloadProgLoadState(CState&);
 	void onLaunchLoadState(CState&);
+	void onSetLotInfoLoadState(CState&);
 
 	// state functions (unload)
 	void onIdleUnloadState(CState&);
@@ -168,6 +170,8 @@ protected:
 	// utility functions. purpose are obvious in their function name and arguments
 	bool scan(int argc, char **argv);
 	const std::string getUserName() const;
+	bool setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce = true);
+	bool setLotInfo();
 
 	// functions to parse lotinfo.txt file 
 	bool parse(const std::string& name);

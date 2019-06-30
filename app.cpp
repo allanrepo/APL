@@ -20,6 +20,7 @@ CApp::CApp(int argc, char **argv)
 	m_pStateOnUnloadProg = new CAppState(*this, "onUnloadProg", &CApp::onUnloadProgLoadState, &CApp::onUnloadProgUnloadState);
 	m_pStateOnKillTester = new CAppState(*this, "onKillTester", &CApp::onKillTesterLoadState);
 	m_pStateOnLaunch = new CAppState(*this, "onLaunch", &CApp::onLaunchLoadState, &CApp::onLaunchUnloadState);
+	m_pSendLotInfo = new CAppState(*this, "onSetLotInfo", &CApp::onSetLotInfoLoadState);
 
 	// add set the first active state 
 	m_StateMgr.set(m_pStateOnInit);
@@ -165,6 +166,18 @@ void CApp::onLaunchUnloadState(CState& state)
 	// clear FD manager and delete the fd object we used for this state
 	m_FileDescMgr.clear();
 	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
+}
+
+
+/* ------------------------------------------------------------------------------------------
+STATE (load): onSetLotInfo
+------------------------------------------------------------------------------------------ */
+void CApp::onSetLotInfoLoadState(CState& state)
+{
+	// is option to set lotinfo from lotinfo.txt enable?
+	if (m_CONFIG.bSendInfo){ setLotInfo(); }
+
+	m_StateMgr.set(m_pStateOnIdle);
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -1018,7 +1031,7 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 		case EVX_PROGRAM_LOADED:
 		{
 		    	m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOADED" << CUtil::CLog::endl;
-			m_StateMgr.set(m_pStateOnIdle);
+			m_StateMgr.set(m_pSendLotInfo);
 			break;
 		}
 		case EVX_PROGRAM_START: 
@@ -1133,5 +1146,100 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 	c.disconnect();
 }
 
+/* ------------------------------------------------------------------------------------------
+wraps progctrl method to set lotinfo/stdf
+-	returns false if it fails to set, true otherwise
+------------------------------------------------------------------------------------------ */
+bool CApp::setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce)
+{
+	if (!m_pProgCtrl) return false;
 
+	// if field is empty, we won't set it, unless we're forced to, which clears the lot information instead
+   	if (!field.empty() || bForce) 
+	{
+		// set to unison
+		m_pProgCtrl->setLotInformation(type, field.c_str());
+
+		// check if successful
+		if (field.compare( m_pProgCtrl->getLotInformation(type) ) != 0)
+		{
+			m_Log << "ERROR: Failed to set Lot Information to '" << field << "'" << CUtil::CLog::endl;
+			return false;
+		}
+		// otherwise it's successful
+		m_Log << "Successfully set " << label << " to '" << m_pProgCtrl->getLotInformation(type) << "'" << CUtil::CLog::endl;
+		return true;
+   	}
+	// if field is empty from XTRF, let's leave this field with whatever its current value is
+	else
+	{ 
+		m_Log << "Field is empty. " << label << " will not be set." << CUtil::CLog::endl; 
+		return true;
+	}
+}
+
+
+/* ------------------------------------------------------------------------------------------
+set lotinfo taken from lotinfo.txt
+------------------------------------------------------------------------------------------ */
+bool CApp::setLotInfo()
+{
+	if (!m_pProgCtrl) return false;
+	bool bRslt = true;
+
+	// set MIR
+	if ( !setLotInformation(EVX_LotLotID, 			m_MIR.LotId, 	"MIR.LotLotID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCommandMode, 		m_MIR.CmodCod, 	"MIR.LotCommandMode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotActiveFlowName, 		m_MIR.FlowId, 	"MIR.LotActiveFlowName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDesignRev, 		m_MIR.DsgnRev, 	"MIR.LotDesignRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDateCode, 		m_MIR.DateCod, 	"MIR.LotDateCode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotOperFreq, 		m_MIR.OperFrq, 	"MIR.LotOperFreq")) bRslt = false;
+	if ( !setLotInformation(EVX_LotOperator, 		m_MIR.OperNam, 	"MIR.LotOperator")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTcName, 			m_MIR.NodeNam, 	"MIR.LotTcName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDevice, 			m_MIR.PartTyp, 	"MIR.LotDevice")) bRslt = false;
+	if ( !setLotInformation(EVX_LotEngrLotId, 		m_MIR.EngId, 	"MIR.LotEngrLotId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestTemp, 		m_MIR.TestTmp, 	"MIR.LotTestTemp")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestFacility, 		m_MIR.FacilId, 	"MIR.LotTestFacility")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestFloor, 		m_MIR.FloorId, 	"MIR.LotTestFloor")) bRslt = false;
+	if ( !setLotInformation(EVX_LotHead, 			m_MIR.StatNum, 	"MIR.LotHead")) bRslt = false;
+	if ( !setLotInformation(EVX_LotFabricationID, 		m_MIR.ProcId, 	"MIR.LotFabricationID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestMode, 		m_MIR.ModeCod, 	"MIR.LotTestMode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProductID, 		m_MIR.FamlyId,  "MIR.LotProductID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotPackage, 		m_MIR.PkgTyp, 	"MIR.LotPackage")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSublotID, 		m_MIR.SblotId, 	"MIR.LotSublotID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSetup, 		m_MIR.SetupId, 	"MIR.LotTestSetup")) bRslt = false;
+	if ( !setLotInformation(EVX_LotFileNameRev, 		m_MIR.JobRev, 	"MIR.LotFileNameRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotAuxDataFile, 		m_MIR.AuxFile, 	"MIR.LotAuxDataFile")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestPhase, 		m_MIR.TestCod, 	"MIR.LotTestPhase")) bRslt = false;
+	if ( !setLotInformation(EVX_LotUserText, 		m_MIR.UserText, "MIR.LotUserText")) bRslt = false;
+	if ( !setLotInformation(EVX_LotRomCode, 		m_MIR.RomCod, 	"MIR.LotRomCode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTesterSerNum, 		m_MIR.SerlNum, 	"MIR.LotTesterSerNum")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTesterType, 		m_MIR.TstrTyp, 	"MIR.LotTesterType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSupervisor, 		m_MIR.SuprNam, 	"MIR.LotSupervisor")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSystemName, 		m_MIR.ExecTyp, 	"MIR.LotSystemName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTargetName, 		m_MIR.ExecVer, 	"MIR.LotTargetName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSpecName, 		m_MIR.SpecNam, 	"MIR.LotTestSpecName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSpecRev, 		m_MIR.SpecVer, 	"MIR.LotTestSpecRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProtectionCode, 		m_MIR.ProtCod, 	"MIR.LotProtectionCode")) bRslt = false;
+
+	// set SDR
+	if ( !setLotInformation(EVX_LotHandlerType, 		m_SDR.HandTyp, 	"SDR.LotHandlerType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCardId, 			m_SDR.CardId, 	"SDR.LotCardId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLoadBrdId, 		m_SDR.LoadId, 	"SDR.LotLoadBrdId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProberHandlerID, 	m_SDR.HandId, 	"SDR.LotProberHandlerID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDIBType, 		m_SDR.DibTyp, 	"SDR.LotDIBType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotIfCableId, 		m_SDR.CableId, 	"SDR.LotIfCableId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotContactorType, 		m_SDR.ContTyp, 	"SDR.LotContactorType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLoadBrdType, 		m_SDR.LoadTyp, 	"SDR.LotLoadBrdType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotContactorId, 		m_SDR.ContId, 	"SDR.LotContactorId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLaserType, 		m_SDR.LaserTyp, "SDR.LotLaserType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLaserId, 		m_SDR.LaserId, 	"SDR.LotLaserId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotExtEquipType, 		m_SDR.ExtrTyp, 	"SDR.LotExtEquipType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotExtEquipId, 		m_SDR.ExtrId, 	"SDR.LotExtEquipId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotActiveLoadBrdName, 	m_SDR.DibId, 	"SDR.LotActiveLoadBrdName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCardType, 		m_SDR.CardTyp, 	"SDR.LotCardType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotIfCableType, 		m_SDR.CableTyp, "SDR.LotIfCableType")) bRslt = false;
+
+	return bRslt;
+}
 
