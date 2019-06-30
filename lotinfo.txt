@@ -20,4 +20,4 @@ temperature:95
 BOARDId:Board-ABC-123
 HANDLER:@handler
 QTY:@tmp_in_count       
-JobFile:/home/localuser/Desktop/ST/remote/BinChecker_R01P02/Program/hello.una
+JobFile:/home/localuser/Desktop/ST/remote/BinChecker_R01P02/Program/BinChecker.una

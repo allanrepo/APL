@@ -574,7 +574,7 @@ void CApp::onReceiveFile(const std::string& name)
 	}
 	else m_Log << "'" << name << "' file received." << CUtil::CLog::endl;
 
-	// is this that double inotify event trigger? if yes, let's ignore this.	
+	// is this that multiple inotify event trigger? if yes, let's ignore this. we only want to handle 1 notification
 	if (m_bIgnoreFile)
 	{ 
 		m_Log << "Detected multiple events from inotify. ignoring this..." << CUtil::CLog::endl;
