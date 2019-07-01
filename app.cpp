@@ -401,6 +401,9 @@ void CApp::endLot(CTask& task)
 		{
 			m_Log << "Program '" << m_pProgCtrl->getProgramPath() << "' is loaded. Let's end lot first before unloading it." << CUtil::CLog::endl; 
 
+			// pause CURI so it stops unison from testing next cycle after ending lot
+			m_pProgCtrl->faprocInvoke("suspend");
+
 			// is there a lot being tested? if yes, let's end the lot.
 			if (m_pProgCtrl->setEndOfLot(EVXA::NO_WAIT, true) != EVXA::OK)
 			{
@@ -416,6 +419,7 @@ void CApp::endLot(CTask& task)
 				m_Log << "ERROR: something went wrong in ending lot..." << CUtil::CLog::endl;
 				return;
 			}			
+
 
 			m_Log << "end of lot/wafer done" << CUtil::CLog::endl;
 		}
