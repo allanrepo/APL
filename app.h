@@ -159,6 +159,8 @@ protected:
 	void launch(CTask&);
 	void timeOutLaunch(CTask&);
 	void timeOutKillTester(CTask&);
+	void sendLotInfoToFAModule(CTask&);
+	void timeOutSendLotInfoToFAModule(CTask&);
 
 	// functions executed by file descriptor handlers
 	void onReceiveFile(const std::string& name);	
@@ -188,7 +190,6 @@ public:
 	virtual void onWaferChange(const EVX_WAFER_STATE state, const std::string& szWaferId);
 	virtual void onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg);
 	virtual void onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status = 0);
-
 };
 
 /* ------------------------------------------------------------------------------------------

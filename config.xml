@@ -12,7 +12,7 @@
 			<Param name = "Wait Time To Unload Program">20</Param>
 		</Launch>
 		<LotInfo>
-			<File>lotinfo.txt</File>
+			<File>b.txt</File>
 			<Path>/home/localuser/Desktop/APL</Path>
 		</LotInfo>
 		<Binning state = "true">

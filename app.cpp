@@ -174,11 +174,68 @@ STATE (load): onSetLotInfo
 ------------------------------------------------------------------------------------------ */
 void CApp::onSetLotInfoLoadState(CState& state)
 {
+/*
 	// is option to set lotinfo from lotinfo.txt enable?
 	if (m_CONFIG.bSendInfo){ setLotInfo(); }
 
 	m_StateMgr.set(m_pStateOnIdle);
+*/
+
+	// create string that holds full path + monitor file 
+	std::stringstream ssFullPathMonitorName;
+	ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << m_CONFIG.szLotInfoFileName;
+
+	// send the lotinfo file path to famodule
+	if ( m_pProgCtrl) m_pProgCtrl->faprocSendCommand("Load Lot Info File", ssFullPathMonitorName.str()); 
+
+	m_Log << "Interface: " << m_pProgCtrl->getActiveExtInterfaceObject() << CUtil::CLog::endl;
+
+	// add task that will wait for famodule to finish processing lotinfo file 
+	state.add(new CAppTask(*this, &CApp::sendLotInfoToFAModule, "sendLotInfoToFAModule", 1000, true, true));
+
+	// add task that will time-out wait for famodule
+	state.add(new CAppTask(*this, &CApp::timeOutSendLotInfoToFAModule, "timeOutSendLotInfoToFAModule", 10000, true, false));
 }
+
+/* ------------------------------------------------------------------------------------------
+STATE (load): onSetLotInfo
+------------------------------------------------------------------------------------------ */
+void CApp::sendLotInfoToFAModule(CTask& task)
+{
+	if (!m_pProgCtrl)
+	{
+		m_StateMgr.set(m_pStateOnIdle);
+		return;
+	}
+
+	// let's try to read back token from famodule to find out if they are done.
+	std::string s;
+	m_pProgCtrl->faprocGet("Load Lot Info File", s);
+	m_Log << "Load Lot Info File: '" << s << "'" << CUtil::CLog::endl;
+
+	// if it's set to "OK" then it's good now
+	if (s.compare("OK") == 0)
+	{
+		m_Log << "Looks like FAModule is done...: '" << s << "'" << CUtil::CLog::endl;
+
+		// delete file
+
+		// move to next state
+		m_StateMgr.set(m_pStateOnIdle);
+		return;
+	}
+
+}
+
+/* ------------------------------------------------------------------------------------------
+TASK: 	if this is executed, time-out for wait on FAModule lotinfo.txt process is done
+------------------------------------------------------------------------------------------ */
+void CApp::timeOutSendLotInfoToFAModule(CTask& task)
+{
+	m_Log << "task(" << task.getName() << "): Wait for FAModule expired. moving on to idle state." << CUtil::CLog::endl;
+	m_StateMgr.set(m_pStateOnIdle);
+}
+
 
 /* ------------------------------------------------------------------------------------------
 TASK: unload program
@@ -960,15 +1017,6 @@ bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std:
 
 	return true;
 }
-#if 0
-/* ------------------------------------------------------------------------------------------
-event handler for state notification EOT
------------------------------------------------------------------------------------------- */
-void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bin[], int hw_bin[], int pass[], EVXA_ULONG dsp_status)
-{
-	m_Log << "EOT" << CUtil::CLog::endl;
-}
-#endif
 
 /* ------------------------------------------------------------------------------------------
 event handler for state notification EOL
