@@ -194,7 +194,7 @@ void CApp::onSetLotInfoLoadState(CState& state)
 	state.add(new CAppTask(*this, &CApp::sendLotInfoToFAModule, "sendLotInfoToFAModule", 1000, true, true));
 
 	// add task that will time-out wait for famodule
-	state.add(new CAppTask(*this, &CApp::timeOutSendLotInfoToFAModule, "timeOutSendLotInfoToFAModule", 10000, true, false));
+	state.add(new CAppTask(*this, &CApp::timeOutSendLotInfoToFAModule, "timeOutSendLotInfoToFAModule", 20000, true, false));
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -218,7 +218,10 @@ void CApp::sendLotInfoToFAModule(CTask& task)
 	{
 		m_Log << "Looks like FAModule is done...: '" << s << "'" << CUtil::CLog::endl;
 
-		// delete file
+		// delete the lotinfo.txt
+		std::stringstream ssFullPathMonitorName;
+		ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << m_CONFIG.szLotInfoFileName;
+		unlink(ssFullPathMonitorName.str().c_str());
 
 		// move to next state
 		m_StateMgr.set(m_pStateOnIdle);
