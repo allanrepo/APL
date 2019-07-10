@@ -211,7 +211,6 @@ void CApp::sendLotInfoToFAModule(CTask& task)
 	// let's try to read back token from famodule to find out if they are done.
 	std::string s;
 	m_pProgCtrl->faprocGet("Load Lot Info File", s);
-	m_Log << "Load Lot Info File: '" << s << "'" << CUtil::CLog::endl;
 
 	// if it's set to "OK" then it's good now
 	if (s.compare("OK") == 0)
@@ -227,7 +226,11 @@ void CApp::sendLotInfoToFAModule(CTask& task)
 		m_StateMgr.set(m_pStateOnIdle);
 		return;
 	}
-
+	else
+	{
+		m_Log << "FAModule is not done with " << m_CONFIG.szLotInfoFileName << " yet. let's wait..." << CUtil::CLog::endl;
+		return;
+	}
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -235,7 +238,13 @@ TASK: 	if this is executed, time-out for wait on FAModule lotinfo.txt process is
 ------------------------------------------------------------------------------------------ */
 void CApp::timeOutSendLotInfoToFAModule(CTask& task)
 {
-	m_Log << "task(" << task.getName() << "): Wait for FAModule expired. moving on to idle state." << CUtil::CLog::endl;
+	m_Log << "task(" << task.getName() << "): Wait for FAModule expired. Let's delete the " << m_CONFIG.szLotInfoFileName << " and move on to idle state." << CUtil::CLog::endl;
+
+	// delete the lotinfo.txt
+	std::stringstream ssFullPathMonitorName;
+	ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << m_CONFIG.szLotInfoFileName;
+	unlink(ssFullPathMonitorName.str().c_str());
+
 	m_StateMgr.set(m_pStateOnIdle);
 }
 

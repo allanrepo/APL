@@ -1,7 +1,7 @@
-OPERATOR:theterminator   
-LOTid:LOT789XYZ
-subLotID:SUBLOT789XYZ
-DEVICE:DEVICE1234xxx  
+OPERATOR : theterminator            
+LOTID :   LOT789XYZ           
+SUBLOTID : SUBLOT789XYZ            
+DEVICE :DEVICE1234xxx              
 ProductID:PROD_ID_69
 FILENAMEREV:filename69   
 TESTMODE:testmode123    
@@ -16,8 +16,29 @@ TESTFLOOR:testflor456
 TESTFACILITY:backyard   
 ProberHandlerId:H-69handler
 temperature:95    
-temperature:95    
 BOARDId:Board-ABC-123
 HANDLER:@handler
 QTY:@tmp_in_count       
 JobFile:/home/localuser/Desktop/ST/remote/BinChecker_R01P02/Program/BinChecker.una
+OPERFREQ :   6969         
+FILENAMEREV : filenamerev69        
+TESTSETUP :   testsetup69        
+USERTEXT :    usertext69        
+LOTSTATE :    lotstate69        
+DESIGNREV :      desgienrev69     
+ENGRLOTID :      engrlotid69     
+TCNAME :              tcname69
+HEAD :                head69
+AUXDATAFILE :         auxdatafile69
+TESTPHASE :           testphase69
+ROMCODE :             romcode69
+TESTERSERNUM :        testersernum69
+TESTERTYPE :          testertype69
+SUPERVISOR :          supervisor69
+SYSTEMNAME :          systemname69
+TARGETNAME :          targetname69
+TESTSPECNAME :        testspecname69
+TESTSPECREV :        testspecrev69
+PROTECTIONCODE :      protectioncode69
+PROBERHANDLERID :     prober-handler-69
+
