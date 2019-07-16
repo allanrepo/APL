@@ -46,11 +46,14 @@ protected:
 
 		// launch parameters
 		bool 		bProd;
+		bool		bKillTesterOnLaunch;
 		int		nRelaunchTimeOutMS;
 		int		nRelaunchAttempt;
 		int		nEndLotTimeOutMS;
 		int		nUnloadProgTimeOutMS;
 		int		nKillTesterTimeOutMS;
+		int		nFAModuleTimeOutMS;
+
 
 		// binning parameters
 		bool 		bSendBin;
@@ -74,11 +77,13 @@ protected:
 		CONFIG()
 		{
 			bProd = true;
+			bKillTesterOnLaunch = false;
 			nRelaunchTimeOutMS = 120000;
 			nRelaunchAttempt = 3;
 			nEndLotTimeOutMS = 30000;
 			nUnloadProgTimeOutMS = 30000;
-			nKillTesterTimeOutMS = 10000;
+			nKillTesterTimeOutMS = 30000;
+			nFAModuleTimeOutMS = 30000;
 			bSendInfo = false;
 			bSendBin = false;
 			bUseHardBin = false;

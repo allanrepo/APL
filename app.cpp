@@ -174,27 +174,11 @@ STATE (load): onSetLotInfo
 ------------------------------------------------------------------------------------------ */
 void CApp::onSetLotInfoLoadState(CState& state)
 {
-/*
-	// is option to set lotinfo from lotinfo.txt enable?
-	if (m_CONFIG.bSendInfo){ setLotInfo(); }
-
-	m_StateMgr.set(m_pStateOnIdle);
-*/
-
-	// create string that holds full path + monitor file 
-	std::stringstream ssFullPathMonitorName;
-	ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << m_CONFIG.szLotInfoFileName;
-
-	// send the lotinfo file path to famodule
-	if ( m_pProgCtrl) m_pProgCtrl->faprocSendCommand("Load Lot Info File", ssFullPathMonitorName.str()); 
-
-	m_Log << "Interface: " << m_pProgCtrl->getActiveExtInterfaceObject() << CUtil::CLog::endl;
-
 	// add task that will wait for famodule to finish processing lotinfo file 
 	state.add(new CAppTask(*this, &CApp::sendLotInfoToFAModule, "sendLotInfoToFAModule", 1000, true, true));
 
 	// add task that will time-out wait for famodule
-	state.add(new CAppTask(*this, &CApp::timeOutSendLotInfoToFAModule, "timeOutSendLotInfoToFAModule", 20000, true, false));
+	state.add(new CAppTask(*this, &CApp::timeOutSendLotInfoToFAModule, "timeOutSendLotInfoToFAModule", m_CONFIG.nFAModuleTimeOutMS, true, false));
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -208,18 +192,29 @@ void CApp::sendLotInfoToFAModule(CTask& task)
 		return;
 	}
 
+	// create string that holds full path + monitor file
+	std::stringstream ssFullPathMonitorName;
+	ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << m_CONFIG.szLotInfoFileName;
+
 	// let's try to read back token from famodule to find out if they are done.
 	std::string s;
 	m_pProgCtrl->faprocGet("Load Lot Info File", s);
 
-	// if it's set to "OK" then it's good now
-	if (s.compare("OK") == 0)
+	// if it's set to "Ready" then it's good to load the recipe file
+	if (s.compare("Ready") == 0)
 	{
-		m_Log << "Looks like FAModule is done...: '" << s << "'" << CUtil::CLog::endl;
+		m_Log << "Looks like FAModule is ready to load the lotinfo file...: '" << s << "'" << CUtil::CLog::endl;
+		// send the lotinfo file path to famodule
+		if ( m_pProgCtrl) m_pProgCtrl->faprocSendCommand("Load Lot Info File", ssFullPathMonitorName.str());		
+	}
+	// if it's set to "OK" or starts with "NOK", then file loading has completed
+	// either the good way or the bad way. We can leave this state in both cases
+	else if (s.compare("OK") == 0 || s.compare(0, 3, "NOK") == 0)
+	{
+		if(s.compare("OK") == 0) m_Log << "Looks like FAModule is done...: '" << s << "'" << CUtil::CLog::endl;
+		else m_Log << "Looks like FAModule had an issue loading the lotinfo file...: '" << s << "'" << CUtil::CLog::endl;
 
 		// delete the lotinfo.txt
-		std::stringstream ssFullPathMonitorName;
-		ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << m_CONFIG.szLotInfoFileName;
 		unlink(ssFullPathMonitorName.str().c_str());
 
 		// move to next state
@@ -311,13 +306,15 @@ void CApp::killTester(CTask& task)
 		}
 	}
 
-/*
+
 	// kill tester
-	std::stringstream ssCmd;
-	ssCmd << "./" << KILLTESTERCMD << " " << m_szTesterName;
-	m_Log << "END TESTER: " << ssCmd.str() << CUtil::CLog::endl;		
-	system(ssCmd.str().c_str());
-*/
+	if (m_CONFIG.bKillTesterOnLaunch)
+	{
+		std::stringstream ssCmd;
+		ssCmd << "./" << KILLTESTERCMD << " " << m_szTesterName;
+		m_Log << "END TESTER: " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());
+	}
 
 	// after killing unison threads, let's enable the task in current state that time-out wait for unison execs getting killed
 	if ( m_StateMgr.get() == m_pStateOnKillTester)
@@ -546,6 +543,7 @@ void CApp::launch(CTask& task)
 	std::stringstream ssCmd;
 	ssCmd.str(std::string());
 	ssCmd.clear();
+	ssCmd << "UNISON_NEWLOT_CONFIG_FILE=$LTX_UPROD_PATH/newlot-config/NewLotUnison_" << m_MIR.ProcId << ".xml ";
 	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
 	ssCmd << (m_szProgramFullPathName.empty()? "": "-load ") << (m_szProgramFullPathName.empty()? "" : m_szProgramFullPathName);
 	ssCmd << " -qual " << " -T " << m_szTesterName;
@@ -756,10 +754,13 @@ bool CApp::config(const std::string& file)
 				if (pLaunch->fetchChild(i)->fetchTag().compare("Param") != 0) continue;
 
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Type") == 0){ m_CONFIG.bProd = pLaunch->fetchChild(i)->fetchText().compare("prod") == 0? true: false; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Kill Tester Before Launch") == 0){ m_CONFIG.bKillTesterOnLaunch = pLaunch->fetchChild(i)->fetchText().compare("true") == 0? true: false; }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Launch") == 0){ m_CONFIG.nRelaunchTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Max Attempt To Launch") == 0){ m_CONFIG.nRelaunchAttempt = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ); }				
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To End Lot") == 0){ m_CONFIG.nEndLotTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Unload Program") == 0){ m_CONFIG.nUnloadProgTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To FAModule") == 0){ m_CONFIG.nFAModuleTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Kill Tester") == 0){ m_CONFIG.nKillTesterTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
 			}
 		}
 		else m_Log << "Warning: Didn't find <Launch>. " << CUtil::CLog::endl;
@@ -886,11 +887,13 @@ bool CApp::config(const std::string& file)
 	m_Log << "LotInfo to STDF: " << (m_CONFIG.bSendInfo? "enabled" : "disabled") << CUtil::CLog::endl;
 
 	m_Log << "Launch Type: " << (m_CONFIG.bProd? "OICu" : "OpTool") << CUtil::CLog::endl;
+	m_Log << "Kill Tester Before Launch: " << (m_CONFIG.bKillTesterOnLaunch? "true" : "false") << CUtil::CLog::endl;
 	m_Log << "Launch Attempt Time-out (s): " << (m_CONFIG.nRelaunchTimeOutMS /1000) << CUtil::CLog::endl;
 	m_Log << "End Lot Time-out (s): " << (m_CONFIG.nEndLotTimeOutMS /1000)<< CUtil::CLog::endl;
 	m_Log << "Unload Program Time-out (s): " << (m_CONFIG.nUnloadProgTimeOutMS /1000)<< CUtil::CLog::endl;
 	m_Log << "Kill Tester Time-out (s): " << (m_CONFIG.nKillTesterTimeOutMS /1000)<< CUtil::CLog::endl;
 	m_Log << "Max Launch Attempts: " << (m_CONFIG.bProd? "OICu" : "OpTool") << CUtil::CLog::endl;	
+	m_Log << "FAmodule Time-out (s): " << (m_CONFIG.nFAModuleTimeOutMS /1000)<< CUtil::CLog::endl;
 
 	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
 	return true;
