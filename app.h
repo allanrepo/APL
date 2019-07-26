@@ -12,12 +12,13 @@
 #include <stdf.h>
 #include <socket.h>
 
+
 /* ------------------------------------------------------------------------------------------
 constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
 #define JOBFILE "JOBFILE"
-#define VERSION "beta.2.0.20190718"
+#define VERSION "beta.2.0.20190726"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"

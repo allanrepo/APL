@@ -665,6 +665,26 @@ void CApp::onReceiveFile(const std::string& name)
 		return; 
 	}
 
+	// Ok, need to append APL name and version to the lotinfo file so we can push it to GDR.AUTOMATION
+	// Need to wait for a while to avoid writing the file while the OS may be copying it.
+	// Not so elegant, but it does the job, so sleep 1 second.
+	sleep(1);
+	std::ofstream lotInfoFile;
+	lotInfoFile.open(ssFullPathMonitorName.str().c_str(), std::ofstream::out | std::ofstream::app);
+	if(lotInfoFile.good()) 
+	{
+		lotInfoFile << "AutomationNam:" << "APL" << std::endl;
+		lotInfoFile << "AutomationVer:" << VERSION << std::endl;
+		lotInfoFile << "LoaderApiNam:" << "APL" << std::endl;
+		lotInfoFile << "LoaderApiRev:" << VERSION << std::endl;
+		lotInfoFile.close();
+		m_Log << "Added GDR.AUTOMATION data to " << ssFullPathMonitorName.str().c_str() << CUtil::CLog::endl;
+	}
+	else 
+	{
+		m_Log << "Could not open " << ssFullPathMonitorName.str().c_str() << " to add GDR.AUTOMATION data." << CUtil::CLog::endl;
+	}
+
 	// if this is the file, let's parse it.
 	// does it contain JobFile field? if yes, does it point to a valid unison program? 
 	// if yes, let's use this file contents to load program

@@ -1,6 +1,9 @@
-initial design requirement
+RELEASE NOTES:
 
--	use inotify to monitor specific folder where <lotinfo.txt> file will be transferred
--	create a library that parses <lotinfo.txt> 
--	create a library that wraps tester functions
-
+Version beta.2.0.20190726
+-	APL now appends incoming lotinfo.txt file with the following parameters to be set in STDF file as GDR's
+	-	AutomationNam
+	-	AutomationVer
+	-	LoaderApiNam
+	-	LoaderApiRev
+-	sample config.xml accompanied in the software package has been updated to remove <STDF> params
