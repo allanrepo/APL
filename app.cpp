@@ -63,7 +63,7 @@ void CApp::onIdleLoadState(CState& state)
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
 	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
-	state.add(new CAppTask(*this, &CApp::setLogFile, "setLogFile", 60000, true, false));
+	state.add(new CAppTask(*this, &CApp::setLogFile, "setLogFile", 60000, true, true));
 }
 
 /* ------------------------------------------------------------------------------------------
