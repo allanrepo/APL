@@ -14,6 +14,9 @@
 			<Param name = "Wait Time To FAModule">20</Param>
 			<Param name = "Wait Time To Kill Tester">30</Param>
 		</Launch>
+		<Summary state = "true">
+			<Path>/home/localuser/Desktop/</Path>
+		</Summary>
 		<LotInfo>
 			<File>b.txt</File>
 			<Path>/home/localuser/Desktop/APL</Path>

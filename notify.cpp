@@ -61,7 +61,7 @@ CNotifyFileDescriptor::~CNotifyFileDescriptor()
 /* ------------------------------------------------------------------------------------------
 event handler when this file descriptor has response from select()
 ------------------------------------------------------------------------------------------ */
-void CNotifyFileDescriptor::onSelect()	
+void CNotifyFileDescriptor::onSelect(bool bOnce)	
 {
 	// bail out if bad fd
 	if (m_fd < 0) return;

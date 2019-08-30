@@ -26,7 +26,7 @@ protected:
 public:
 	CNotifyFileDescriptor(const std::string& path, unsigned short mask = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM);
 	virtual ~CNotifyFileDescriptor();
-	virtual void onSelect();
+	virtual void onSelect(bool bOnce = false);
 
 	void start();
 	void stop();

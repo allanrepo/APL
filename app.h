@@ -12,6 +12,14 @@
 #include <stdf.h>
 #include <socket.h>
 
+/*
+B.2.0.2019xxxx
+-	CNotify::onSelect() now takes bool argument to specify if it will handle all file events or just first one
+-	added config flag to tell if appending summary with amkor's "step" field is enable or not
+-	added summary path in config
+
+*/
+
 
 /* ------------------------------------------------------------------------------------------
 constants
@@ -75,6 +83,10 @@ protected:
 		std::string 	szLotInfoFileName;
 		std::string 	szLotInfoFilePath;
 
+		// summary appending feature
+		bool 		bSummary;
+		std::string	szSummaryPath;
+
 		CONFIG()
 		{
 			bProd = true;
@@ -96,6 +108,8 @@ protected:
 			nSocketType = SOCK_STREAM;
 			szLotInfoFileName = "lotinfo.txt";
 			szLotInfoFilePath = "/tmp";
+			bSummary = false;
+			szSummaryPath = "/tmp";
 		}
 	};
 
@@ -123,6 +137,7 @@ protected:
 	CFileDescriptorManager m_FileDescMgr;
 	CFileDescriptorManager::CFileDescriptor* m_pMonitorFileDesc; 
 	CFileDescriptorManager::CFileDescriptor* m_pStateNotificationFileDesc;
+	CFileDescriptorManager::CFileDescriptor* m_pSummaryFileDesc; 
 
 	// state machine
 	CStateManager m_StateMgr;
@@ -171,7 +186,8 @@ protected:
 	// functions executed by file descriptor handlers
 	void onReceiveFile(const std::string& name);	
 	void onStateNotificationResponse(int fd);
-
+	void onSummaryFile(const std::string& name);	
+	
 	// parse XML config file
 	bool config(const std::string& config);
 	

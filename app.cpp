@@ -56,9 +56,11 @@ void CApp::onIdleLoadState(CState& state)
 	// create the fd objects for both inotify and state notification. we need them both for this state
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
 	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
+	//m_pSummaryFileDesc = new CMonitorFileDesc(*this, &CApp::onSummaryFile, m_CONFIG.szSummaryPath);
 
 	// add them to FD manager so we'll use them in select() task
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
+	//m_FileDescMgr.add( *m_pSummaryFileDesc );
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
@@ -79,6 +81,7 @@ void CApp::onIdleUnloadState(CState& state)
 
 	// now delete FD objects 
 	if (m_pMonitorFileDesc){ delete m_pMonitorFileDesc; m_pMonitorFileDesc = 0; }
+	//if (m_pSummaryFileDesc){ delete m_pSummaryFileDesc; m_pSummaryFileDesc = 0; }
 	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
 }
 
@@ -641,6 +644,11 @@ const std::string CApp::getUserName() const
 	return std::string(passwd_info->pw_name);
 } 
 
+void CApp::onSummaryFile(const std::string& name)
+{
+	m_Log << "Summary notify triggered: " << name << CUtil::CLog::endl;
+}
+
 /* ------------------------------------------------------------------------------------------
 Utility: check the file if this is lotinfo.txt; parse if yes
 ------------------------------------------------------------------------------------------ */
@@ -793,7 +801,10 @@ bool CApp::config(const std::string& file)
 
 		// check if <logging> is set
 		XML_Node* pLogging = 0;
-		if (pConfig->fetchChild("Logging")){ if ( CUtil::toUpper( pConfig->fetchChild("Logging")->fetchVal("state") ).compare("TRUE") == 0) pLogging = pConfig->fetchChild("Logging"); }
+		if (pConfig->fetchChild("Logging"))
+		{ 
+			if ( CUtil::toUpper( pConfig->fetchChild("Logging")->fetchVal("state") ).compare("TRUE") == 0) pLogging = pConfig->fetchChild("Logging"); 
+		}
 		else m_Log << "Warning: Didn't find <Logging>. " << CUtil::CLog::endl;
 
 		// check if <LotInfo> is set
@@ -803,6 +814,17 @@ bool CApp::config(const std::string& file)
 			if (pConfig->fetchChild("LotInfo")->fetchChild("Path")){ m_CONFIG.szLotInfoFilePath = pConfig->fetchChild("LotInfo")->fetchChild("Path")->fetchText(); }		
 		}
 		else m_Log << "Warning: Didn't find <LotInfo>. " << CUtil::CLog::endl;
+
+		// check if <Summary> is set
+		if (pConfig->fetchChild("Summary"))
+		{
+			m_CONFIG.bSummary = false; // disabled by default
+			if ( CUtil::toUpper( pConfig->fetchChild("Summary")->fetchVal("state") ).compare("TRUE") == 0) m_CONFIG.bSummary = true;; 
+
+			if (pConfig->fetchChild("Summary")->fetchChild("Path")){ m_CONFIG.szSummaryPath = pConfig->fetchChild("Summary")->fetchChild("Path")->fetchText(); }		
+		}
+		else m_Log << "Warning: Didn't find <Summary>. " << CUtil::CLog::endl;
+
 
 
 		// for debug purposes, print out all the parameters of <Binning>
@@ -914,6 +936,9 @@ bool CApp::config(const std::string& file)
 	m_Log << "Kill Tester Time-out (s): " << (m_CONFIG.nKillTesterTimeOutMS /1000)<< CUtil::CLog::endl;
 	m_Log << "Max Launch Attempts: " << (m_CONFIG.bProd? "OICu" : "OpTool") << CUtil::CLog::endl;	
 	m_Log << "FAmodule Time-out (s): " << (m_CONFIG.nFAModuleTimeOutMS /1000)<< CUtil::CLog::endl;
+
+	m_Log << "Summary Appending with \"Step\" : " << (m_CONFIG.bSummary? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Summary Path (if enabled): " << m_CONFIG.szSummaryPath << CUtil::CLog::endl;
 
 	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
 	return true;
