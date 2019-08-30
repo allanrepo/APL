@@ -5,6 +5,8 @@ creates the file descriptor and sets the directory path to watch
 ------------------------------------------------------------------------------------------ */
 CNotifyFileDescriptor::CNotifyFileDescriptor(const std::string& path, unsigned short mask): m_szPath(path), m_nMask(mask)
 {
+	m_bHalt = false;
+
 	// create file descriptor for inotify
 	m_fd = inotify_init();
 	if ( m_fd < 0 ) perror( "inotify_init" );
@@ -61,7 +63,7 @@ CNotifyFileDescriptor::~CNotifyFileDescriptor()
 /* ------------------------------------------------------------------------------------------
 event handler when this file descriptor has response from select()
 ------------------------------------------------------------------------------------------ */
-void CNotifyFileDescriptor::onSelect(bool bOnce)	
+void CNotifyFileDescriptor::onSelect()	
 {
 	// bail out if bad fd
 	if (m_fd < 0) return;
@@ -77,6 +79,12 @@ void CNotifyFileDescriptor::onSelect(bool bOnce)
 		struct inotify_event *event = ( struct inotify_event * ) &buffer[ i ];
 
 		if (!event->len) continue;
+
+		if (m_bHalt) 
+		{
+			m_bHalt = false;
+			break;
+		}
 
 		if ( event->mask & IN_CREATE ) 
 		{

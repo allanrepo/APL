@@ -56,11 +56,11 @@ void CApp::onIdleLoadState(CState& state)
 	// create the fd objects for both inotify and state notification. we need them both for this state
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
 	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
-	//m_pSummaryFileDesc = new CMonitorFileDesc(*this, &CApp::onSummaryFile, m_CONFIG.szSummaryPath);
+	m_pSummaryFileDesc = new CMonitorFileDesc(*this, &CApp::onSummaryFile, m_CONFIG.szSummaryPath);
 
 	// add them to FD manager so we'll use them in select() task
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
-	//m_FileDescMgr.add( *m_pSummaryFileDesc );
+	m_FileDescMgr.add( *m_pSummaryFileDesc );
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
@@ -81,7 +81,7 @@ void CApp::onIdleUnloadState(CState& state)
 
 	// now delete FD objects 
 	if (m_pMonitorFileDesc){ delete m_pMonitorFileDesc; m_pMonitorFileDesc = 0; }
-	//if (m_pSummaryFileDesc){ delete m_pSummaryFileDesc; m_pSummaryFileDesc = 0; }
+	if (m_pSummaryFileDesc){ delete m_pSummaryFileDesc; m_pSummaryFileDesc = 0; }
 	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
 }
 
@@ -644,9 +644,22 @@ const std::string CApp::getUserName() const
 	return std::string(passwd_info->pw_name);
 } 
 
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
 void CApp::onSummaryFile(const std::string& name)
 {
 	m_Log << "Summary notify triggered: " << name << CUtil::CLog::endl;
+	if (m_pSummaryFileDesc) m_pSummaryFileDesc->halt();
+
+
+	// open the file
+
+
+
+
+	// close the file
+
 }
 
 /* ------------------------------------------------------------------------------------------

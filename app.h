@@ -14,7 +14,8 @@
 
 /*
 B.2.0.2019xxxx
--	CNotify::onSelect() now takes bool argument to specify if it will handle all file events or just first one
+-	added function in file descriptor class that allows you to process only the first trigger and ignore the rest.
+	this happens in notify class. 
 -	added config flag to tell if appending summary with amkor's "step" field is enable or not
 -	added summary path in config
 

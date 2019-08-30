@@ -15,7 +15,7 @@
 			<Param name = "Wait Time To Kill Tester">30</Param>
 		</Launch>
 		<Summary state = "true">
-			<Path>/home/localuser/Desktop/</Path>
+			<Path>/home/localuser/shared</Path>
 		</Summary>
 		<LotInfo>
 			<File>b.txt</File>
