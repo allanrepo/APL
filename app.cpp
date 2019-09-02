@@ -10,7 +10,7 @@ CApp::CApp(int argc, char **argv)
 	m_pMonitorFileDesc = 0;
 	m_pStateNotificationFileDesc = 0;
 	m_lotinfo.clear();
-
+   
 	// parse command line arguments
 	scan(argc, argv);
 

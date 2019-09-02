@@ -1,6 +1,6 @@
 RELEASE NOTES:
 
-Version beta.2.0.20190902
+Version beta.2.1.20190902
 -	new feature: APL can now monitor a specified directory for incoming sublot summary file and appends it with "Step" value taken from lotinfo.txt file
 	-	to enable, set the <Summary> tag in config.xml to <Summary state = "true">. otherwise this feature is disabled by default
 	-	to specify the directory path to monitor for incoming sublot summary file, specify a <Path> tag within <Summary> tag as shown below:

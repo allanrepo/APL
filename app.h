@@ -13,29 +13,12 @@
 #include <socket.h>
 #include <list>
 
-/*
-B.2.0.20190902
--	added function in notify fd class called halt(). this function allows you to stop succeeding events from fd select() 
-	if it sends more than one event preventing multiple triggers
--	added config flag to tell if appending summary with amkor's "step" field is enable or not
--	added summary path in config
--	**fixed a bug where APL goes haywire when receiving invalid lotinfo.txt file
-	-	appending GDR to lotinfo.txt is done even when lotinfo.txt file is invalid. since it's invalid, APl stays in idle state
-		and therefore notify object catches lotinfo.txt modify event. this causes endless loop. 
-	-	GDR is now only appended after ensuring lotinfo.txt is valid and APL moved to next state
--	the halt() function is also now used by lotinfo notify object to prevent multiple triggers. 
--	state class has new function halt(). when called, all other tasks it's supposed to execute will not be executed anymore
--	**fixed a bug that crashes APL when it tries to remove leading/trailing spaces in field/value pair if any of them contains nothing or just spaces
-
-*/
-
-
 /* ------------------------------------------------------------------------------------------
 constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
 #define JOBFILE "JOBFILE"
-#define VERSION "beta.2.0.20190726"
+#define VERSION "beta.2.1.20190902"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"
