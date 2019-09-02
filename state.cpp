@@ -5,6 +5,7 @@ int CRef::s_nInstance = 0;
 CState::CState(const std::string& name)
 {
 	m_szName = name;
+	m_bHalt = false;
 }
 
 CState::~CState()
@@ -26,7 +27,14 @@ void CState::run()
 	gettimeofday(&now, NULL);
 
 	for (std::list< CTask* >::iterator it = m_Tasks.begin(); it != m_Tasks.end(); it++)
-	{			
+	{
+		// did someone halted this state? if yes, let's not execute anymore tasks until this state is run() again
+		if (m_bHalt)
+		{
+			m_bHalt = false;
+			break;	
+		}
+
 		// is this a valid task?
 		CTask* pTask = *it;
 		if ( !pTask ) continue;

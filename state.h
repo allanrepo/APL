@@ -42,6 +42,7 @@ protected:
 	std::string m_szName;
 	CUtil::CLog m_Log;
 	std::list< CTask* > m_Tasks;
+	bool m_bHalt;
 
 public:
 	CState(const std::string& name = "");
@@ -56,6 +57,8 @@ public:
 	void add(CTask* pTask){ m_Tasks.push_back(pTask); }
 
 	CTask* get(const std::string& name);
+
+	void halt(){ m_bHalt = true; }
 };
 
 /* ------------------------------------------------------------------------------------------
@@ -78,6 +81,7 @@ public:
 
 	void set(CState* pstate);
 	const CState* get()const { return m_pState; }
+	CState* get(){ return m_pState; }
 };
 
 /* ------------------------------------------------------------------------------------------

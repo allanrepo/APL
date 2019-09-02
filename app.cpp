@@ -9,7 +9,7 @@ CApp::CApp(int argc, char **argv)
 	// initialize some of the members here to be safe
 	m_pMonitorFileDesc = 0;
 	m_pStateNotificationFileDesc = 0;
-	m_szProgramFullPathName = "";
+	m_lotinfo.clear();
 
 	// parse command line arguments
 	scan(argc, argv);
@@ -432,7 +432,7 @@ void CApp::select(CTask& task)
 	// for the same file. we don't want to process same file more than once so as soon
 	// as we get one, we "ignore" the others by setting this flag to true. only then when
 	// this function is executed again that we enable it.	
-	m_bIgnoreFile = false;
+//	m_bIgnoreFile = false;
 
 	// before calling select(), update file descriptors of evxa objects. this is to ensure the FD manager
 	// don't use a bad file descriptor. when evxa objects are destroyed, their file descriptors are considered bad.
@@ -537,7 +537,7 @@ void CApp::launch(CTask& task)
 	}
 
 	// setup system command to launch OICu
-	m_Log << "launching(" << (m_nLaunchAttempt) << ") OICu and loading '" << m_szProgramFullPathName << "'..." << CUtil::CLog::endl;
+	m_Log << "launching(" << (m_nLaunchAttempt) << ") OICu and loading '" << m_lotinfo.szProgramFullPathName << "'..." << CUtil::CLog::endl;
 
 	// let's incrementer launch attempt
 	m_nLaunchAttempt++;
@@ -548,7 +548,7 @@ void CApp::launch(CTask& task)
 	ssCmd.clear();
 	ssCmd << "UNISON_NEWLOT_CONFIG_FILE=$LTX_UPROD_PATH/newlot-config/NewLotUnison_" << m_MIR.ProcId << ".xml ";
 	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
-	ssCmd << (m_szProgramFullPathName.empty()? "": "-load ") << (m_szProgramFullPathName.empty()? "" : m_szProgramFullPathName);
+	ssCmd << (m_lotinfo.szProgramFullPathName.empty()? "": "-load ") << (m_lotinfo.szProgramFullPathName.empty()? "" : m_lotinfo.szProgramFullPathName);
 	ssCmd << " -qual " << " -T " << m_szTesterName;
 	system(ssCmd.str().c_str());	
 	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
@@ -645,24 +645,6 @@ const std::string CApp::getUserName() const
 } 
 
 /* ------------------------------------------------------------------------------------------
-
------------------------------------------------------------------------------------------- */
-void CApp::onSummaryFile(const std::string& name)
-{
-	m_Log << "Summary notify triggered: " << name << CUtil::CLog::endl;
-	if (m_pSummaryFileDesc) m_pSummaryFileDesc->halt();
-
-
-	// open the file
-
-
-
-
-	// close the file
-
-}
-
-/* ------------------------------------------------------------------------------------------
 Utility: check the file if this is lotinfo.txt; parse if yes
 ------------------------------------------------------------------------------------------ */
 void CApp::onReceiveFile(const std::string& name)
@@ -679,12 +661,29 @@ void CApp::onReceiveFile(const std::string& name)
 	}
 	else m_Log << "'" << name << "' file received." << CUtil::CLog::endl;
 
-	// is this that multiple inotify event trigger? if yes, let's ignore this. we only want to handle 1 notification
-	if (m_bIgnoreFile)
-	{ 
-		m_Log << "Detected multiple events from inotify. ignoring this..." << CUtil::CLog::endl;
-		return; 
+	// if this is the file, let's parse it.
+	// does it contain JobFile field? if yes, does it point to a valid unison program? 
+	// if yes, let's use this file contents to load program
+	// from here on, we switch to launch OICu and load program state
+	if (!parse(ssFullPathMonitorName.str()))
+	{
+		m_Log << ssFullPathMonitorName.str() << " file received but didn't find a program to load.";
+		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field. and is valid?" << CUtil::CLog::endl;
+		return;
 	}
+
+	// if parsing lotinfo file is success, let's tell notify fd object to stop processing any incoming select() at this point
+	m_Log << "successfully parsed '" << ssFullPathMonitorName.str() << "'" << CUtil::CLog::endl;
+	m_pMonitorFileDesc->halt();
+
+	// let's halt this state now to make sure no other tasks from this state gets executed anymore
+	if ( m_StateMgr.get() ) m_StateMgr.get()->halt();
+
+	// we also move on to "end lot" state and end the lot that is currently running, if any.	
+	m_StateMgr.set(m_pStateOnEndLot);
+
+	// at this point, it is now safe to append lotinfo.txt file with GDR stuff. notify object won't be triggered anymore 
+	// because we already halted this state and we are also moving to next state after this.
 
 	// Ok, need to append APL name and version to the lotinfo file so we can push it to GDR.AUTOMATION
 	// Need to wait for a while to avoid writing the file while the OS may be copying it.
@@ -706,20 +705,6 @@ void CApp::onReceiveFile(const std::string& name)
 		m_Log << "Could not open " << ssFullPathMonitorName.str().c_str() << " to add GDR.AUTOMATION data." << CUtil::CLog::endl;
 	}
 
-	// if this is the file, let's parse it.
-	// does it contain JobFile field? if yes, does it point to a valid unison program? 
-	// if yes, let's use this file contents to load program
-	// from here on, we switch to launch OICu and load program state
-	if (!parse(ssFullPathMonitorName.str()))
-	{
-		m_Log << ssFullPathMonitorName.str() << " file received but didn't find a program to load.";
-		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field. and is valid?" << CUtil::CLog::endl;
-		return;
-	}
-
-	m_Log << "successfully parsed '" << ssFullPathMonitorName.str() << "'" << CUtil::CLog::endl;
-	m_bIgnoreFile = true;
-	m_StateMgr.set(m_pStateOnEndLot);
 	return;
 }
 
@@ -957,6 +942,106 @@ bool CApp::config(const std::string& file)
 	return true;
 }
 
+
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+void CApp::onSummaryFile(const std::string& name)
+{
+	m_Log << "Summary file '" << name << "' received, parsing it... " << CUtil::CLog::endl;
+
+	// create string that holds full path + monitor file 
+	std::stringstream ssFullPathSummaryName;
+	ssFullPathSummaryName << m_CONFIG.szSummaryPath << "/" << name;
+
+	// open the file
+	std::fstream fs;
+	fs.open(ssFullPathSummaryName.str().c_str(), std::ios::in);
+	std::stringstream ss;
+	ss << fs.rdbuf();
+	std::string s = ss.str();
+	fs.close();
+
+	// return false if it finds an empty file to allow app to try again
+	if (s.empty())
+	{
+		m_Log << "Received a file '" << name << "' while expecting a summary file but it's empty." << CUtil::CLog::endl;
+		return;
+	}
+
+	// parse the file content
+	bool bFileName = false, bLotId = false, bStep = false;
+	while(s.size())  
+	{ 
+		// find next '\n' position 
+		size_t pos = s.find_first_of('\n');
+
+		// get current line
+		std::string l = s.substr(0, pos);
+
+		// remove current line from the file string		
+		s = s.substr(pos + 1);
+
+		// get the field/value pair from the line. empty value is ignored. trail/lead spaces removed
+		std::string field, value;
+		if (getFieldValuePair(l, DELIMITER, field, value))
+		{
+			m_Log << field << " : " << value << CUtil::CLog::endl;
+
+			// check if FILE NAME contains test program full path
+			if (field.compare("FILE NAME") == 0)
+			{
+				m_Log << field << ": " << value << " found, checking if matches loaded program..." << CUtil::CLog::endl;
+				if (value.compare(m_lotinfo.szProgramFullPathName) == 0){ bFileName = true; }
+				else{ m_Log << value << " does not match loaded test program '" << m_lotinfo.szProgramFullPathName << "'. this file is invalid." << CUtil::CLog::endl; }			
+			}
+			
+			// if we receive "step" field from amkor
+			if (field.compare("LOT ID") == 0)
+			{
+				m_Log << field << ": " << value << " found, checking if matches lot id..." << CUtil::CLog::endl;
+				if (value.compare(m_lotinfo.szLotId) == 0){ bLotId = true; }
+				else{ m_Log << value << " does not match lot id '" << m_lotinfo.szLotId << "'. this file is invalid." << CUtil::CLog::endl; }
+			}
+			if (field.compare("STEP") == 0)
+			{
+				m_Log << "This lot summary already contains 'step' field. APL will not append anymore." << CUtil::CLog::endl;
+				bStep = true;
+			}
+
+		}
+	
+		// if this is the last line then bail
+		if (pos == std::string::npos) break;		
+	}	
+
+	if ( !bFileName || !bLotId || bStep )
+	{
+		return;
+	}
+
+	if (m_pSummaryFileDesc) m_pSummaryFileDesc->halt();
+
+	// if we found matching job file and lot id, let's append to this file	
+	sleep(1);
+	std::ofstream sf;
+	sf.open(ssFullPathSummaryName.str().c_str(), std::ofstream::out | std::ofstream::app);
+	if(sf.good()) 
+	{
+		m_Log << "opened " << ssFullPathSummaryName.str().c_str() << CUtil::CLog::endl;
+	
+		sf << "STEP:" << m_lotinfo.szStep << std::endl;
+		sf.close();
+		m_Log << "STEP value '" << m_lotinfo.szStep << "' appended to " << ssFullPathSummaryName.str().c_str() << CUtil::CLog::endl;
+	}
+	else 
+	{
+		m_Log << "ERROR: Could not open " << ssFullPathSummaryName.str().c_str() << CUtil::CLog::endl;
+	}
+
+}
+
+
 /* ------------------------------------------------------------------------------------------
 parse the lotinfo.txt file
 -	STDF fields and test program will only be acknowledged to use if a JOBFILE
@@ -984,7 +1069,8 @@ bool CApp::parse(const std::string& name)
  
 	MIR l_MIR;
 	SDR l_SDR;
-	std::string szJobFile;
+	//std::string szJobFile;
+	LOTINFO li;
 	while(s.size())  
 	{ 
 		// find next '\n' position 
@@ -1002,7 +1088,7 @@ bool CApp::parse(const std::string& name)
 		{
 			// extract STDF fields
 			if (field.compare("OPERATOR") == 0){ l_MIR.OperNam = value; continue; }
-			if (field.compare("LOTID") == 0){ l_MIR.LotId = value; continue; }
+			if (field.compare("LOTID") == 0){ l_MIR.LotId = value; }
 			if (field.compare("SUBLOTID") == 0){ l_MIR.SblotId = value; continue; }
 			if (field.compare("DEVICE") == 0){ l_MIR.PartTyp = value; continue; }
 			if (field.compare("PRODUCTID") == 0){ l_MIR.FamlyId = value; continue; }
@@ -1035,8 +1121,21 @@ bool CApp::parse(const std::string& name)
 				else
 				{
 					m_Log << "'" << value << "' exists. let's try to load it." << CUtil::CLog::endl;
-					szJobFile = value;			
+					li.szProgramFullPathName = value;			
 				}
+			}
+			
+			// if we receive "step" field from amkor
+			if (field.compare("STEP") == 0)
+			{
+				m_Log << field << " field found, value: '" << value << CUtil::CLog::endl;
+				li.szStep = value;
+			}
+			// if we receive "lotid" field from amkor
+			if (field.compare("LOTID") == 0)
+			{
+				m_Log << field << " field found, value: '" << value << CUtil::CLog::endl;
+				li.szLotId = value;
 			}
 		}
 	
@@ -1045,10 +1144,10 @@ bool CApp::parse(const std::string& name)
 	}	
 
 	// ok did we find a valid JobFile in the lotinfo.txt?
-	if (szJobFile.empty()) return false;
+	if (li.szProgramFullPathName.empty()) return false;
 	else
 	{
-		m_szProgramFullPathName = szJobFile;
+		m_lotinfo = li;
 		m_MIR = l_MIR;
 		m_SDR = l_SDR;
 		return true;
@@ -1074,6 +1173,12 @@ bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std:
 	}
 
 	// is 'value' empty? if yes, move to next line.
+	if (pos + 1 >= line.size()) 
+	{
+		m_Log << "WARNING: This line: '" << line << "' has empty value '" << CUtil::CLog::endl;
+		return false;
+	}
+
 	value = line.substr(pos + 1);
 	if (value.empty())
 	{
@@ -1085,7 +1190,7 @@ bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std:
 	field = CUtil::removeLeadingTrailingSpace(field);
 	value = CUtil::removeLeadingTrailingSpace(value);
 
-	// captilaze field
+	// convert to upper case field
 	for (std::string::size_type i = 0; i < field.size(); i++){ field[i] = CUtil::toUpper(field[i]); }
 
 	return true;

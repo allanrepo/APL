@@ -23,7 +23,6 @@ public:
 		virtual int get(){ return m_fd; }
 		virtual void set(int fd = -1){ m_fd = fd; }
 		virtual void onSelect(){};
-		virtual void halt(){};
 	};
 
 protected:

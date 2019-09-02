@@ -126,6 +126,9 @@ const std::string CUtil::removeLeadingTrailingSpace(const std::string& str)
 	// find the first non space character
 	size_t pos = s.find_first_not_of(" \n\t\f\v", 0, 5);
 
+	// if pos = npos, then this is an empty string with nothing but spaces. bail out
+	if (pos == std::string::npos) return std::string();
+
 	// remove characters before the first non space char
 	s = s.substr(pos);
 

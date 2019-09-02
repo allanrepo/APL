@@ -11,13 +11,21 @@
 #include <xml.h>
 #include <stdf.h>
 #include <socket.h>
+#include <list>
 
 /*
-B.2.0.2019xxxx
--	added function in file descriptor class that allows you to process only the first trigger and ignore the rest.
-	this happens in notify class. 
+B.2.0.20190902
+-	added function in notify fd class called halt(). this function allows you to stop succeeding events from fd select() 
+	if it sends more than one event preventing multiple triggers
 -	added config flag to tell if appending summary with amkor's "step" field is enable or not
 -	added summary path in config
+-	**fixed a bug where APL goes haywire when receiving invalid lotinfo.txt file
+	-	appending GDR to lotinfo.txt is done even when lotinfo.txt file is invalid. since it's invalid, APl stays in idle state
+		and therefore notify object catches lotinfo.txt modify event. this causes endless loop. 
+	-	GDR is now only appended after ensuring lotinfo.txt is valid and APL moved to next state
+-	the halt() function is also now used by lotinfo notify object to prevent multiple triggers. 
+-	state class has new function halt(). when called, all other tasks it's supposed to execute will not be executed anymore
+-	**fixed a bug that crashes APL when it tries to remove leading/trailing spaces in field/value pair if any of them contains nothing or just spaces
 
 */
 
@@ -114,12 +122,37 @@ protected:
 		}
 	};
 
+	struct LOTINFO
+	{
+		std::string szProgramFullPathName;
+		std::string szStep;
+		std::string szLotId;
+		LOTINFO()
+		{
+			clear();
+		}
+		
+		LOTINFO(const LOTINFO& p)
+		{
+			szProgramFullPathName = p.szProgramFullPathName;
+			szStep = p.szStep;
+			szLotId = p.szLotId;
+		}
+
+		void clear()
+		{
+			szProgramFullPathName = "";
+			szStep = "";
+			szLotId = "";
+		}
+	};	
+
 protected:
+	// lotinfo data
+	LOTINFO m_lotinfo;
+	
 	// resources
 	CUtil::CLog m_Log;
-
-	// flag to ensure we process only 1 trigger of inotify FD
-	bool m_bIgnoreFile;
 
 	// count how many launch attempts we made
 	long m_nLaunchAttempt;
@@ -128,7 +161,7 @@ protected:
 	CONFIG m_CONFIG;
 	std::string m_szConfigFullPathName;
 	std::string m_szTesterName;
-	std::string m_szProgramFullPathName;
+	//std::string m_szProgramFullPathName;
 
 	// stdf stuff data holders and functions
 	MIR m_MIR;
@@ -136,9 +169,9 @@ protected:
 
 	// file descriptor engine
 	CFileDescriptorManager m_FileDescMgr;
-	CFileDescriptorManager::CFileDescriptor* m_pMonitorFileDesc; 
+	CMonitorFileDesc* m_pMonitorFileDesc; 
+	CMonitorFileDesc* m_pSummaryFileDesc; 
 	CFileDescriptorManager::CFileDescriptor* m_pStateNotificationFileDesc;
-	CFileDescriptorManager::CFileDescriptor* m_pSummaryFileDesc; 
 
 	// state machine
 	CStateManager m_StateMgr;
