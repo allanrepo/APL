@@ -110,6 +110,8 @@ protected:
 		std::string szProgramFullPathName;
 		std::string szStep;
 		std::string szLotId;
+		MIR mir;
+		SDR sdr;		
 		LOTINFO()
 		{
 			clear();
@@ -120,6 +122,8 @@ protected:
 			szProgramFullPathName = p.szProgramFullPathName;
 			szStep = p.szStep;
 			szLotId = p.szLotId;
+			mir = p.mir;
+			sdr = p.sdr;
 		}
 
 		void clear()
@@ -127,6 +131,8 @@ protected:
 			szProgramFullPathName = "";
 			szStep = "";
 			szLotId = "";
+			mir.clear();
+			sdr.clear();
 		}
 	};	
 

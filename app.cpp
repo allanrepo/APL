@@ -56,11 +56,11 @@ void CApp::onIdleLoadState(CState& state)
 	// create the fd objects for both inotify and state notification. we need them both for this state
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
 	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
-	m_pSummaryFileDesc = new CMonitorFileDesc(*this, &CApp::onSummaryFile, m_CONFIG.szSummaryPath);
+	if(m_CONFIG.bSummary)m_pSummaryFileDesc = new CMonitorFileDesc(*this, &CApp::onSummaryFile, m_CONFIG.szSummaryPath);
 
 	// add them to FD manager so we'll use them in select() task
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
-	m_FileDescMgr.add( *m_pSummaryFileDesc );
+	if (m_CONFIG.bSummary)m_FileDescMgr.add( *m_pSummaryFileDesc );
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
@@ -817,7 +817,7 @@ bool CApp::config(const std::string& file)
 		if (pConfig->fetchChild("Summary"))
 		{
 			m_CONFIG.bSummary = false; // disabled by default
-			if ( CUtil::toUpper( pConfig->fetchChild("Summary")->fetchVal("state") ).compare("TRUE") == 0) m_CONFIG.bSummary = true;; 
+			if ( CUtil::toUpper( pConfig->fetchChild("Summary")->fetchVal("state") ).compare("TRUE") == 0) m_CONFIG.bSummary = true;
 
 			if (pConfig->fetchChild("Summary")->fetchChild("Path")){ m_CONFIG.szSummaryPath = pConfig->fetchChild("Summary")->fetchChild("Path")->fetchText(); }		
 		}

@@ -1,4 +1,7 @@
 RELEASE NOTES:
+Version beta.2.1.xxx
+-	bug fixes
+	- summary appending feature now disabled by default. enable/disable flag now working
 
 Version beta.2.1.20190902
 -	new feature: APL can now monitor a specified directory for incoming sublot summary file and appends it with "Step" value taken from lotinfo.txt file

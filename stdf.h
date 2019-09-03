@@ -36,13 +36,13 @@ public:
 	std::string FamlyId;	// TestProgData.ProductId
 	std::string PkgTyp;	// TestProgData.Package
 	std::string SblotId;	// TestProgData.SublotId
-	std::string JobNam;	// TestProgData.ObjName        //// exists in TestProgData class but cannot be set in setLotInformation()
+	std::string JobNam;	// TestProgData.ObjName        //// exists in TestProgData class (read only) but cannot be set in setLotInformation()
 	std::string SetupId;	// TestProgData.TestSetup
 	std::string JobRev;	// TestProgData.FileNameRev
 	std::string ExecTyp;	// TestProgData.SystemName
 	std::string ExecVer;	// TestProgData.TargetName
 	std::string AuxFile;	// TestProgData.AuxDataFile
-	std::string RtstCod;	// TestProgData.LotStatusTest  //// exists in TestProgData class but cannot be set in setLotInformation()
+	std::string RtstCod;	// TestProgData.LotStatusTest  //// exists in TestProgData class (read only) but cannot be set in setLotInformation()
 	std::string TestCod;	// TestProgData.TestPhase
 	std::string UserText;	// TestProgData.UserText
 	std::string RomCod;	// TestProgData.RomCode
