@@ -31,6 +31,7 @@
 		<Logging state = "true">
 			<Path>/home/localuser/Desktop</Path>
 		</Logging>
+		<STDF state = "true" />
 	</SiteConfiguration>
 
 	<SiteConfiguration name = "Amkor1">

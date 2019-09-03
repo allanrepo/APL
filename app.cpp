@@ -546,7 +546,7 @@ void CApp::launch(CTask& task)
 	std::stringstream ssCmd;
 	ssCmd.str(std::string());
 	ssCmd.clear();
-	ssCmd << "UNISON_NEWLOT_CONFIG_FILE=$LTX_UPROD_PATH/newlot-config/NewLotUnison_" << m_MIR.ProcId << ".xml ";
+	ssCmd << "UNISON_NEWLOT_CONFIG_FILE=$LTX_UPROD_PATH/newlot-config/NewLotUnison_" << m_lotinfo.mir.ProcId << ".xml ";
 	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
 	ssCmd << (m_lotinfo.szProgramFullPathName.empty()? "": "-load ") << (m_lotinfo.szProgramFullPathName.empty()? "" : m_lotinfo.szProgramFullPathName);
 	ssCmd << " -qual " << " -T " << m_szTesterName;
@@ -1067,8 +1067,6 @@ bool CApp::parse(const std::string& name)
 	m_Log << s << CUtil::CLog::endl;
 	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
  
-	MIR l_MIR;
-	SDR l_SDR;
 	//std::string szJobFile;
 	LOTINFO li;
 	while(s.size())  
@@ -1087,25 +1085,56 @@ bool CApp::parse(const std::string& name)
 		if (getFieldValuePair(l, DELIMITER, field, value))
 		{
 			// extract STDF fields
-			if (field.compare("OPERATOR") == 0){ l_MIR.OperNam = value; continue; }
-			if (field.compare("LOTID") == 0){ l_MIR.LotId = value; }
-			if (field.compare("SUBLOTID") == 0){ l_MIR.SblotId = value; continue; }
-			if (field.compare("DEVICE") == 0){ l_MIR.PartTyp = value; continue; }
-			if (field.compare("PRODUCTID") == 0){ l_MIR.FamlyId = value; continue; }
-			if (field.compare("PACKAGE") == 0){ l_MIR.PkgTyp = value; continue; }
-			if (field.compare("FILENAMEREV") == 0){ l_MIR.JobRev = value; continue; }
-			if (field.compare("TESTMODE") == 0){ l_MIR.ModeCod = value; continue; }
-			if (field.compare("COMMANDMODE") == 0){ l_MIR.CmodCod = value; continue; }
-			if (field.compare("ACTIVEFLOWNAME") == 0){ l_MIR.FlowId = value; continue; }
-			if (field.compare("DATECODE") == 0){ l_MIR.DateCod = value; continue; }
-			if (field.compare("CONTACTORTYPE") == 0){ l_SDR.ContTyp = value; continue; }
-			if (field.compare("CONTACTORID") == 0){ l_SDR.ContId = value; continue; }
-			if (field.compare("FABRICATIONID") == 0){ l_MIR.ProcId = value; continue; }
-			if (field.compare("TESTFLOOR") == 0){ l_MIR.FloorId = value; continue; }
-			if (field.compare("TESTFACILITY") == 0){ l_MIR.FacilId = value; continue; }
-			if (field.compare("PROBERHANDLERID") == 0){ l_SDR.HandId = value; continue; }
-			if (field.compare("TEMPERATURE") == 0){ l_MIR.TestTmp = value; continue; }
-			if (field.compare("BOARDID") == 0){ l_SDR.LoadId = value; continue; }
+			if (field.compare("OPERATOR") == 0)		{ li.mir.OperNam = value; }
+			if (field.compare("OPERFREQ") == 0)		{ li.mir.OperFrq = value; }
+			if (field.compare("LOTID") == 0)		{ li.mir.LotId = value; }
+			if (field.compare("SUBLOTID") == 0)		{ li.mir.SblotId = value; }
+			if (field.compare("DEVICE") == 0)		{ li.mir.PartTyp = value; }
+			if (field.compare("PRODUCTID") == 0)		{ li.mir.FamlyId = value; }
+			if (field.compare("PACKAGE") == 0)		{ li.mir.PkgTyp = value; }
+			if (field.compare("FILENAMEREV") == 0)		{ li.mir.JobRev = value; }
+			if (field.compare("TESTMODE") == 0)		{ li.mir.ModeCod = value; }
+			if (field.compare("TESTSETUP") == 0)		{ li.mir.SetupId = value; }
+			if (field.compare("COMMANDMODE") == 0)		{ li.mir.CmodCod = value; }
+			if (field.compare("ACTIVEFLOWNAME") == 0)	{ li.mir.FlowId = value; }
+			if (field.compare("DATECODE") == 0)		{ li.mir.DateCod = value; }
+			if (field.compare("FABRICATIONID") == 0)	{ li.mir.ProcId = value; }
+			if (field.compare("TESTFLOOR") == 0)		{ li.mir.FloorId = value; }
+			if (field.compare("TESTFACILITY") == 0)		{ li.mir.FacilId = value; }
+			if (field.compare("TEMPERATURE") == 0)		{ li.mir.TstTemp = value; }
+			if (field.compare("USERTEXT") == 0)		{ li.mir.UserTxt = value; }
+			if (field.compare("DESIGNREV") == 0)		{ li.mir.DsgnRev = value; }
+			if (field.compare("ENGRLOTID") == 0)		{ li.mir.EngId = value; }
+			if (field.compare("TCNAME") == 0)		{ li.mir.NodeNam = value; }
+			if (field.compare("AUXDATAFILE") == 0)		{ li.mir.AuxFile = value; }
+			if (field.compare("TESTPHASE") == 0)		{ li.mir.TestCod = value; }
+			if (field.compare("ROMCODE") == 0)		{ li.mir.RomCod = value; }
+			if (field.compare("TESTERSERNUM") == 0)		{ li.mir.SerlNum = value; }
+			if (field.compare("TESTERTYPE") == 0)		{ li.mir.TstrTyp = value; }
+			if (field.compare("SUPERVISOR") == 0)		{ li.mir.SuprNam = value; }
+			if (field.compare("SYSTEMNAME") == 0)		{ li.mir.ExecTyp = value; }
+			if (field.compare("TARGETNAME") == 0)		{ li.mir.ExecVer = value; }
+			if (field.compare("TESTSPECNAME") == 0)		{ li.mir.SpecNam = value; }
+			if (field.compare("TESTSPECREV") == 0)		{ li.mir.SpecVer = value; }
+			if (field.compare("PROTECTIONCODE") == 0)	{ li.mir.ProtCod = value; }
+			if (field.compare("BURNINTIME") == 0)		{ li.mir.BurnTim = value; }
+
+			if (field.compare("PROBERHANDLERTYPE") == 0)	{ li.sdr.HandTyp = value; }
+			if (field.compare("PROBERHANDLERID") == 0)	{ li.sdr.HandId = value; }
+			if (field.compare("CARDID") == 0)		{ li.sdr.CardId = value; }
+			if (field.compare("CARDTYPE") == 0)		{ li.sdr.CardTyp = value; }
+			if (field.compare("BOARDID") == 0)		{ li.sdr.LoadId = value; }
+			if (field.compare("BOARDTYPE") == 0)		{ li.sdr.LoadTyp = value; }
+			if (field.compare("DIBTYPE") == 0)		{ li.sdr.DibTyp = value; }
+			if (field.compare("DIBID") == 0)		{ li.sdr.DibId = value; }
+			if (field.compare("CABLEID") == 0)		{ li.sdr.CableId = value; }
+			if (field.compare("CABLETYPE") == 0)		{ li.sdr.CableTyp = value; }
+			if (field.compare("CONTACTORTYPE") == 0)	{ li.sdr.ContTyp = value; }
+			if (field.compare("CONTACTORID") == 0)		{ li.sdr.ContId = value; }
+			if (field.compare("LASERTYPE") == 0)		{ li.sdr.LasrTyp = value; }
+			if (field.compare("LASERID") == 0)		{ li.sdr.LasrId = value; }
+			if (field.compare("EXTRAEQUIPMENTTYPE") == 0)	{ li.sdr.ExtrTyp = value; }
+			if (field.compare("EXTRAEQUIPMENTID") == 0)	{ li.sdr.ExtrId = value; }
 
 			// if we didn't find anything we looked for including jobfile, let's move to next field
 			if (field.compare(JOBFILE) == 0)
@@ -1148,8 +1177,6 @@ bool CApp::parse(const std::string& name)
 	else
 	{
 		m_lotinfo = li;
-		m_MIR = l_MIR;
-		m_SDR = l_SDR;
 		return true;
 	}
 } 
@@ -1418,57 +1445,60 @@ bool CApp::setLotInfo()
 	bool bRslt = true;
 
 	// set MIR
-	if ( !setLotInformation(EVX_LotLotID, 			m_MIR.LotId, 	"MIR.LotLotID")) bRslt = false;
-	if ( !setLotInformation(EVX_LotCommandMode, 		m_MIR.CmodCod, 	"MIR.LotCommandMode")) bRslt = false;
-	if ( !setLotInformation(EVX_LotActiveFlowName, 		m_MIR.FlowId, 	"MIR.LotActiveFlowName")) bRslt = false;
-	if ( !setLotInformation(EVX_LotDesignRev, 		m_MIR.DsgnRev, 	"MIR.LotDesignRev")) bRslt = false;
-	if ( !setLotInformation(EVX_LotDateCode, 		m_MIR.DateCod, 	"MIR.LotDateCode")) bRslt = false;
-	if ( !setLotInformation(EVX_LotOperFreq, 		m_MIR.OperFrq, 	"MIR.LotOperFreq")) bRslt = false;
-	if ( !setLotInformation(EVX_LotOperator, 		m_MIR.OperNam, 	"MIR.LotOperator")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTcName, 			m_MIR.NodeNam, 	"MIR.LotTcName")) bRslt = false;
-	if ( !setLotInformation(EVX_LotDevice, 			m_MIR.PartTyp, 	"MIR.LotDevice")) bRslt = false;
-	if ( !setLotInformation(EVX_LotEngrLotId, 		m_MIR.EngId, 	"MIR.LotEngrLotId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTestTemp, 		m_MIR.TestTmp, 	"MIR.LotTestTemp")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTestFacility, 		m_MIR.FacilId, 	"MIR.LotTestFacility")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTestFloor, 		m_MIR.FloorId, 	"MIR.LotTestFloor")) bRslt = false;
-	if ( !setLotInformation(EVX_LotHead, 			m_MIR.StatNum, 	"MIR.LotHead")) bRslt = false;
-	if ( !setLotInformation(EVX_LotFabricationID, 		m_MIR.ProcId, 	"MIR.LotFabricationID")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTestMode, 		m_MIR.ModeCod, 	"MIR.LotTestMode")) bRslt = false;
-	if ( !setLotInformation(EVX_LotProductID, 		m_MIR.FamlyId,  "MIR.LotProductID")) bRslt = false;
-	if ( !setLotInformation(EVX_LotPackage, 		m_MIR.PkgTyp, 	"MIR.LotPackage")) bRslt = false;
-	if ( !setLotInformation(EVX_LotSublotID, 		m_MIR.SblotId, 	"MIR.LotSublotID")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTestSetup, 		m_MIR.SetupId, 	"MIR.LotTestSetup")) bRslt = false;
-	if ( !setLotInformation(EVX_LotFileNameRev, 		m_MIR.JobRev, 	"MIR.LotFileNameRev")) bRslt = false;
-	if ( !setLotInformation(EVX_LotAuxDataFile, 		m_MIR.AuxFile, 	"MIR.LotAuxDataFile")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTestPhase, 		m_MIR.TestCod, 	"MIR.LotTestPhase")) bRslt = false;
-	if ( !setLotInformation(EVX_LotUserText, 		m_MIR.UserText, "MIR.LotUserText")) bRslt = false;
-	if ( !setLotInformation(EVX_LotRomCode, 		m_MIR.RomCod, 	"MIR.LotRomCode")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTesterSerNum, 		m_MIR.SerlNum, 	"MIR.LotTesterSerNum")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTesterType, 		m_MIR.TstrTyp, 	"MIR.LotTesterType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotSupervisor, 		m_MIR.SuprNam, 	"MIR.LotSupervisor")) bRslt = false;
-	if ( !setLotInformation(EVX_LotSystemName, 		m_MIR.ExecTyp, 	"MIR.LotSystemName")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTargetName, 		m_MIR.ExecVer, 	"MIR.LotTargetName")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTestSpecName, 		m_MIR.SpecNam, 	"MIR.LotTestSpecName")) bRslt = false;
-	if ( !setLotInformation(EVX_LotTestSpecRev, 		m_MIR.SpecVer, 	"MIR.LotTestSpecRev")) bRslt = false;
-	if ( !setLotInformation(EVX_LotProtectionCode, 		m_MIR.ProtCod, 	"MIR.LotProtectionCode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLotID, 			m_lotinfo.mir.LotId, 	"MIR.LotLotID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCommandMode, 		m_lotinfo.mir.CmodCod, 	"MIR.LotCommandMode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotActiveFlowName, 		m_lotinfo.mir.FlowId, 	"MIR.LotActiveFlowName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDesignRev, 		m_lotinfo.mir.DsgnRev, 	"MIR.LotDesignRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDateCode, 		m_lotinfo.mir.DateCod, 	"MIR.LotDateCode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotOperFreq, 		m_lotinfo.mir.OperFrq, 	"MIR.LotOperFreq")) bRslt = false;
+	if ( !setLotInformation(EVX_LotOperator, 		m_lotinfo.mir.OperNam, 	"MIR.LotOperator")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTcName, 			m_lotinfo.mir.NodeNam, 	"MIR.LotTcName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDevice, 			m_lotinfo.mir.PartTyp, 	"MIR.LotDevice")) bRslt = false;
+	if ( !setLotInformation(EVX_LotEngrLotId, 		m_lotinfo.mir.EngId, 	"MIR.LotEngrLotId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestTemp, 		m_lotinfo.mir.TstTemp, 	"MIR.LotTestTemp")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestFacility, 		m_lotinfo.mir.FacilId, 	"MIR.LotTestFacility")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestFloor, 		m_lotinfo.mir.FloorId, 	"MIR.LotTestFloor")) bRslt = false;
+	if ( !setLotInformation(EVX_LotHead, 			m_lotinfo.mir.StatNum, 	"MIR.LotHead")) bRslt = false;
+	if ( !setLotInformation(EVX_LotFabricationID, 		m_lotinfo.mir.ProcId, 	"MIR.LotFabricationID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestMode, 		m_lotinfo.mir.ModeCod, 	"MIR.LotTestMode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProductID, 		m_lotinfo.mir.FamlyId,  "MIR.LotProductID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotPackage, 		m_lotinfo.mir.PkgTyp, 	"MIR.LotPackage")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSublotID, 		m_lotinfo.mir.SblotId, 	"MIR.LotSublotID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSetup, 		m_lotinfo.mir.SetupId, 	"MIR.LotTestSetup")) bRslt = false;
+	if ( !setLotInformation(EVX_LotFileNameRev, 		m_lotinfo.mir.JobRev, 	"MIR.LotFileNameRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotAuxDataFile, 		m_lotinfo.mir.AuxFile, 	"MIR.LotAuxDataFile")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestPhase, 		m_lotinfo.mir.TestCod, 	"MIR.LotTestPhase")) bRslt = false;
+	if ( !setLotInformation(EVX_LotUserText, 		m_lotinfo.mir.UserTxt, "MIR.LotUserText")) bRslt = false;
+	if ( !setLotInformation(EVX_LotRomCode, 		m_lotinfo.mir.RomCod, 	"MIR.LotRomCode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTesterSerNum, 		m_lotinfo.mir.SerlNum, 	"MIR.LotTesterSerNum")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTesterType, 		m_lotinfo.mir.TstrTyp, 	"MIR.LotTesterType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSupervisor, 		m_lotinfo.mir.SuprNam, 	"MIR.LotSupervisor")) bRslt = false;
+	if ( !setLotInformation(EVX_LotSystemName, 		m_lotinfo.mir.ExecTyp, 	"MIR.LotSystemName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTargetName, 		m_lotinfo.mir.ExecVer, 	"MIR.LotTargetName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSpecName, 		m_lotinfo.mir.SpecNam, 	"MIR.LotTestSpecName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotTestSpecRev, 		m_lotinfo.mir.SpecVer, 	"MIR.LotTestSpecRev")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProtectionCode, 		m_lotinfo.mir.ProtCod, 	"MIR.LotProtectionCode")) bRslt = false;
+
+	// use this commmand because there's no matching id from evxa
+	m_pProgCtrl->setExpression("TestProgData.LotBurnInTime", m_lotinfo.mir.BurnTim.c_str());
 
 	// set SDR
-	if ( !setLotInformation(EVX_LotHandlerType, 		m_SDR.HandTyp, 	"SDR.LotHandlerType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotCardId, 			m_SDR.CardId, 	"SDR.LotCardId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotLoadBrdId, 		m_SDR.LoadId, 	"SDR.LotLoadBrdId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotProberHandlerID, 	m_SDR.HandId, 	"SDR.LotProberHandlerID")) bRslt = false;
-	if ( !setLotInformation(EVX_LotDIBType, 		m_SDR.DibTyp, 	"SDR.LotDIBType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotIfCableId, 		m_SDR.CableId, 	"SDR.LotIfCableId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotContactorType, 		m_SDR.ContTyp, 	"SDR.LotContactorType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotLoadBrdType, 		m_SDR.LoadTyp, 	"SDR.LotLoadBrdType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotContactorId, 		m_SDR.ContId, 	"SDR.LotContactorId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotLaserType, 		m_SDR.LaserTyp, "SDR.LotLaserType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotLaserId, 		m_SDR.LaserId, 	"SDR.LotLaserId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotExtEquipType, 		m_SDR.ExtrTyp, 	"SDR.LotExtEquipType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotExtEquipId, 		m_SDR.ExtrId, 	"SDR.LotExtEquipId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotActiveLoadBrdName, 	m_SDR.DibId, 	"SDR.LotActiveLoadBrdName")) bRslt = false;
-	if ( !setLotInformation(EVX_LotCardType, 		m_SDR.CardTyp, 	"SDR.LotCardType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotIfCableType, 		m_SDR.CableTyp, "SDR.LotIfCableType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotHandlerType, 		m_lotinfo.sdr.HandTyp, 	"SDR.LotHandlerType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotProberHandlerID, 	m_lotinfo.sdr.HandId, 	"SDR.LotProberHandlerID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCardId, 			m_lotinfo.sdr.CardId, 	"SDR.LotCardId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLoadBrdId, 		m_lotinfo.sdr.LoadId, 	"SDR.LotLoadBrdId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDIBType, 		m_lotinfo.sdr.DibTyp, 	"SDR.LotDIBType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotIfCableId, 		m_lotinfo.sdr.CableId, 	"SDR.LotIfCableId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotContactorType, 		m_lotinfo.sdr.ContTyp, 	"SDR.LotContactorType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLoadBrdType, 		m_lotinfo.sdr.LoadTyp, 	"SDR.LotLoadBrdType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotContactorId, 		m_lotinfo.sdr.ContId, 	"SDR.LotContactorId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLaserType, 		m_lotinfo.sdr.LasrTyp,  "SDR.LotLaserType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLaserId, 		m_lotinfo.sdr.LasrId, 	"SDR.LotLaserId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotExtEquipType, 		m_lotinfo.sdr.ExtrTyp, 	"SDR.LotExtEquipType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotExtEquipId, 		m_lotinfo.sdr.ExtrId, 	"SDR.LotExtEquipId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotActiveLoadBrdName, 	m_lotinfo.sdr.DibId, 	"SDR.LotActiveLoadBrdName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotCardType, 		m_lotinfo.sdr.CardTyp, 	"SDR.LotCardType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotIfCableType, 		m_lotinfo.sdr.CableTyp, "SDR.LotIfCableType")) bRslt = false;
 
 	return bRslt;
 }

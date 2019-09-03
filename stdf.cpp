@@ -17,7 +17,7 @@ MIR::MIR(const MIR& ot)
 	NodeNam = ot.NodeNam;
 	PartTyp = ot.PartTyp;
 	EngId = ot.EngId;
-	TestTmp = ot.TestTmp;
+	TstTemp = ot.TstTemp;
 	FacilId = ot.FacilId;
 	FloorId = ot.FloorId;
 	StatNum = ot.StatNum;
@@ -34,7 +34,7 @@ MIR::MIR(const MIR& ot)
 	AuxFile = ot.AuxFile;
 	RtstCod = ot.RtstCod;
 	TestCod = ot.TestCod;
-	UserText = ot.UserText;
+	UserTxt = ot.UserTxt;
 	RomCod = ot.RomCod;
 	SerlNum = ot.SerlNum;
 	SpecNam = ot.SpecNam;
@@ -42,6 +42,7 @@ MIR::MIR(const MIR& ot)
 	SuprNam = ot.SuprNam;
 	SpecVer = ot.SpecVer;
 	ProtCod = ot.ProtCod;
+	BurnTim = ot.BurnTim;
 }
 
 MIR& MIR::operator=(const MIR& ot)
@@ -56,7 +57,7 @@ MIR& MIR::operator=(const MIR& ot)
 	NodeNam = ot.NodeNam;
 	PartTyp = ot.PartTyp;
 	EngId = ot.EngId;
-	TestTmp = ot.TestTmp;
+	TstTemp = ot.TstTemp;
 	FacilId = ot.FacilId;
 	FloorId = ot.FloorId;
 	StatNum = ot.StatNum;
@@ -73,7 +74,7 @@ MIR& MIR::operator=(const MIR& ot)
 	AuxFile = ot.AuxFile;
 	RtstCod = ot.RtstCod;
 	TestCod = ot.TestCod;
-	UserText = ot.UserText;
+	UserTxt = ot.UserTxt;
 	RomCod = ot.RomCod;
 	SerlNum = ot.SerlNum;
 	SpecNam = ot.SpecNam;
@@ -81,6 +82,7 @@ MIR& MIR::operator=(const MIR& ot)
 	SuprNam = ot.SuprNam;
 	SpecVer = ot.SpecVer;
 	ProtCod = ot.ProtCod;
+	BurnTim = ot.BurnTim;
 	return *this;
 }
 
@@ -99,7 +101,7 @@ void MIR::clear()
 	NodeNam.clear();
 	PartTyp.clear();
 	EngId.clear();
-	TestTmp.clear();
+	TstTemp.clear();
 	FacilId.clear();
 	FloorId.clear();
 	StatNum.clear();
@@ -116,7 +118,7 @@ void MIR::clear()
 	RtstCod.clear();
 	TestCod.clear();
 	SetupId.clear();
-	UserText.clear();
+	UserTxt.clear();
 	RomCod.clear();
 	SerlNum.clear();
 	SpecNam.clear();
@@ -124,6 +126,7 @@ void MIR::clear()
 	SuprNam.clear();
 	SpecVer.clear();
 	ProtCod.clear();
+	BurnTim.clear();
 }
 
 SDR::SDR() 
@@ -141,8 +144,8 @@ SDR::SDR(const SDR& ot)
 	CableId = ot.CableId;
 	ContTyp = ot.ContTyp;
 	LoadTyp = ot.LoadTyp;
-	LaserTyp = ot.LaserTyp;
-	LaserId = ot.LaserId;
+	LasrTyp = ot.LasrTyp;
+	LasrId = ot.LasrId;
 	ExtrTyp = ot.ExtrTyp;
 	ExtrId = ot.ExtrId;
 	ContId = ot.ContId;
@@ -161,8 +164,8 @@ SDR& SDR::operator=(const SDR& ot)
 	CableId = ot.CableId;
 	ContTyp = ot.ContTyp;
 	LoadTyp = ot.LoadTyp;
-	LaserTyp = ot.LaserTyp;
-	LaserId = ot.LaserId;
+	LasrTyp = ot.LasrTyp;
+	LasrId = ot.LasrId;
 	ExtrTyp = ot.ExtrTyp;
 	ExtrId = ot.ExtrId;
 	ContId = ot.ContId;
@@ -186,8 +189,8 @@ void SDR::clear()
 	CableId.clear();
 	ContTyp.clear();
 	LoadTyp.clear();
-	LaserTyp.clear();
-	LaserId.clear();
+	LasrTyp.clear();
+	LasrId.clear();
 	ExtrTyp.clear();
 	ExtrId.clear();
 	ContId.clear();

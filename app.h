@@ -153,8 +153,8 @@ protected:
 	//std::string m_szProgramFullPathName;
 
 	// stdf stuff data holders and functions
-	MIR m_MIR;
-	SDR m_SDR;	
+//	MIR m_MIR;
+//	SDR m_SDR;	
 
 	// file descriptor engine
 	CFileDescriptorManager m_FileDescMgr;
