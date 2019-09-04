@@ -177,15 +177,21 @@ STATE (load): onSetLotInfo
 ------------------------------------------------------------------------------------------ */
 void CApp::onSetLotInfoLoadState(CState& state)
 {
+	CSequence* pSeq = new CSequence("seq0", true, true );
+	state.add(pSeq);
+
+	// if sending lotinfo.txt STDF values to STDF file is enabled, let's add it in task sequence. we do it first
+	if (m_CONFIG.bSendInfo) pSeq->queue(new CAppTask(*this, &CApp::setSTDF, "sendLotInfoToFAModule", 1000, true, false));
+
 	// add task that will wait for famodule to finish processing lotinfo file 
-	state.add(new CAppTask(*this, &CApp::sendLotInfoToFAModule, "sendLotInfoToFAModule", 1000, true, true));
+	pSeq->queue(new CAppTask(*this, &CApp::sendLotInfoToFAModule, "sendLotInfoToFAModule", 1000, true, true));
 
 	// add task that will time-out wait for famodule
 	state.add(new CAppTask(*this, &CApp::timeOutSendLotInfoToFAModule, "timeOutSendLotInfoToFAModule", m_CONFIG.nFAModuleTimeOutMS, true, false));
 }
 
 /* ------------------------------------------------------------------------------------------
-STATE (load): onSetLotInfo
+TASK (load): onSetLotInfo
 ------------------------------------------------------------------------------------------ */
 void CApp::sendLotInfoToFAModule(CTask& task)
 {
@@ -194,6 +200,9 @@ void CApp::sendLotInfoToFAModule(CTask& task)
 		m_StateMgr.set(m_pStateOnIdle);
 		return;
 	}
+	
+	// if this feature is disabled, let's just move on to next state
+	
 
 	// create string that holds full path + monitor file
 	std::stringstream ssFullPathMonitorName;
@@ -229,6 +238,15 @@ void CApp::sendLotInfoToFAModule(CTask& task)
 		m_Log << "FAModule is not done with " << m_CONFIG.szLotInfoFileName << " yet. let's wait..." << CUtil::CLog::endl;
 		return;
 	}
+}
+
+/* ------------------------------------------------------------------------------------------
+TASK: this task sends all MIR, SDR, and all other possible STDF fields to STDF file
+------------------------------------------------------------------------------------------ */
+void CApp::setSTDF(CTask&)
+{
+	m_Log << "Sending lotinfo.txt values to STDF files..." << CUtil::CLog::endl;
+	if (!setLotInfo()) m_Log << "WARNING: something went wrong in setting STDF fields. Please check." << CUtil::CLog::endl;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -944,7 +962,8 @@ bool CApp::config(const std::string& file)
 
 
 /* ------------------------------------------------------------------------------------------
-
+Utility: if monitoring incoming sublot summary file for appending amkor's "step" values
+	is enabled, it's done here.
 ------------------------------------------------------------------------------------------ */
 void CApp::onSummaryFile(const std::string& name)
 {
@@ -1458,7 +1477,7 @@ bool CApp::setLotInfo()
 	if ( !setLotInformation(EVX_LotTestTemp, 		m_lotinfo.mir.TstTemp, 	"MIR.LotTestTemp")) bRslt = false;
 	if ( !setLotInformation(EVX_LotTestFacility, 		m_lotinfo.mir.FacilId, 	"MIR.LotTestFacility")) bRslt = false;
 	if ( !setLotInformation(EVX_LotTestFloor, 		m_lotinfo.mir.FloorId, 	"MIR.LotTestFloor")) bRslt = false;
-	if ( !setLotInformation(EVX_LotHead, 			m_lotinfo.mir.StatNum, 	"MIR.LotHead")) bRslt = false;
+	//if ( !setLotInformation(EVX_LotHead, 			m_lotinfo.mir.StatNum, 	"MIR.LotHead")) bRslt = false; // this is read only 
 	if ( !setLotInformation(EVX_LotFabricationID, 		m_lotinfo.mir.ProcId, 	"MIR.LotFabricationID")) bRslt = false;
 	if ( !setLotInformation(EVX_LotTestMode, 		m_lotinfo.mir.ModeCod, 	"MIR.LotTestMode")) bRslt = false;
 	if ( !setLotInformation(EVX_LotProductID, 		m_lotinfo.mir.FamlyId,  "MIR.LotProductID")) bRslt = false;
@@ -1480,25 +1499,28 @@ bool CApp::setLotInfo()
 	if ( !setLotInformation(EVX_LotProtectionCode, 		m_lotinfo.mir.ProtCod, 	"MIR.LotProtectionCode")) bRslt = false;
 
 	// use this commmand because there's no matching id from evxa
-	m_pProgCtrl->setExpression("TestProgData.LotBurnInTime", m_lotinfo.mir.BurnTim.c_str());
+	m_pProgCtrl->setExpression("TestProgData.BurnInTime", m_lotinfo.mir.BurnTim.c_str());
+	if (m_lotinfo.mir.BurnTim.compare( m_pProgCtrl->getExpression("TestProgData.BurnInTime", EVX_SHOW_VALUE) ) == 0)
+		m_Log << "Successfully set " << "TestProgData.BurnInTime" << " to '" << m_pProgCtrl->getExpression("TestProgData.BurnInTime", EVX_SHOW_VALUE) << "'" << CUtil::CLog::endl;
+	else m_Log << "ERROR: Failed to set " << "TestProgData.BurnInTime" << ": '" << m_pProgCtrl->getExpression("TestProgData.BurnInTime", EVX_SHOW_VALUE) << "'" << CUtil::CLog::endl;
 
 	// set SDR
-	if ( !setLotInformation(EVX_LotHandlerType, 		m_lotinfo.sdr.HandTyp, 	"SDR.LotHandlerType")) bRslt = false;
 	if ( !setLotInformation(EVX_LotProberHandlerID, 	m_lotinfo.sdr.HandId, 	"SDR.LotProberHandlerID")) bRslt = false;
+	if ( !setLotInformation(EVX_LotHandlerType, 		m_lotinfo.sdr.HandTyp, 	"SDR.LotHandlerType")) bRslt = false;
 	if ( !setLotInformation(EVX_LotCardId, 			m_lotinfo.sdr.CardId, 	"SDR.LotCardId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotLoadBrdId, 		m_lotinfo.sdr.LoadId, 	"SDR.LotLoadBrdId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotDIBType, 		m_lotinfo.sdr.DibTyp, 	"SDR.LotDIBType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotIfCableId, 		m_lotinfo.sdr.CableId, 	"SDR.LotIfCableId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotContactorType, 		m_lotinfo.sdr.ContTyp, 	"SDR.LotContactorType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotLoadBrdType, 		m_lotinfo.sdr.LoadTyp, 	"SDR.LotLoadBrdType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotContactorId, 		m_lotinfo.sdr.ContId, 	"SDR.LotContactorId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotLaserType, 		m_lotinfo.sdr.LasrTyp,  "SDR.LotLaserType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotLaserId, 		m_lotinfo.sdr.LasrId, 	"SDR.LotLaserId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotExtEquipType, 		m_lotinfo.sdr.ExtrTyp, 	"SDR.LotExtEquipType")) bRslt = false;
-	if ( !setLotInformation(EVX_LotExtEquipId, 		m_lotinfo.sdr.ExtrId, 	"SDR.LotExtEquipId")) bRslt = false;
-	if ( !setLotInformation(EVX_LotActiveLoadBrdName, 	m_lotinfo.sdr.DibId, 	"SDR.LotActiveLoadBrdName")) bRslt = false;
 	if ( !setLotInformation(EVX_LotCardType, 		m_lotinfo.sdr.CardTyp, 	"SDR.LotCardType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLoadBrdId, 		m_lotinfo.sdr.LoadId, 	"SDR.LotLoadBrdId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLoadBrdType, 		m_lotinfo.sdr.LoadTyp, 	"SDR.LotLoadBrdType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotIfCableId, 		m_lotinfo.sdr.CableId, 	"SDR.LotIfCableId")) bRslt = false;
 	if ( !setLotInformation(EVX_LotIfCableType, 		m_lotinfo.sdr.CableTyp, "SDR.LotIfCableType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotContactorId, 		m_lotinfo.sdr.ContId, 	"SDR.LotContactorId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotContactorType, 		m_lotinfo.sdr.ContTyp, 	"SDR.LotContactorType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLaserId, 		m_lotinfo.sdr.LasrId, 	"SDR.LotLaserId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLaserType, 		m_lotinfo.sdr.LasrTyp,  "SDR.LotLaserType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotExtEquipId, 		m_lotinfo.sdr.ExtrId, 	"SDR.LotExtEquipId")) bRslt = false;
+	if ( !setLotInformation(EVX_LotExtEquipType, 		m_lotinfo.sdr.ExtrTyp, 	"SDR.LotExtEquipType")) bRslt = false;
+	if ( !setLotInformation(EVX_LotActiveLoadBrdName, 	m_lotinfo.sdr.DibId, 	"SDR.LotActiveLoadBrdName")) bRslt = false;
+	if ( !setLotInformation(EVX_LotDIBType, 		m_lotinfo.sdr.DibTyp, 	"SDR.LotDIBType")) bRslt = false;
 
 	return bRslt;
 }

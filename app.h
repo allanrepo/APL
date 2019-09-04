@@ -205,6 +205,7 @@ protected:
 	void timeOutKillTester(CTask&);
 	void sendLotInfoToFAModule(CTask&);
 	void timeOutSendLotInfoToFAModule(CTask&);
+	void setSTDF(CTask&);
 
 	// functions executed by file descriptor handlers
 	void onReceiveFile(const std::string& name);	

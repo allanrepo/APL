@@ -2,6 +2,23 @@ RELEASE NOTES:
 Version beta.2.1.xxx
 -	bug fixes
 	- summary appending feature now disabled by default. enable/disable flag now working
+-	new feature
+	- a new task is added that takes all STDF (MIR and SDR for now) fields from lotinfo.txt file and sends it to unison to be set in STDF file
+		- can be enabled in config.xml by setting tag <STDF state = "true" />; disabled by default
+		- there are 36 writable fields in MIR but only 31 can be filled. the following fields cannot be set
+			- MIR.STAT_NUM - read only, unison fills it with test head number
+			- MIR.JOB_NAM - read only, unison fills it with test program object name
+			- MIR.RTST_COD - read only, unison fills it with specific single character values - N (new test), R (retest), U (unknown test)
+			- MIR.NODE_NAM - can be set, but when lot starts, unison overwrites it with tester name
+			- MIR.BURN_TIM - there's not even an enum to use setLotInformation() to set this; using setExpression is also unsuccessful. unison sets it to '0' by default
+			- note that MIR.MODE_COD, PROT_COD, CMOD_COD can be set, but unison will only take the first character in the string you set it to as its values.
+			  this is expected as these fields only takes single character as per STDFV4 specification
+		- there are 16 writable fields in SDR but only 13 can be filled
+			- SDR.HAND_TYP - can be set, but unison will overwrite it with CURI driver name
+			- SDR.HAND_ID - can be set, but unison will overwrite it with CURI object name
+			- SDR.CABL_TYP - can be set, but unison will overwrite it with empty string; strange behavior, need to raise SPR
+
+
 
 Version beta.2.1.20190902
 -	new feature: APL can now monitor a specified directory for incoming sublot summary file and appends it with "Step" value taken from lotinfo.txt file

@@ -32,6 +32,7 @@
 			<Path>/home/localuser/Desktop</Path>
 		</Logging>
 		<STDF state = "true" />
+		<FAMODULE state = "true" />
 	</SiteConfiguration>
 
 	<SiteConfiguration name = "Amkor1">
