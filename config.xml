@@ -5,7 +5,7 @@
 
 	<SiteConfiguration name = "Singapore">
 		<Launch>
-			<Param name = "Type">prod</Param> <!-- prod, engr-->
+			<Param name = "Type">engr</Param> <!-- prod, engr-->
 			<Param name = "Kill Tester Before Launch">false</Param> <!-- true -->
 			<Param name = "Wait Time To Launch">120</Param>
 			<Param name = "Max Attempt To Launch">5</Param>

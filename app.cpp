@@ -315,7 +315,15 @@ void CApp::killTester(CTask& task)
 	disconnect();
 
 	// kill the following apps that has these names
-	std::string apps[] = { "oicu", "optool", "dataviewer", "binTool", "testTool", "flowtool", "errorTool" };
+	std::string apps[] = { "optool", "utlrt", "utlmon", "utlnic", "utlio_main", "utlinv", "faproc", "dataviewer", \
+				"tad", "unisonif", "breakTool", "marginTool", "packageTool", "gnuplot440", "wafermapTool", "captureTool", \
+				"logTool", "memoryTool", "patternDebugTool", "waveformTool", "patternSetupTool", "wfcellTool", "expressionTool", \
+				"graphicalDebugTool", "patternTool", "axisTool", "errorTool", "flowTool", "pinStateTool", "realTimeStats", "binTool", \
+				"ltxplot", "plotDataTool", "specTool", "bitmapTool", "consolidator", "levelsTool", "objectManagerTool", "plotViewTool", \
+				 "TestTool", "oicu", "nicmond", "nicif", "evxio", "evtc", "tad", "cgem", "restart_tester" };
+
+
+
 	for (unsigned i = 0; i < sizeof(apps)/sizeof(*apps); i++)
 	{
 		while ( CUtil::getFirstPIDByName(apps[i]) != -1 )
@@ -446,12 +454,6 @@ TASK: 	query select(), for input from inotify of incoming file
 ------------------------------------------------------------------------------------------ */
 void CApp::select(CTask& task)
 {
-	// if the inotify fires up with an incoming file, it will sometimes fire up twice
-	// for the same file. we don't want to process same file more than once so as soon
-	// as we get one, we "ignore" the others by setting this flag to true. only then when
-	// this function is executed again that we enable it.	
-//	m_bIgnoreFile = false;
-
 	// before calling select(), update file descriptors of evxa objects. this is to ensure the FD manager
 	// don't use a bad file descriptor. when evxa objects are destroyed, their file descriptors are considered bad.
 	if (m_pStateNotificationFileDesc) m_pStateNotificationFileDesc->set(m_pState? m_pState->getSocketId(): -1);

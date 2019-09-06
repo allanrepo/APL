@@ -1,4 +1,5 @@
-JobFile:/home/localuser/Desktop/ST/remote/BinChecker_R01P02/Program/BinChecker.una
+_JobFile:/home/localuser/Desktop/ST/remote/BinChecker_R01P02/Program/BinChecker.una
+JobFile:/home/localuser/Desktop/ST/remote/binChecker_qcom/Program/BinChecker.una
 STEP: RT1
 OPERATOR		: 69_OPERATOR
 OPERFREQ		: 69_OPERFREQ
