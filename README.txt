@@ -1,7 +1,7 @@
 RELEASE NOTES:
 
 Version beta.2.1.20190911
--	update feature
+-	update feature 
 	- bin solution feature has been updated to match latest amkor's bin solution specification v1.4
 		- the "FT/RT" text is now inserted in the bin solution for wafer sort as per specification
 		- APL now detects if any die in a test cycle is a retest by comparing its coordinate from the previous dies tested in the lot.
