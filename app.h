@@ -32,6 +32,7 @@ class CAppTask;
 class CAppState;
 class CMonitorFileDesc;
 class CAppFileDesc;
+class CMap;
 
 class CApp: public CTester
 {
@@ -54,7 +55,6 @@ protected:
 		int		nUnloadProgTimeOutMS;
 		int		nKillTesterTimeOutMS;
 		int		nFAModuleTimeOutMS;
-
 
 		// binning parameters
 		bool 		bSendBin;
@@ -136,6 +136,81 @@ protected:
 		}
 	};	
 
+	class CMap
+	{
+	private:
+		struct COORD
+		{
+			int X;
+			std::list< int > Y;
+
+			COORD(int x): X(x){}
+			virtual ~COORD()
+			{
+				Y.clear();
+			}
+
+			bool add(int y)
+			{
+				if (has(y)) return false;
+				else Y.push_back(y);
+			}
+
+			bool has(int y)
+			{
+				for (std::list< int >::iterator it = Y.begin(); it != Y.end(); it++)
+				{
+					if (y == *it) return true;
+				}
+				return false;
+			}
+
+		};
+		
+		std::list< COORD* > m_xy;
+	public:
+		CMap(){}
+		virtual ~CMap(){ clear(); }	
+
+		void clear()
+		{
+			for (std::list< COORD* >::iterator it = m_xy.begin(); it != m_xy.end(); it++)
+			{
+				if (*it) delete (*it);
+			}
+			m_xy.clear();
+		}	
+
+		bool add( int x, int y )
+		{
+			for (std::list<COORD* >::iterator it = m_xy.begin(); it != m_xy.end(); it++)
+			{
+				if (x == (*it)->X)
+				{ 
+					if ((*it)->has(y)) return false; 
+					else
+					{
+						(*it)->add(y);
+						return true;
+					}
+				}
+			}
+			COORD* xy = new COORD(x);
+			xy->add(y);
+			m_xy.push_back(xy);
+			return true;
+		}
+
+		bool has( int x, int y )
+		{
+			for (std::list<COORD* >::iterator it = m_xy.begin(); it != m_xy.end(); it++)
+			{
+				if (x == (*it)->X){ if ((*it)->has(y)) return true; }
+			}
+			return false;
+		}
+	};
+
 protected:
 	// lotinfo data
 	LOTINFO m_lotinfo;
@@ -146,15 +221,12 @@ protected:
 	// count how many launch attempts we made
 	long m_nLaunchAttempt;
 
+	CMap m_map;
+
 	// parameters
 	CONFIG m_CONFIG;
 	std::string m_szConfigFullPathName;
 	std::string m_szTesterName;
-	//std::string m_szProgramFullPathName;
-
-	// stdf stuff data holders and functions
-//	MIR m_MIR;
-//	SDR m_SDR;	
 
 	// file descriptor engine
 	CFileDescriptorManager m_FileDescMgr;

@@ -10,6 +10,7 @@ CApp::CApp(int argc, char **argv)
 	m_pMonitorFileDesc = 0;
 	m_pStateNotificationFileDesc = 0;
 	m_lotinfo.clear();
+	m_map.clear();
    
 	// parse command line arguments
 	scan(argc, argv);
@@ -1276,12 +1277,18 @@ void CApp::onWaferChange(const EVX_WAFER_STATE state, const std::string& szWafer
 	{
 		case EVX_WAFER_END:
 		{
+			// every time wafer ends, let's clear map counter
+			m_map.clear();
+
 			m_Log << "Wafer End" << CUtil::CLog::endl;
 			if (m_StateMgr.get() == m_pStateOnEndLot) m_StateMgr.set(m_pStateOnUnloadProg);
 			break;
 		}
 		case EVX_WAFER_START:
 		{
+			// every time wafer starts, let's clear map counter
+			m_map.clear();
+
 			m_Log << "Wafer Start" << CUtil::CLog::endl;
 			if (m_StateMgr.get() == m_pStateOnEndLot) m_StateMgr.set(m_pStateOnUnloadProg);
 			break;
@@ -1357,18 +1364,12 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 	// if we're not sending bin, bail out
 	if (!m_CONFIG.bSendBin) return;
 
-	// set host/tester name
-	std::stringstream send;
-	send << m_szTesterName;
-
-	// as per Amkor specs, if wafer test, insert wafer id (lot id) here
-	if (m_CONFIG.nTestType == CONFIG::APL_WAFER) send << "," <<  m_pProgCtrl->getLotInformation(EVX_LotLotID);
-
 	// if wafer test, extract x/y coords. needed as per Amkor specs
 	int *sites = 0;
 	int *xCoords = 0;
 	int *yCoords = 0;
 
+	bool bRetest = false;
 	if (m_CONFIG.nTestType == CONFIG::APL_WAFER)
 	{	
 		m_Log << "wafer test" << CUtil::CLog::endl;
@@ -1379,9 +1380,31 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 
 		if ( m_pProgCtrl->getWaferCoords(array_size, sites, xCoords, yCoords) != EVXA::OK )
 		{
-			m_Log << "Error: Something went wrong int qerying Unison for X/Y coords." << CUtil::CLog::endl;
+			m_Log << "Error: Something went wrong int querying Unison for X/Y coords." << CUtil::CLog::endl;
 		}
+
+		// add these dies (coords) in our map to remember it. if one of the dies fail to be added, then that die
+		// is being retested instead. and we assume this whole test cycle is a retest
+		for (int i = 0; i < array_size; i++)
+		{ 
+			// if this site is not selected, we skip it
+			if (site[i] == 0) continue;
+
+			if (!m_map.add(xCoords[i], yCoords[i]))
+			{
+				//m_Log << "Coord: " << xCoords[i] << ", " << yCoords[i] << " already exist " << CUtil::CLog::endl;
+				bRetest = true;
+			}
+			//else m_Log << "Coord: " << xCoords[i] << ", " << yCoords[i] << " added. " << (bRetest?"RT":"FT") << CUtil::CLog::endl;
+		}		
 	}
+
+	// set host/tester name
+	std::stringstream send;
+	send << m_szTesterName;
+
+	// as per Amkor specs, if wafer test, insert wafer id (lot id) here
+	if (m_CONFIG.nTestType == CONFIG::APL_WAFER) send << "," << (bRetest?"RT":"FT") << "/" <<  m_pProgCtrl->getLotInformation(EVX_LotLotID);
 
 	// loop through all loaded sites, start at 1. for unison, site 1 = 1
 	for (int i = 1; i < m_pProgCtrl->getNumberOfLoadedSites(); i++)
@@ -1401,7 +1424,11 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 		// otherwise, this is a selected site with valid bin. print it
 		else
 		{
-			if (m_CONFIG.nTestType == CONFIG::APL_WAFER) send << xCoords[i] << "/" << yCoords[i] << "/";
+			if (m_CONFIG.nTestType == CONFIG::APL_WAFER) 
+			{
+				send << xCoords[i] << "/" << yCoords[i] << "/";
+			}
+
 			send << (m_CONFIG.bUseHardBin? hw_bin[i] : sw_bin[i]);
 		}	
 		// if this is the last site, insert asterisk as end char for string to send. otherwise, a coma separator

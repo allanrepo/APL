@@ -1,7 +1,10 @@
 RELEASE NOTES:
-Version beta.2.1.xxx
--	bug fixes
-	- summary appending feature now disabled by default. enable/disable flag now working
+
+Version beta.2.1.20190911
+-	update feature
+	- bin solution feature has been updated to match latest amkor's bin solution specification v1.4
+		- the "FT/RT" text is now inserted in the bin solution for wafer sort as per specification
+		- APL now detects if any die in a test cycle is a retest by comparing its coordinate from the previous dies tested in the lot.
 -	new feature
 	- a new task is added that takes all STDF (MIR and SDR for now) fields from lotinfo.txt file and sends it to unison to be set in STDF file
 		- can be enabled in config.xml by setting tag <STDF state = "true" />; disabled by default
@@ -17,7 +20,8 @@ Version beta.2.1.xxx
 			- SDR.HAND_TYP - can be set, but unison will overwrite it with CURI driver name
 			- SDR.HAND_ID - can be set, but unison will overwrite it with CURI object name
 			- SDR.CABL_TYP - can be set, but unison will overwrite it with empty string; strange behavior, need to raise SPR
-
+-	bug fixes
+	- summary appending feature now disabled by default. enable/disable flag now working
 
 
 Version beta.2.1.20190902
