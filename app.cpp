@@ -410,7 +410,7 @@ void CApp::setLogFile(CTask& task)
 
 	// set log file to <path>/apl.<hostname>.<yyyymmdd>.log
 	std::stringstream ssLogToFile;
-	ssLogToFile << m_CONFIG.szLogPath << "/apl." << szHostName << "." << (tmNow->tm_year + 1900);
+	ssLogToFile << m_CONFIG.szLogPath << "/apl." << VERSION << "." << szHostName << "." << (tmNow->tm_year + 1900);
 	ssLogToFile << (tmNow->tm_mon + 1 < 10? "0" : "") << (tmNow->tm_mon + 1) << (tmNow->tm_mday < 10? "0" : "") << tmNow->tm_mday << ".log";
 	
 	// if this new log file name the same one already set in the logger? if yes, then we don't have to do anything
