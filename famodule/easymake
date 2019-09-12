@@ -1,0 +1,6 @@
+ #~ /bin/bash
+rm -rf Release64
+
+gmake CFG=Release MBITS=64 MBITS_CURI=64
+
+mv Release Release64

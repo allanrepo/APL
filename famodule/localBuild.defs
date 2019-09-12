@@ -1,0 +1,9 @@
+# All options are set with ?= to implement set if not already set logic.
+CFG?=Debug
+TESTER_TYPE?=unison
+SKIP_DEFS?=true
+CADENCE_DIR?=/ltx
+ARCH_DEST?=$(CADENCE_DIR)
+# BIN_OUTDIR?=$(ARCH_DEST)/com
+# BIN_OUTDIR?=$(ARCH_DEST)/customer/lib
+# USE_STATIC_EVXA?=true
