@@ -55,6 +55,7 @@ protected:
 		int		nUnloadProgTimeOutMS;
 		int		nKillTesterTimeOutMS;
 		int		nFAModuleTimeOutMS;
+		bool		bForceLoad;
 
 		// binning parameters
 		bool 		bSendBin;
@@ -82,6 +83,7 @@ protected:
 		CONFIG()
 		{
 			bProd = true;
+			bForceLoad = false;
 			bKillTesterOnLaunch = false;
 			nRelaunchTimeOutMS = 120000;
 			nRelaunchAttempt = 3;

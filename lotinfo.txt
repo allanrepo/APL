@@ -3,7 +3,7 @@ JobFile:/home/localuser/Desktop/ST/remote/binChecker_qcom/Program/BinChecker.una
 STEP: RT1
 OPERATOR		: 69_OPERATOR
 OPERFREQ		: 69_OPERFREQ
-LOTID			: 69_LOTID
+LOTID			: 99_LOTID
 SUBLOTID		: 69_SUBLOTID
 DEVICE			: 69_DEVICE
 PRODUCTID		: 69_PRODUCTID

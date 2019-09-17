@@ -1,7 +1,8 @@
 #include "tester.h"
 #include <sys/inotify.h>
 
- 
+const std::string CTester::m_strEmpty("");
+
 /* ------------------------------------------------------------------------------------------
 constructor
 ------------------------------------------------------------------------------------------ */
@@ -212,6 +213,12 @@ if nWait = 0, we wait forever until test program is unloaded or error occurs
 ------------------------------------------------------------------------------------------ */
 bool CTester::unload(bool bWait, int nWait)
 {
+	if (!m_pProgCtrl)
+	{	
+		m_Log << "WARNING, not connected to tester, cannot unload program." << CUtil::CLog::endl;
+		return false;
+	}
+
 	// is no program loaded?
 	if (!m_pProgCtrl->isProgramLoaded())
 	{
@@ -232,7 +239,7 @@ bool CTester::unload(bool bWait, int nWait)
 	// check if program is loaded succesfully
 	if (m_pProgCtrl->isProgramLoaded())
 	{
-		m_Log << "Error, program '" << m_pProgCtrl->getProgramPath() << "' is still loaded after an attempt to unload it." << CUtil::CLog::endl;
+		m_Log << "ERROR, program '" << m_pProgCtrl->getProgramPath() << "' is still loaded after an attempt to unload it." << CUtil::CLog::endl;
 		return false;
 	}
 	else m_Log << "Program '" << szLoadedProg << "' is unloaded successfully." << CUtil::CLog::endl;
@@ -247,7 +254,8 @@ load program
 ------------------------------------------------------------------------------------------ */
 bool CTester::load(const std::string& name, bool bDisplay)
 {
-	// is program already loaded? unload it.
+	// is program already loaded? unload it. 
+	// this function also ensures we're connected to tester. it always return false if not connected
 	if (!unload()) return false;
 
 	// load program with evxa command
@@ -266,6 +274,50 @@ bool CTester::load(const std::string& name, bool bDisplay)
 	else m_Log << "Program '" << m_pProgCtrl->getProgramPath() << "' is successfully loaded." << CUtil::CLog::endl;
 
 	return true;
+}
+
+
+/* ------------------------------------------------------------------------------------------
+checks if program is loaded or notload program
+------------------------------------------------------------------------------------------ */
+bool CTester::isProgramLoaded()
+{
+	if (!m_pProgCtrl)
+	{
+		m_Log << "WARNING, not connected to tester, cannot check if program is loaded." << CUtil::CLog::endl;
+		return false;
+	}
+
+	if (!m_pProgCtrl->isProgramLoaded()) return false;
+	else return true;
+}
+
+const std::string CTester::getProgramFullPath()
+{
+	if (!m_pProgCtrl)
+	{
+		m_Log << "WARNING, not connected to tester, returning an empty string instead for program full path." << CUtil::CLog::endl;
+		return m_strEmpty;
+	}
+
+	std::stringstream ss;
+	ss << m_pProgCtrl->getProgramPath();
+
+	return ss.str(); 
+}
+
+const std::string CTester::getProgramName()
+{
+	if (!m_pProgCtrl)
+	{
+		m_Log << "WARNING, not connected to tester, returning an empty string instead for program name." << CUtil::CLog::endl;
+		return m_strEmpty;
+	}
+
+	std::stringstream ss;
+	ss << m_pProgCtrl->getProgramName();
+
+	return ss.str(); 
 }
 
 

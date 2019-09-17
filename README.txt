@@ -1,6 +1,23 @@
 RELEASE NOTES:
 
-Version beta.2.1.20190911
+version beta.2.3.20190918
+-	update feature
+	- as per amkor's request, if program is already loaded and the same as the jobfile in lotinfo.txt, APL should not relaunch unison and load program again.
+	  instead, it will just update STDF fields as well as lotinfo fields.
+		- this is how it should have been but due to the issue with OICU where APL cannot query if it's connected to tester or not (in fact no one can), APL always
+	  	  relaunch unison and load program every time it receives lotinfo.txt file. this ensures that OICU is connected to tester when program is loaded.
+	  	- but since amkor insists, we update this BUT we will not take responsibility if there is complain from amkor on situation where APL successfully loaded
+		  program but operator does not see it in monitor.
+		- alternatively, force launching/loading can still be enabled by setting the appropriate tag in config.xml as shown below. this flag is false by default
+
+			<Launch>
+				<Param name = "Force Load">true</Param> <!-- true if APL will always launch OICU and load program, false by default -->
+			</Launch>	
+
+	- the suffix for NewLotUnison_***.xml is now taken from lotinfo.txt field 'FABRICATIONID'
+
+
+Version beta.2.2.20190911
 -	update feature 
 	- bin solution feature has been updated to match latest amkor's bin solution specification v1.4
 		- the "FT/RT" text is now inserted in the bin solution for wafer sort as per specification

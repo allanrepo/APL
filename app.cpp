@@ -286,6 +286,19 @@ void CApp::unloadProg(CTask& task)
 		m_StateMgr.set(m_pStateOnKillTester);
 		return;
 	}
+	// for version 20190918, if program is loaded and the same as the jobfile for new lotinfo.txt, we don't reload anymore.
+	else
+	{
+		if (!m_CONFIG.bForceLoad)
+		{
+			// check if program loaded is same as jobfile from new lotinfo.txt. if yes, let
+			if (getProgramFullPath().compare( m_lotinfo.szProgramFullPathName ) == 0)
+			{
+				m_StateMgr.set(m_pSendLotInfo);
+				return;
+			}
+		}
+	}
 
 	// get program name to unload for logging later
 	m_Log << "Program '" << m_pProgCtrl->getProgramPath() << "' is loaded. Let's unload it." << CUtil::CLog::endl; 
@@ -448,6 +461,14 @@ void CApp::connect(CTask& task)
 {
 	// are we connected to tester? should we try? attempt once
 	if (!isReady()) CTester::connect(m_szTesterName, 1);
+/*	
+	else
+	{
+		m_Log << "Program Name: " << getProgramName() << CUtil::CLog::endl;
+		m_Log << "Program Path: " << getProgramFullPath() << CUtil::CLog::endl;
+		m_Log << "Job File    : " << m_lotinfo.szProgramFullPathName << CUtil::CLog::endl;
+	}
+*/
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -800,7 +821,8 @@ bool CApp::config(const std::string& file)
 				if (!pLaunch->fetchChild(i)) continue;
 				if (pLaunch->fetchChild(i)->fetchTag().compare("Param") != 0) continue;
 
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Type") == 0){ m_CONFIG.bProd = pLaunch->fetchChild(i)->fetchText().compare("prod") == 0? true: false; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Type") == 0){ m_CONFIG.bProd = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()).compare("PROD") == 0? true: false; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Force Load") == 0){ m_CONFIG.bForceLoad = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()).compare("TRUE") == 0? true: false; }
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Kill Tester Before Launch") == 0){ m_CONFIG.bKillTesterOnLaunch = pLaunch->fetchChild(i)->fetchText().compare("true") == 0? true: false; }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Launch") == 0){ m_CONFIG.nRelaunchTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Max Attempt To Launch") == 0){ m_CONFIG.nRelaunchAttempt = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ); }				
