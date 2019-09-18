@@ -1,8 +1,6 @@
 #include "tester.h"
 #include <sys/inotify.h>
 
-const std::string CTester::m_strEmpty("");
-
 /* ------------------------------------------------------------------------------------------
 constructor
 ------------------------------------------------------------------------------------------ */
@@ -292,12 +290,15 @@ bool CTester::isProgramLoaded()
 	else return true;
 }
 
+/* ------------------------------------------------------------------------------------------
+return program full filename and path. 
+------------------------------------------------------------------------------------------ */
 const std::string CTester::getProgramFullPath()
 {
 	if (!m_pProgCtrl)
 	{
 		m_Log << "WARNING, not connected to tester, returning an empty string instead for program full path." << CUtil::CLog::endl;
-		return m_strEmpty;
+		return "";
 	}
 
 	std::stringstream ss;
@@ -311,7 +312,7 @@ const std::string CTester::getProgramName()
 	if (!m_pProgCtrl)
 	{
 		m_Log << "WARNING, not connected to tester, returning an empty string instead for program name." << CUtil::CLog::endl;
-		return m_strEmpty;
+		return "";
 	}
 
 	std::stringstream ss;

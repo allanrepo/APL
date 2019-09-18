@@ -40,9 +40,6 @@ protected:
 	// logger
 	CUtil::CLog m_Log;
 
-	// used for returning empty string
-	static const std::string m_strEmpty;
-
 public:
 	// constructors, operator
 	CTester(); 
@@ -77,6 +74,7 @@ public:
 	// let our state notification class access tester's members
 	friend class CStateNotification;
 
+	// utility functions
 	bool isProgramLoaded();
 	const std::string getProgramFullPath();
 	const std::string getProgramName();
