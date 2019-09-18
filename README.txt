@@ -15,6 +15,9 @@ version beta.2.3.20190918
 			</Launch>	
 
 	- the suffix for NewLotUnison_***.xml is now taken from lotinfo.txt field 'FABRICATIONID'
+-	quality of life improvement
+	- previously, if you make changes to config file, you have to relaunch APL for the changes to take effect. now, APL reads the config file every minute therefore
+	  you can make changes to the config file without having to launch APL again. you only need to wait a minute for changes to take effect.
 
 
 Version beta.2.2.20190911

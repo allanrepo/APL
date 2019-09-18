@@ -280,6 +280,7 @@ protected:
 	void sendLotInfoToFAModule(CTask&);
 	void timeOutSendLotInfoToFAModule(CTask&);
 	void setSTDF(CTask&);
+	void updateConfig(CTask&);
 
 	// functions executed by file descriptor handlers
 	void onReceiveFile(const std::string& name);	

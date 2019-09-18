@@ -66,7 +66,11 @@ void CApp::onIdleLoadState(CState& state)
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
 	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
-	state.add(new CAppTask(*this, &CApp::setLogFile, "setLogFile", 60000, true, true));
+
+	CSequence* pSeq = new CSequence("seq0", true, true );
+	state.add(pSeq);
+	pSeq->queue(new CAppTask(*this, &CApp::setLogFile, "setLogFile", 30000, true, true));
+	pSeq->queue(new CAppTask(*this, &CApp::updateConfig, "updateConfig", 30000, true, true));
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -401,6 +405,16 @@ void CApp::timeOutKillTester(CTask& task)
 }
 
 /* ------------------------------------------------------------------------------------------
+TASK: update config parameters by reading config file
+------------------------------------------------------------------------------------------ */
+void CApp::updateConfig(CTask& task)
+{
+//	m_Log << "UPDATE CONFIG" << CUtil::CLog::endl;
+
+	config( m_szConfigFullPathName );
+}
+
+/* ------------------------------------------------------------------------------------------
 TASK: update logger file output
 ------------------------------------------------------------------------------------------ */
 void CApp::setLogFile(CTask& task)
@@ -461,14 +475,6 @@ void CApp::connect(CTask& task)
 {
 	// are we connected to tester? should we try? attempt once
 	if (!isReady()) CTester::connect(m_szTesterName, 1);
-/*	
-	else
-	{
-		m_Log << "Program Name: " << getProgramName() << CUtil::CLog::endl;
-		m_Log << "Program Path: " << getProgramFullPath() << CUtil::CLog::endl;
-		m_Log << "Job File    : " << m_lotinfo.szProgramFullPathName << CUtil::CLog::endl;
-	}
-*/
 }
 
 /* ------------------------------------------------------------------------------------------

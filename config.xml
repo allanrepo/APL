@@ -5,22 +5,22 @@
 
 	<SiteConfiguration name = "Singapore">
 		<Launch>
-			<Param name = "Type">proD</Param> <!-- prod, engr-->
-			<Param name = "Kill Tester Before Launch">false</Param> <!-- true -->
-			<Param name = "Wait Time To Launch">120</Param>
-			<Param name = "Max Attempt To Launch">5</Param>
-			<Param name = "Wait Time To End Lot">20</Param>
-			<Param name = "Wait Time To Unload Program">20</Param>
-			<Param name = "Wait Time To FAModule">20</Param>
-			<Param name = "Wait Time To Kill Tester">30</Param>
-			<Param name = "Force Load">tRUe</Param> <!-- true if APL will always launch OICU and load program, false by default -->
+			<Param name = "Type">proD</Param> <!-- prod, engr; default:prod -->
+			<Param name = "Kill Tester Before Launch">false</Param> <!-- true, false; default:false -->
+			<Param name = "Wait Time To Launch">120</Param> <!-- default:120 seconds -->
+			<Param name = "Max Attempt To Launch">5</Param> <!-- default: 3 -->
+			<Param name = "Wait Time To End Lot">20</Param> <!-- default: 30 seconds -->
+			<Param name = "Wait Time To Unload Program">20</Param> <!-- default: 30 seconds -->
+			<Param name = "Wait Time To FAModule">20</Param> <!-- default: 30 seconds -->
+			<Param name = "Wait Time To Kill Tester">30</Param> <!-- default: 30 seconds -->
+			<Param name = "Force Load">tRUe</Param> <!-- true if APL will always launch OICU and load program; default: false -->
 		</Launch>
-		<Summary state = "true">
-			<Path>/home/localuser/shared</Path>
+		<Summary state = "true"> <!-- default: false -->
+			<Path>/home/localuser/shared</Path> <!-- default: /tmp -->
 		</Summary>
 		<LotInfo>
-			<File>b.txt</File>
-			<Path>/home/localuser/Desktop/APL</Path>
+			<File>b.txt</File> <!-- default: lotinfo.txt -->
+			<Path>/home/localuser/Desktop/APL</Path> <!-- default: /tmp -->
 		</LotInfo>
 		<Binning state = "true">
 			<BinType>soft</BinType> <!-- hard, soft -->	
