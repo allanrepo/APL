@@ -1,6 +1,6 @@
 RELEASE NOTES:
 
-version beta.2.3.20190919
+version beta.2.3.20190918
 -	update feature
 	- as per amkor's request, if program is already loaded and the same as the jobfile in lotinfo.txt, APL should not relaunch unison and load program again.
 	  instead, it will just update STDF fields as well as lotinfo fields.
