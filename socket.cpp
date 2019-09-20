@@ -27,7 +27,7 @@ bool CClient::connect(const std::string& ip, unsigned short port, int nType)
 	-	SOCK_STREAM is set as type. it means the socket uses TCP or connection oriented protocol
 	-	returns this socket's file descriptor if successful
 	--------------------------------------------------------------------------------------------------------- */
-	m_fdSocket = socket(AF_INET, SOCK_STREAM, 0);	
+	m_fdSocket = socket(AF_INET, nType, 0);	
 	if (m_fdSocket == -1)
 	{
 		m_Log << "ERROR: Failed to create socket!" << CUtil::CLog::endl;

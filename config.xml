@@ -25,9 +25,9 @@
 		<Binning state = "true">
 			<BinType>soft</BinType> <!-- hard, soft -->	
 			<TestType>wafer</TestType> <!-- final, wafer -->		
-			<SocketType>tcp</SocketType>
+			<SocketType>udp</SocketType>
 			<IP>127.0.0.1</IP>
-			<Port>54000</Port>
+			<Port>4000</Port>
 		</Binning>
 		<Logging state = "true">
 			<Path>/home/localuser/Desktop</Path>

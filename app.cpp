@@ -1470,7 +1470,7 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 
 	// finally, send the string to remote host
 	CClient c;
-	if (!c.connect(m_CONFIG.IP, m_CONFIG.nPort)) 
+	if (!c.connect(m_CONFIG.IP, m_CONFIG.nPort, m_CONFIG.nSocketType)) 
 	{
 		m_Log << "ERROR: Failed to connect to server." << CUtil::CLog::endl;
 		return;
