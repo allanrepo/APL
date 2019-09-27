@@ -1,8 +1,13 @@
 RELEASE NOTES:
 
+version beta.2.3.2019xxxx
+-	bug fixes
+	- fixed a bug where APL can potentially crash when STEP feature is disabled. Credit to Cedric for finding this out and fixing it.
+
 version beta.2.3.20190920
 -	bug fixes
 	- fixed a bug where network connection always use TCP even if you set to UDP. now UDP connection works
+
 
 
 version beta.2.3.20190918

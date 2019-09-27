@@ -9,6 +9,7 @@ CApp::CApp(int argc, char **argv)
 	// initialize some of the members here to be safe
 	m_pMonitorFileDesc = 0;
 	m_pStateNotificationFileDesc = 0;
+	m_pSummaryFileDesc = 0;
 	m_lotinfo.clear();
 	m_map.clear();
    
@@ -597,7 +598,7 @@ void CApp::launch(CTask& task)
 	ssCmd << "UNISON_NEWLOT_CONFIG_FILE=$LTX_UPROD_PATH/newlot-config/NewLotUnison_" << m_lotinfo.mir.ProcId << ".xml ";
 	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
 	ssCmd << (m_lotinfo.szProgramFullPathName.empty()? "": "-load ") << (m_lotinfo.szProgramFullPathName.empty()? "" : m_lotinfo.szProgramFullPathName);
-	ssCmd << " -qual " << " -T " << m_szTesterName;
+	ssCmd << " -qual " << " -T " << m_szTesterName;// << "&";
 	system(ssCmd.str().c_str());	
 	m_Log << "LAUNCH: " << ssCmd.str() << CUtil::CLog::endl;
 }
@@ -1058,13 +1059,13 @@ void CApp::onSummaryFile(const std::string& name)
 				m_Log << "This lot summary already contains 'step' field. APL will not append anymore." << CUtil::CLog::endl;
 				bStep = true;
 			}
-
 		}
 	
 		// if this is the last line then bail
 		if (pos == std::string::npos) break;		
 	}	
 
+	// if this file refers to different test program and lot id and/or STEP field is already appended to it, we bail
 	if ( !bFileName || !bLotId || bStep )
 	{
 		return;
