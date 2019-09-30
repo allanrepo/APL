@@ -982,11 +982,12 @@ bool CApp::config(const std::string& file)
 	m_Log << "End Lot Time-out (s): " << (m_CONFIG.nEndLotTimeOutMS /1000)<< CUtil::CLog::endl;
 	m_Log << "Unload Program Time-out (s): " << (m_CONFIG.nUnloadProgTimeOutMS /1000)<< CUtil::CLog::endl;
 	m_Log << "Kill Tester Time-out (s): " << (m_CONFIG.nKillTesterTimeOutMS /1000)<< CUtil::CLog::endl;
-	m_Log << "Max Launch Attempts: " << (m_CONFIG.bProd? "OICu" : "OpTool") << CUtil::CLog::endl;	
+	m_Log << "Max Launch Attempts: " << (m_CONFIG.nRelaunchAttempt) << CUtil::CLog::endl;	
 	m_Log << "FAmodule Time-out (s): " << (m_CONFIG.nFAModuleTimeOutMS /1000)<< CUtil::CLog::endl;
 
 	m_Log << "Summary Appending with \"Step\" : " << (m_CONFIG.bSummary? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "Summary Path (if enabled): " << m_CONFIG.szSummaryPath << CUtil::CLog::endl;
+	m_Log << "Force Load: " << (m_CONFIG.bForceLoad? "enabled" : "disabled") << CUtil::CLog::endl;
 
 	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
 	return true;
@@ -1001,11 +1002,30 @@ void CApp::onSummaryFile(const std::string& name)
 {
 	m_Log << "Summary file '" << name << "' received, parsing it... " << CUtil::CLog::endl;
 
+	// check if this file has .sum extension 
+	size_t pos = name.find_last_of('.');
+
+	// if pos = npos, there's no '.' meaning no file extension
+	if (pos == std::string::npos)
+	{
+		m_Log << name << " has no file extension." << CUtil::CLog::endl;
+		return;
+	}
+
+	// if extension is not .sum, we bail
+	std::string ext = name.substr(pos + 1);
+	if (ext.compare("sum") != 0)
+	{
+		m_Log << name << " has extension: " << ext << ", we're expecting .sum" << CUtil::CLog::endl;
+		return;
+	}
+
 	// create string that holds full path + monitor file 
 	std::stringstream ssFullPathSummaryName;
 	ssFullPathSummaryName << m_CONFIG.szSummaryPath << "/" << name;
 
 	// open the file
+	sleep(1);
 	std::fstream fs;
 	fs.open(ssFullPathSummaryName.str().c_str(), std::ios::in);
 	std::stringstream ss;
@@ -1065,13 +1085,13 @@ void CApp::onSummaryFile(const std::string& name)
 		if (pos == std::string::npos) break;		
 	}	
 
+	if (m_pSummaryFileDesc) m_pSummaryFileDesc->halt();
+
 	// if this file refers to different test program and lot id and/or STEP field is already appended to it, we bail
 	if ( !bFileName || !bLotId || bStep )
 	{
 		return;
 	}
-
-	if (m_pSummaryFileDesc) m_pSummaryFileDesc->halt();
 
 	// if we found matching job file and lot id, let's append to this file	
 	sleep(1);
@@ -1169,6 +1189,7 @@ bool CApp::parse(const std::string& name)
 			if (field.compare("TESTSPECREV") == 0)		{ li.mir.SpecVer = value; }
 			if (field.compare("PROTECTIONCODE") == 0)	{ li.mir.ProtCod = value; }
 			if (field.compare("BURNINTIME") == 0)		{ li.mir.BurnTim = value; }
+			if (field.compare("RTSTCODE") == 0)		{ li.mir.RtstCod = value; }
 
 			if (field.compare("PROBERHANDLERTYPE") == 0)	{ li.sdr.HandTyp = value; }
 			if (field.compare("PROBERHANDLERID") == 0)	{ li.sdr.HandId = value; }
@@ -1555,13 +1576,15 @@ bool CApp::setLotInfo()
 	if ( !setLotInformation(EVX_LotTestSpecName, 		m_lotinfo.mir.SpecNam, 	"MIR.LotTestSpecName")) bRslt = false;
 	if ( !setLotInformation(EVX_LotTestSpecRev, 		m_lotinfo.mir.SpecVer, 	"MIR.LotTestSpecRev")) bRslt = false;
 	if ( !setLotInformation(EVX_LotProtectionCode, 		m_lotinfo.mir.ProtCod, 	"MIR.LotProtectionCode")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLotStatus, 			m_lotinfo.mir.RtstCod, 	"MIR.LotLotStatus")) bRslt = false;
 
 	// use this commmand because there's no matching id from evxa
+#if 0
 	m_pProgCtrl->setExpression("TestProgData.BurnInTime", m_lotinfo.mir.BurnTim.c_str());
 	if (m_lotinfo.mir.BurnTim.compare( m_pProgCtrl->getExpression("TestProgData.BurnInTime", EVX_SHOW_VALUE) ) == 0)
 		m_Log << "Successfully set " << "TestProgData.BurnInTime" << " to '" << m_pProgCtrl->getExpression("TestProgData.BurnInTime", EVX_SHOW_VALUE) << "'" << CUtil::CLog::endl;
 	else m_Log << "ERROR: Failed to set " << "TestProgData.BurnInTime" << ": '" << m_pProgCtrl->getExpression("TestProgData.BurnInTime", EVX_SHOW_VALUE) << "'" << CUtil::CLog::endl;
-
+#endif
 	// set SDR
 	if ( !setLotInformation(EVX_LotProberHandlerID, 	m_lotinfo.sdr.HandId, 	"SDR.LotProberHandlerID")) bRslt = false;
 	if ( !setLotInformation(EVX_LotHandlerType, 		m_lotinfo.sdr.HandTyp, 	"SDR.LotHandlerType")) bRslt = false;

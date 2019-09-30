@@ -43,6 +43,7 @@ MIR::MIR(const MIR& ot)
 	SpecVer = ot.SpecVer;
 	ProtCod = ot.ProtCod;
 	BurnTim = ot.BurnTim;
+	LotStatus = ot.LotStatus;
 }
 
 MIR& MIR::operator=(const MIR& ot)
@@ -83,6 +84,7 @@ MIR& MIR::operator=(const MIR& ot)
 	SpecVer = ot.SpecVer;
 	ProtCod = ot.ProtCod;
 	BurnTim = ot.BurnTim;
+	LotStatus = ot.LotStatus;
 	return *this;
 }
 
@@ -127,6 +129,7 @@ void MIR::clear()
 	SpecVer.clear();
 	ProtCod.clear();
 	BurnTim.clear();
+	LotStatus.clear();
 }
 
 SDR::SDR() 

@@ -293,7 +293,7 @@ protected:
 	// utility functions. purpose are obvious in their function name and arguments
 	bool scan(int argc, char **argv);
 	const std::string getUserName() const;
-	bool setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce = true);
+	bool setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce = false);
 	bool setLotInfo();
 
 	// functions to parse lotinfo.txt file 

@@ -53,6 +53,7 @@ public:
 	std::string SpecVer;	// TestProgData.TestSpecRev
 	std::string ProtCod;	// TestProgData.ProtectionCode
 	std::string BurnTim;	// TestProgData.LotBurnInTime
+	std::string LotStatus;  // TestProgData.LotStatusTest 
 
 };
 

@@ -5,7 +5,7 @@
 
 	<SiteConfiguration name = "Singapore">
 		<Launch>
-			<Param name = "Type">proD</Param> <!-- prod, engr; default:prod -->
+			<Param name = "Type">engr</Param> <!-- prod, engr; default:prod -->
 			<Param name = "Kill Tester Before Launch">false</Param> <!-- true, false; default:false -->
 			<Param name = "Wait Time To Launch">120</Param> <!-- default:120 seconds -->
 			<Param name = "Max Attempt To Launch">5</Param> <!-- default: 3 -->
@@ -16,7 +16,7 @@
 			<Param name = "Force Load">tRUe</Param> <!-- true if APL will always launch OICU and load program; default: false -->
 		</Launch>
 		<Summary state = "true"> <!-- default: false -->
-			<Path>/home/localuser/shared</Path> <!-- default: /tmp -->
+			<Path>/home/localuser/</Path> <!-- default: /tmp -->
 		</Summary>
 		<LotInfo>
 			<File>b.txt</File> <!-- default: lotinfo.txt -->
