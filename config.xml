@@ -5,7 +5,7 @@
 
 	<SiteConfiguration name = "Singapore">
 		<Launch>
-			<Param name = "Type">engr</Param> <!-- prod, engr; default:prod -->
+			<Param name = "Type">prod</Param> <!-- prod, engr; default:prod -->
 			<Param name = "Kill Tester Before Launch">false</Param> <!-- true, false; default:false -->
 			<Param name = "Wait Time To Launch">120</Param> <!-- default:120 seconds -->
 			<Param name = "Max Attempt To Launch">5</Param> <!-- default: 3 -->
@@ -13,7 +13,7 @@
 			<Param name = "Wait Time To Unload Program">20</Param> <!-- default: 30 seconds -->
 			<Param name = "Wait Time To FAModule">20</Param> <!-- default: 30 seconds -->
 			<Param name = "Wait Time To Kill Tester">30</Param> <!-- default: 30 seconds -->
-			<Param name = "Force Load">tRUe</Param> <!-- true if APL will always launch OICU and load program; default: false -->
+			<Param name = "Force Load">true</Param> <!-- true if APL will always launch OICU and load program; default: false -->
 		</Launch>
 		<Summary state = "true"> <!-- default: false -->
 			<Path>/home/localuser/</Path> <!-- default: /tmp -->
@@ -34,6 +34,13 @@
 		</Logging>
 		<STDF state = "true" />
 		<FAMODULE state = "true" />
+
+		<STEP>
+			<FT1 flow_id = "FT1" rtst_cod = "0" />
+			<RT1 flow_id = "FT1" rtst_cod = "1" />
+			<RT2 flow_id = "FT1" rtst_cod = "2" />
+			<FT2 flow_id = "FT2" rtst_cod = "0" />
+		</STEP>
 	</SiteConfiguration>
 
 	<SiteConfiguration name = "Amkor1">

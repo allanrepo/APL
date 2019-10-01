@@ -6,7 +6,8 @@ version beta.2.3.2019xxxx
 	- fixed display bug where max launch attempt displays load type instead of the number of launch attempt
 
 -	update feature
-	- MIR.RST_COD can now be set. APL will not attempt to set MIR.BURN_TIM anymore
+	- MIR.RST_COD can now be set (but not working yet)
+	- APL will not attempt to set MIR.BURN_TIM anymore
 	- STEP feature now ensures it only appends to .sum file, ignores others e.g. .sum_open
 	- STDF will not force empty value on fields not set by lotinfo.txt anymore
 

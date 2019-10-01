@@ -39,12 +39,25 @@ class CApp: public CTester
 protected:
 	struct CONFIG
 	{
+		struct STEP
+		{
+			std::string szStep;
+			std::string szFlowId;
+			int nRtstCod;
+		};
+
 		enum APL_TEST_TYPE
 		{
 			APL_WAFER,
 			APL_FINAL,
 			APL_MANUAL
 		};
+
+		// resources
+		CUtil::CLog m_Log;
+
+		// step parameters
+		std::vector< STEP > steps;
 
 		// launch parameters
 		bool 		bProd;
@@ -105,6 +118,9 @@ protected:
 			bSummary = false;
 			szSummaryPath = "/tmp";
 		}
+
+		bool parse(const std::string& file);		
+		void print();
 	};
 
 	struct LOTINFO
@@ -288,17 +304,18 @@ protected:
 	void onSummaryFile(const std::string& name);	
 	
 	// parse XML config file
-	bool config(const std::string& config);
+//	bool config(const std::string& config);
 	
 	// utility functions. purpose are obvious in their function name and arguments
 	bool scan(int argc, char **argv);
 	const std::string getUserName() const;
 	bool setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& field, const std::string& label, bool bForce = false);
-	bool setLotInfo();
+	bool setLotInfo(); 
 
 	// functions to parse lotinfo.txt file 
 	bool parse(const std::string& name);
 	bool getFieldValuePair(const std::string& line, const char delimiter, std::string& field, std::string& value);
+	bool updateLotinfoFile(const std::string& name);
 
 public:
 	CApp(int argc, char **argv);

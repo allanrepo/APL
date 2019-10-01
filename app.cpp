@@ -187,7 +187,7 @@ void CApp::onSetLotInfoLoadState(CState& state)
 	state.add(pSeq);
 
 	// if sending lotinfo.txt STDF values to STDF file is enabled, let's add it in task sequence. we do it first
-	if (m_CONFIG.bSendInfo) pSeq->queue(new CAppTask(*this, &CApp::setSTDF, "sendLotInfoToFAModule", 1000, true, false));
+	if (m_CONFIG.bSendInfo) pSeq->queue(new CAppTask(*this, &CApp::setSTDF, "sendSTDFfromLotInfo", 1000, true, false));
 
 	// add task that will wait for famodule to finish processing lotinfo file 
 	pSeq->queue(new CAppTask(*this, &CApp::sendLotInfoToFAModule, "sendLotInfoToFAModule", 1000, true, true));
@@ -412,7 +412,15 @@ void CApp::updateConfig(CTask& task)
 {
 //	m_Log << "UPDATE CONFIG" << CUtil::CLog::endl;
 
-	config( m_szConfigFullPathName );
+	m_CONFIG.parse( m_szConfigFullPathName );
+
+	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
+	m_Log << "Version: " << VERSION << CUtil::CLog::endl;
+	m_Log << "Developer: " << DEVELOPER << CUtil::CLog::endl;
+	m_Log << "Tester: " << m_szTesterName << CUtil::CLog::endl; 
+	m_Log << "Config File: " << m_szConfigFullPathName << CUtil::CLog::endl;
+	m_CONFIG.print();
+	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -466,7 +474,14 @@ void CApp::init(CTask& task)
 	if (m_szConfigFullPathName.empty()){ m_szConfigFullPathName = "./config.xml"; }
 
 	// parse config file
-	config( m_szConfigFullPathName );
+	m_CONFIG.parse( m_szConfigFullPathName );
+	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
+	m_Log << "Version: " << VERSION << CUtil::CLog::endl;
+	m_Log << "Developer: " << DEVELOPER << CUtil::CLog::endl;
+	m_Log << "Tester: " << m_szTesterName << CUtil::CLog::endl; 
+	m_Log << "Config File: " << m_szConfigFullPathName << CUtil::CLog::endl;
+	m_CONFIG.print();
+	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -721,6 +736,13 @@ void CApp::onReceiveFile(const std::string& name)
 		return;
 	}
 
+	// if you reach this point, m_lotinfo object must now contain data from latest lotinfo.txt file received.
+	// does lotinfo.txt file contain STEP field? if yes, we have to handle it
+	if (!updateLotinfoFile(ssFullPathMonitorName.str()))
+	{
+		return;
+	}
+
 	// if parsing lotinfo file is success, let's tell notify fd object to stop processing any incoming select() at this point
 	m_Log << "successfully parsed '" << ssFullPathMonitorName.str() << "'" << CUtil::CLog::endl;
 	m_pMonitorFileDesc->halt();
@@ -772,7 +794,7 @@ void CApp::onStateNotificationResponse(int fd)
 /* ------------------------------------------------------------------------------------------
 parse config xml file
 ------------------------------------------------------------------------------------------ */
-bool CApp::config(const std::string& file)
+bool CApp::CONFIG::parse(const std::string& file)
 {
 	m_Log << "Parsing " << file << "..." << CUtil::CLog::endl;
 
@@ -828,15 +850,15 @@ bool CApp::config(const std::string& file)
 				if (!pLaunch->fetchChild(i)) continue;
 				if (pLaunch->fetchChild(i)->fetchTag().compare("Param") != 0) continue;
 
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Type") == 0){ m_CONFIG.bProd = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()).compare("PROD") == 0? true: false; }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Force Load") == 0){ m_CONFIG.bForceLoad = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()).compare("TRUE") == 0? true: false; }
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Kill Tester Before Launch") == 0){ m_CONFIG.bKillTesterOnLaunch = pLaunch->fetchChild(i)->fetchText().compare("true") == 0? true: false; }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Launch") == 0){ m_CONFIG.nRelaunchTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Max Attempt To Launch") == 0){ m_CONFIG.nRelaunchAttempt = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ); }				
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To End Lot") == 0){ m_CONFIG.nEndLotTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Unload Program") == 0){ m_CONFIG.nUnloadProgTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To FAModule") == 0){ m_CONFIG.nFAModuleTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Kill Tester") == 0){ m_CONFIG.nKillTesterTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Type") == 0){ bProd = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()).compare("PROD") == 0? true: false; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Force Load") == 0){ bForceLoad = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()).compare("TRUE") == 0? true: false; }
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Kill Tester Before Launch") == 0){ bKillTesterOnLaunch = pLaunch->fetchChild(i)->fetchText().compare("true") == 0? true: false; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Launch") == 0){ nRelaunchTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Max Attempt To Launch") == 0){ nRelaunchAttempt = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ); }				
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To End Lot") == 0){ nEndLotTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Unload Program") == 0){ nUnloadProgTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To FAModule") == 0){ nFAModuleTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Kill Tester") == 0){ nKillTesterTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
 			}
 		}
 		else m_Log << "Warning: Didn't find <Launch>. " << CUtil::CLog::endl;
@@ -858,18 +880,18 @@ bool CApp::config(const std::string& file)
 		// check if <LotInfo> is set
 		if (pConfig->fetchChild("LotInfo"))
 		{
-			if (pConfig->fetchChild("LotInfo")->fetchChild("File")){ m_CONFIG.szLotInfoFileName = pConfig->fetchChild("LotInfo")->fetchChild("File")->fetchText(); }
-			if (pConfig->fetchChild("LotInfo")->fetchChild("Path")){ m_CONFIG.szLotInfoFilePath = pConfig->fetchChild("LotInfo")->fetchChild("Path")->fetchText(); }		
+			if (pConfig->fetchChild("LotInfo")->fetchChild("File")){ szLotInfoFileName = pConfig->fetchChild("LotInfo")->fetchChild("File")->fetchText(); }
+			if (pConfig->fetchChild("LotInfo")->fetchChild("Path")){ szLotInfoFilePath = pConfig->fetchChild("LotInfo")->fetchChild("Path")->fetchText(); }		
 		}
 		else m_Log << "Warning: Didn't find <LotInfo>. " << CUtil::CLog::endl;
 
 		// check if <Summary> is set
 		if (pConfig->fetchChild("Summary"))
 		{
-			m_CONFIG.bSummary = false; // disabled by default
-			if ( CUtil::toUpper( pConfig->fetchChild("Summary")->fetchVal("state") ).compare("TRUE") == 0) m_CONFIG.bSummary = true;
+			bSummary = false; // disabled by default
+			if ( CUtil::toUpper( pConfig->fetchChild("Summary")->fetchVal("state") ).compare("TRUE") == 0) bSummary = true;
 
-			if (pConfig->fetchChild("Summary")->fetchChild("Path")){ m_CONFIG.szSummaryPath = pConfig->fetchChild("Summary")->fetchChild("Path")->fetchText(); }		
+			if (pConfig->fetchChild("Summary")->fetchChild("Path")){ szSummaryPath = pConfig->fetchChild("Summary")->fetchChild("Path")->fetchText(); }		
 		}
 		else m_Log << "Warning: Didn't find <Summary>. " << CUtil::CLog::endl;
 
@@ -898,7 +920,7 @@ bool CApp::config(const std::string& file)
 			XML_Node* pStdf = pConfig->fetchChild(i);
 			
 			// if an <STDF> tag is found with attribute state = true, enable STDF feature	
-			if (CUtil::toUpper( pStdf->fetchVal("state") ).compare("TRUE") == 0){ m_CONFIG.bSendInfo = true; }
+			if (CUtil::toUpper( pStdf->fetchVal("state") ).compare("TRUE") == 0){ bSendInfo = true; }
 
 //			m_Log << "<STDF>: '" << pStdf->fetchVal("Param") << "'" << CUtil::CLog::endl;
 			for (int j = 0; j < pStdf->numChildren(); j++)
@@ -913,84 +935,82 @@ bool CApp::config(const std::string& file)
 		// if we found binning node, it means <Binning> is in config which means binning@EOT is enabled
 		if (pBinning)
 		{
-			m_CONFIG.bSendBin = true;
+			bSendBin = true;
 			if (pBinning->fetchChild("BinType"))
 			{
-				if (CUtil::toUpper(pBinning->fetchChild("BinType")->fetchText()).compare("HARD") == 0) m_CONFIG.bUseHardBin = true;
-				if (CUtil::toUpper(pBinning->fetchChild("BinType")->fetchText()).compare("SOFT") == 0) m_CONFIG.bUseHardBin = false;
+				if (CUtil::toUpper(pBinning->fetchChild("BinType")->fetchText()).compare("HARD") == 0) bUseHardBin = true;
+				if (CUtil::toUpper(pBinning->fetchChild("BinType")->fetchText()).compare("SOFT") == 0) bUseHardBin = false;
 			}
 			if (pBinning->fetchChild("TestType"))
 			{
-				if (CUtil::toUpper(pBinning->fetchChild("TestType")->fetchText()).compare("WAFER") == 0) m_CONFIG.nTestType = CONFIG::APL_WAFER;
-				if (CUtil::toUpper(pBinning->fetchChild("TestType")->fetchText()).compare("FINAL") == 0) m_CONFIG.nTestType = CONFIG::APL_FINAL;
+				if (CUtil::toUpper(pBinning->fetchChild("TestType")->fetchText()).compare("WAFER") == 0) nTestType = CONFIG::APL_WAFER;
+				if (CUtil::toUpper(pBinning->fetchChild("TestType")->fetchText()).compare("FINAL") == 0) nTestType = CONFIG::APL_FINAL;
 			}
 			if (pBinning->fetchChild("SocketType"))
 			{
-				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("UDP") == 0) m_CONFIG.nSocketType = SOCK_DGRAM;
-				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("TCP") == 0) m_CONFIG.nSocketType = SOCK_STREAM;
-				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("RAW") == 0) m_CONFIG.nSocketType = SOCK_RAW;
+				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("UDP") == 0) nSocketType = SOCK_DGRAM;
+				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("TCP") == 0) nSocketType = SOCK_STREAM;
+				if (CUtil::toUpper(pBinning->fetchChild("SocketType")->fetchText()).compare("RAW") == 0) nSocketType = SOCK_RAW;
 			}
-			if (pBinning->fetchChild("IP")){ m_CONFIG.IP = pBinning->fetchChild("IP")->fetchText(); }	
-			if (pBinning->fetchChild("Port")){ m_CONFIG.nPort = CUtil::toLong(pBinning->fetchChild("Port")->fetchText()); }	
+			if (pBinning->fetchChild("IP")){ IP = pBinning->fetchChild("IP")->fetchText(); }	
+			if (pBinning->fetchChild("Port")){ nPort = CUtil::toLong(pBinning->fetchChild("Port")->fetchText()); }	
 		}
 
 		// if <logging> was set, let's see if logging is enabled and file path is specified
 		if (pLogging)
 		{
-			m_CONFIG.bLogToFile = true;
-			if (pLogging->fetchChild("Path")){ m_CONFIG.szLogPath = pLogging->fetchChild("Path")->fetchText(); }
+			bLogToFile = true;
+			if (pLogging->fetchChild("Path")){ szLogPath = pLogging->fetchChild("Path")->fetchText(); }
 		}
 
 	}	
 
 	if (root) delete root;
 
+	return true;
+}
+
+/* ------------------------------------------------------------------------------------------
+print config parameters
+------------------------------------------------------------------------------------------ */
+void CApp::CONFIG::print()
+{
 	// print config values here
-	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
-	m_Log << "Version: " << VERSION << CUtil::CLog::endl;
-	m_Log << "Developer: " << DEVELOPER << CUtil::CLog::endl;
-	m_Log << "Tester: " << m_szTesterName << CUtil::CLog::endl; 
-	m_Log << "Path: " << m_CONFIG.szLotInfoFilePath << CUtil::CLog::endl;
-	m_Log << "File: " << m_CONFIG.szLotInfoFileName << CUtil::CLog::endl;
-	m_Log << "Config File: " << m_szConfigFullPathName << CUtil::CLog::endl;
-	m_Log << "Binning: " << (m_CONFIG.bSendBin? "enabled" : "disabled") << CUtil::CLog::endl;
-	m_Log << "Bin type (if binning enabled): " << (m_CONFIG.bUseHardBin? "hard" : "soft") << CUtil::CLog::endl;
+	m_Log << "Path: " << szLotInfoFilePath << CUtil::CLog::endl;
+	m_Log << "File: " << szLotInfoFileName << CUtil::CLog::endl;
+	m_Log << "Binning: " << (bSendBin? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Bin type (if binning enabled): " << (bUseHardBin? "hard" : "soft") << CUtil::CLog::endl;
 	m_Log << "Test type (if binning enabled): ";
-	switch (m_CONFIG.nTestType)
+	switch (nTestType)
 	{
 		case CONFIG::APL_WAFER: m_Log << "wafer test" << CUtil::CLog::endl; break;
 		case CONFIG::APL_FINAL: m_Log << "final test" << CUtil::CLog::endl; break;
 		default: m_Log << "unknown" << CUtil::CLog::endl; break;
 	};
-	m_Log << "IP: " << m_CONFIG.IP << CUtil::CLog::endl;
-	m_Log << "Port: " << m_CONFIG.nPort << CUtil::CLog::endl;
+	m_Log << "IP: " << IP << CUtil::CLog::endl;
+	m_Log << "Port: " << nPort << CUtil::CLog::endl;
 	m_Log << "Socket type (if binning enabled): ";
-	switch (m_CONFIG.nSocketType)
+	switch (nSocketType)
 	{
 		case SOCK_DGRAM: m_Log << "UDP" << CUtil::CLog::endl; break;
 		case SOCK_STREAM: m_Log << "TCP" << CUtil::CLog::endl; break;
 		case SOCK_RAW: m_Log << "RAW" << CUtil::CLog::endl; break;
 		default: m_Log << "unknown" << CUtil::CLog::endl; break;
 	};
-	m_Log << "Log To File: " << (m_CONFIG.bLogToFile? "enabled" : "disabled") << CUtil::CLog::endl;
-	m_Log << "Log Path (if enabled): " << m_CONFIG.szLogPath << CUtil::CLog::endl;
-	m_Log << "LotInfo to STDF: " << (m_CONFIG.bSendInfo? "enabled" : "disabled") << CUtil::CLog::endl;
-
-	m_Log << "Launch Type: " << (m_CONFIG.bProd? "OICu" : "OpTool") << CUtil::CLog::endl;
-	m_Log << "Kill Tester Before Launch: " << (m_CONFIG.bKillTesterOnLaunch? "true" : "false") << CUtil::CLog::endl;
-	m_Log << "Launch Attempt Time-out (s): " << (m_CONFIG.nRelaunchTimeOutMS /1000) << CUtil::CLog::endl;
-	m_Log << "End Lot Time-out (s): " << (m_CONFIG.nEndLotTimeOutMS /1000)<< CUtil::CLog::endl;
-	m_Log << "Unload Program Time-out (s): " << (m_CONFIG.nUnloadProgTimeOutMS /1000)<< CUtil::CLog::endl;
-	m_Log << "Kill Tester Time-out (s): " << (m_CONFIG.nKillTesterTimeOutMS /1000)<< CUtil::CLog::endl;
-	m_Log << "Max Launch Attempts: " << (m_CONFIG.nRelaunchAttempt) << CUtil::CLog::endl;	
-	m_Log << "FAmodule Time-out (s): " << (m_CONFIG.nFAModuleTimeOutMS /1000)<< CUtil::CLog::endl;
-
-	m_Log << "Summary Appending with \"Step\" : " << (m_CONFIG.bSummary? "enabled" : "disabled") << CUtil::CLog::endl;
-	m_Log << "Summary Path (if enabled): " << m_CONFIG.szSummaryPath << CUtil::CLog::endl;
-	m_Log << "Force Load: " << (m_CONFIG.bForceLoad? "enabled" : "disabled") << CUtil::CLog::endl;
-
-	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
-	return true;
+	m_Log << "Log To File: " << (bLogToFile? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Log Path (if enabled): " << szLogPath << CUtil::CLog::endl;
+	m_Log << "LotInfo to STDF: " << (bSendInfo? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Launch Type: " << (bProd? "OICu" : "OpTool") << CUtil::CLog::endl;
+	m_Log << "Kill Tester Before Launch: " << (bKillTesterOnLaunch? "true" : "false") << CUtil::CLog::endl;
+	m_Log << "Launch Attempt Time-out (s): " << (nRelaunchTimeOutMS /1000) << CUtil::CLog::endl;
+	m_Log << "End Lot Time-out (s): " << (nEndLotTimeOutMS /1000)<< CUtil::CLog::endl;
+	m_Log << "Unload Program Time-out (s): " << (nUnloadProgTimeOutMS /1000)<< CUtil::CLog::endl;
+	m_Log << "Kill Tester Time-out (s): " << (nKillTesterTimeOutMS /1000)<< CUtil::CLog::endl;
+	m_Log << "Max Launch Attempts: " << (nRelaunchAttempt) << CUtil::CLog::endl;	
+	m_Log << "FAmodule Time-out (s): " << (nFAModuleTimeOutMS /1000)<< CUtil::CLog::endl;
+	m_Log << "Summary Appending with \"Step\" : " << (bSummary? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Summary Path (if enabled): " << szSummaryPath << CUtil::CLog::endl;
+	m_Log << "Force Load: " << (bForceLoad? "enabled" : "disabled") << CUtil::CLog::endl;
 }
 
 
@@ -1112,6 +1132,33 @@ void CApp::onSummaryFile(const std::string& name)
 
 }
 
+
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+bool CApp::updateLotinfoFile(const std::string& name)
+{
+	// is the STEP field empty? bail out
+	if (!m_lotinfo.szStep.size())
+	{
+		m_Log << "STEP field from " << name << " is empty. " << CUtil::CLog::endl;
+		return false;
+	}
+
+	// is STEP field not valid? bail out
+	if (m_lotinfo.szStep.compare("FT1") == 0)
+	{
+	}
+	else if (m_lotinfo.szStep.compare("RT1") == 0)
+	{
+	}
+	else if (m_lotinfo.szStep.compare("RT1") == 0)
+	{
+	}
+
+	return true;
+	
+}
 
 /* ------------------------------------------------------------------------------------------
 parse the lotinfo.txt file
