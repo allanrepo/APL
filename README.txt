@@ -5,11 +5,18 @@ version beta.2.3.2019xxxx
 	- fixed a bug where APL can potentially crash when STEP feature is disabled. Credit to Cedric for finding this out and fixing it.
 	- fixed display bug where max launch attempt displays load type instead of the number of launch attempt
 
+- 	new feature
+	- 
+
 -	update feature
 	- MIR.RST_COD can now be set (but not working yet)
 	- APL will not attempt to set MIR.BURN_TIM anymore
 	- STEP feature now ensures it only appends to .sum file, ignores others e.g. .sum_open
 	- STDF will not force empty value on fields not set by lotinfo.txt anymore
+	- new config parameter added to enable/disable APL from deleting lotinfo.txt file after parsing it
+		<LotInfo>
+			<Delete>true</Delete>
+		</LotInfo>		
 
 -	quality of life improvement
 	- Force Load config option setting now displayed when printing out config 
@@ -19,6 +26,7 @@ version beta.2.3.20190920
 -	bug fixes
 	- fixed a bug where network connection always use TCP even if you set to UDP. now UDP connection works
 	- fixed a bug in fetchVal() function in xml parser 
+	- added '=' operator for LOTINFO class
 
 
 version beta.2.3.20190918

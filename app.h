@@ -89,6 +89,7 @@ protected:
 		// lotinfo file parameters
 		std::string 	szLotInfoFileName;
 		std::string 	szLotInfoFilePath;
+		bool		bDeleteLotInfo;
 
 		// summary appending feature
 		bool 		bSummary;
@@ -119,6 +120,7 @@ protected:
 			bSummary = false;
 			szSummaryPath = "/tmp";
 			bStep = false;
+			bDeleteLotInfo = false;
 		}
 
 		bool parse(const std::string& file);		
@@ -138,6 +140,15 @@ protected:
 		}
 		
 		LOTINFO(const LOTINFO& p)
+		{
+			szProgramFullPathName = p.szProgramFullPathName;
+			szStep = p.szStep;
+			szLotId = p.szLotId;
+			mir = p.mir;
+			sdr = p.sdr;
+		}
+		
+		LOTINFO& operator=(const LOTINFO& p)
 		{
 			szProgramFullPathName = p.szProgramFullPathName;
 			szStep = p.szStep;

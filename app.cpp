@@ -209,7 +209,6 @@ void CApp::sendLotInfoToFAModule(CTask& task)
 	
 	// if this feature is disabled, let's just move on to next state
 	
-
 	// create string that holds full path + monitor file
 	std::stringstream ssFullPathMonitorName;
 	ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << m_CONFIG.szLotInfoFileName;
@@ -233,7 +232,7 @@ void CApp::sendLotInfoToFAModule(CTask& task)
 		else m_Log << "Looks like FAModule had an issue loading the lotinfo file...: '" << s << "'" << CUtil::CLog::endl;
 
 		// delete the lotinfo.txt
-		unlink(ssFullPathMonitorName.str().c_str());
+		if (m_CONFIG.bDeleteLotInfo) unlink(ssFullPathMonitorName.str().c_str());
 
 		// move to next state
 		m_StateMgr.set(m_pStateOnIdle);
@@ -265,7 +264,7 @@ void CApp::timeOutSendLotInfoToFAModule(CTask& task)
 	// delete the lotinfo.txt
 	std::stringstream ssFullPathMonitorName;
 	ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << m_CONFIG.szLotInfoFileName;
-	unlink(ssFullPathMonitorName.str().c_str());
+	if ( m_CONFIG.bDeleteLotInfo) unlink(ssFullPathMonitorName.str().c_str());
 
 	m_StateMgr.set(m_pStateOnIdle);
 }
@@ -410,8 +409,6 @@ TASK: update config parameters by reading config file
 ------------------------------------------------------------------------------------------ */
 void CApp::updateConfig(CTask& task)
 {
-//	m_Log << "UPDATE CONFIG" << CUtil::CLog::endl;
-
 	m_CONFIG.parse( m_szConfigFullPathName );
 
 	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
@@ -764,10 +761,10 @@ void CApp::onReceiveFile(const std::string& name)
 	lotInfoFile.open(ssFullPathMonitorName.str().c_str(), std::ofstream::out | std::ofstream::app);
 	if(lotInfoFile.good()) 
 	{
-		lotInfoFile << "AutomationNam:" << "APL" << std::endl;
-		lotInfoFile << "AutomationVer:" << VERSION << std::endl;
-		lotInfoFile << "LoaderApiNam:" << "APL" << std::endl;
-		lotInfoFile << "LoaderApiRev:" << VERSION << std::endl;
+		lotInfoFile << "AutomationNam " << DELIMITER << " " << "APL" << std::endl;
+		lotInfoFile << "AutomationVer " << DELIMITER << " " << VERSION << std::endl;
+		lotInfoFile << "LoaderApiNam "  << DELIMITER << " " << "APL" << std::endl;
+		lotInfoFile << "LoaderApiRev "  << DELIMITER << " " << VERSION << std::endl;
 		lotInfoFile.close();
 		m_Log << "Added GDR.AUTOMATION data to " << ssFullPathMonitorName.str().c_str() << CUtil::CLog::endl;
 	}
@@ -881,6 +878,10 @@ bool CApp::CONFIG::parse(const std::string& file)
 		{
 			if (pConfig->fetchChild("LotInfo")->fetchChild("File")){ szLotInfoFileName = pConfig->fetchChild("LotInfo")->fetchChild("File")->fetchText(); }
 			if (pConfig->fetchChild("LotInfo")->fetchChild("Path")){ szLotInfoFilePath = pConfig->fetchChild("LotInfo")->fetchChild("Path")->fetchText(); }		
+			if (pConfig->fetchChild("LotInfo")->fetchChild("Delete"))
+			{ 
+				bDeleteLotInfo = CUtil::toUpper(pConfig->fetchChild("LotInfo")->fetchChild("Delete")->fetchText()).compare("TRUE") == 0? true: false;		
+			}
 		}
 		else m_Log << "Warning: Didn't find <LotInfo>. " << CUtil::CLog::endl;
 
@@ -1011,6 +1012,7 @@ void CApp::CONFIG::print()
 	// print config values here
 	m_Log << "Path: " << szLotInfoFilePath << CUtil::CLog::endl;
 	m_Log << "File: " << szLotInfoFileName << CUtil::CLog::endl;
+	m_Log << "Delete LotInfo After Parse: " << (bDeleteLotInfo? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "Binning: " << (bSendBin? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "Bin type (if binning enabled): " << (bUseHardBin? "hard" : "soft") << CUtil::CLog::endl;
 	m_Log << "Test type (if binning enabled): ";
@@ -1049,7 +1051,6 @@ void CApp::CONFIG::print()
 	{
 		m_Log << "STEP: " << steps[i].szStep << ", flow_id: " << steps[i].szFlowId << ", rtst_cod: " << steps[i].nRtstCod << CUtil::CLog::endl;
 	}
-
 }
 
 
@@ -1184,16 +1185,124 @@ bool CApp::updateLotinfoFile(const std::string& name)
 		return false;
 	}
 
-	// is STEP field not valid? bail out
-	if (m_lotinfo.szStep.compare("FT1") == 0)
+	// check if the STEP field is valid
+	CONFIG::STEP* pStep = 0;
+	for (unsigned int i = 0; i < m_CONFIG.steps.size(); i++)
 	{
+		// found a match in list of valid step values
+		if ( m_CONFIG.steps[i].szStep.compare( m_lotinfo.szStep ) == 0 )
+		{
+			pStep = &m_CONFIG.steps[i];
+			break;
+		}
 	}
-	else if (m_lotinfo.szStep.compare("RT1") == 0)
+	// if the step we got from lotinfo.txt is not valid, bail
+	if (!pStep)
 	{
+		m_Log << "WARNING: " << m_lotinfo.szStep << " is not a valid STEP value" << CUtil::CLog::endl;
+		return false;
 	}
-	else if (m_lotinfo.szStep.compare("RT1") == 0)
+	else m_Log << m_lotinfo.szStep << " is a valid value" << CUtil::CLog::endl;
+
+	// did lotinfo.txt contain flow_id and rtst_cod already? if yes, does it match the step format? if yes, let's do nothing
+	bool bEditLotInfo = false;
+	if (m_lotinfo.mir.FlowId.compare( pStep->szFlowId ) != 0)
 	{
+		m_Log << m_CONFIG.szLotInfoFileName << " contains FlowId: " << m_lotinfo.mir.FlowId << " but " << pStep->szFlowId << " is expected." << CUtil::CLog::endl;
+		bEditLotInfo = true;
+	} 
+
+	if (CUtil::toLong(m_lotinfo.mir.RtstCod) != pStep->nRtstCod )
+	{
+		m_Log << m_CONFIG.szLotInfoFileName << " contains RstCod: " << m_lotinfo.mir.RtstCod << " but " << pStep->nRtstCod << " is expected." << CUtil::CLog::endl;
+		bEditLotInfo = true;
 	}
+
+	if (bEditLotInfo)
+	{
+		// let's just quickly update our STDF variable flowid and rtstcod with valid STEP formats
+		m_lotinfo.mir.FlowId = pStep->szFlowId;
+		std::stringstream n; n << pStep->nRtstCod;
+		m_lotinfo.mir.RtstCod = n.str();
+
+		// open lotinfo.txt for reading and transfer content to string
+		std::fstream fs;
+		fs.open(name.c_str(), std::ios::in);
+		std::stringstream ss;
+		ss << fs.rdbuf();
+		std::string s = ss.str();
+		fs.close();
+
+		// return false if it finds an empty file to allow app to try again
+		if (s.empty())
+		{
+			m_Log << "ERROR! " << name << " is empty." << CUtil::CLog::endl;
+			return false;
+		}
+
+		// open lotinfo.txt.temp file for writing
+		ss.str(std::string());
+		ss << name << ".tmp";
+		fs.open(ss.str().c_str(), std::ios::out);
+		if (!fs.good()) 
+		{
+			m_Log << "ERROR! Failed to open " << ss.str() << " for writing." << CUtil::CLog::endl;
+			return false;
+		}
+ 
+		// line by line copy from .txt to .txt.temp until you find 'ACTIVEFLOWNAME' and 'RTSTCODE'
+		// for this line, we insead use the valid values corresponding to STEP value
+		while(s.size())  
+		{ 
+			// find next '\n' position 
+			size_t pos = s.find_first_of('\n');
+
+			// get current line
+			std::string l = s.substr(0, pos);
+
+			// remove current line from the file string		
+			s = s.substr(pos + 1);
+
+			// get the field/value pair from the line. empty value is ignored. trail/lead spaces removed
+			std::string field, value;
+			if (getFieldValuePair(l, DELIMITER, field, value))
+			{
+				if (field.compare("ACTIVEFLOWNAME") == 0){ fs << field << " " << DELIMITER << " " << pStep->szFlowId << std::endl; }
+				else if (field.compare("RTSTCODE") == 0){fs << field << " " << DELIMITER << " " << pStep->nRtstCod << std::endl; }
+				else{ fs << l << std::endl; }
+			}
+	
+			// if this is the last line then bail
+			if (pos == std::string::npos) break;		
+		}	
+
+
+		// close file.
+		fs.close();
+
+		// delete lotinfo.txt file
+		unlink(name.c_str());
+
+		// check if file is deleted successfully
+		sleep(1);
+		if ( CUtil::isFileExist(name.c_str()) )
+		{
+			m_Log << "ERROR: " << name << " still exist after an attempt to delete it." << CUtil::CLog::endl;
+		}
+
+		// rename lotinfo.txt.temp to lotinfo.txt file		
+		rename(ss.str().c_str(), name.c_str());
+
+		// check if file is renamed successfully
+		sleep(1);
+		if ( !CUtil::isFileExist(name.c_str()) )
+		{
+			m_Log << "ERROR: " << name << " does not exist after an attempt to create it." << CUtil::CLog::endl;
+		}
+
+		m_Log << "Successfully edited " << name.c_str() << " with valid STEP values." << CUtil::CLog::endl;
+	}
+
 
 	return true;
 	
@@ -1253,7 +1362,6 @@ bool CApp::parse(const std::string& name)
 			if (field.compare("TESTMODE") == 0)		{ li.mir.ModeCod = value; }
 			if (field.compare("TESTSETUP") == 0)		{ li.mir.SetupId = value; }
 			if (field.compare("COMMANDMODE") == 0)		{ li.mir.CmodCod = value; }
-			if (field.compare("ACTIVEFLOWNAME") == 0)	{ li.mir.FlowId = value; }
 			if (field.compare("DATECODE") == 0)		{ li.mir.DateCod = value; }
 			if (field.compare("FABRICATIONID") == 0)	{ li.mir.ProcId = value; }
 			if (field.compare("TESTFLOOR") == 0)		{ li.mir.FloorId = value; }
@@ -1275,6 +1383,7 @@ bool CApp::parse(const std::string& name)
 			if (field.compare("TESTSPECREV") == 0)		{ li.mir.SpecVer = value; }
 			if (field.compare("PROTECTIONCODE") == 0)	{ li.mir.ProtCod = value; }
 			if (field.compare("BURNINTIME") == 0)		{ li.mir.BurnTim = value; }
+			if (field.compare("ACTIVEFLOWNAME") == 0)	{ li.mir.FlowId = value; }
 			if (field.compare("RTSTCODE") == 0)		{ li.mir.RtstCod = value; }
 
 			if (field.compare("PROBERHANDLERTYPE") == 0)	{ li.sdr.HandTyp = value; }

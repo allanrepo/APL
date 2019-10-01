@@ -13,7 +13,7 @@
 			<Param name = "Wait Time To Unload Program">20</Param> <!-- default: 30 seconds -->
 			<Param name = "Wait Time To FAModule">20</Param> <!-- default: 30 seconds -->
 			<Param name = "Wait Time To Kill Tester">30</Param> <!-- default: 30 seconds -->
-			<Param name = "Force Load">true</Param> <!-- true if APL will always launch OICU and load program; default: false -->
+			<Param name = "Force Load">false</Param> <!-- true if APL will always launch OICU and load program; default: false -->
 		</Launch>
 		<Summary state = "true"> <!-- default: false -->
 			<Path>/home/localuser/</Path> <!-- default: /tmp -->
@@ -21,6 +21,7 @@
 		<LotInfo>
 			<File>b.txt</File> <!-- default: lotinfo.txt -->
 			<Path>/home/localuser/Desktop/APL</Path> <!-- default: /tmp -->
+			<Delete>true</Delete>
 		</LotInfo>
 		<Binning state = "true">
 			<BinType>soft</BinType> <!-- hard, soft -->	
