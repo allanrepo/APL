@@ -35,12 +35,13 @@
 		<STDF state = "true" />
 		<FAMODULE state = "true" />
 
-		<STEP>
-			<FT1 flow_id = "FT1" rtst_cod = "0" />
-			<RT1 flow_id = "FT1" rtst_cod = "1" />
-			<RT2 flow_id = "FT1" rtst_cod = "2" />
-			<FT2 flow_id = "FT2" rtst_cod = "0" />
-		</STEP>
+		<Step state = "true">
+			<Param flow_id = "FT1" rtst_cod = "0">FT1</Param>
+			<Param flow_id = "FT1" rtst_cod = "1">RT1</Param>
+			<Param flow_id = "FT2" rtst_cod = "0">FT2</Param>
+			<Param flow_id = "FT2" rtst_cod = "2">2RT2</Param>
+			<Param flow_id = "FT1" rtst_cod = "3">RT3</Param>
+		</Step>
 	</SiteConfiguration>
 
 	<SiteConfiguration name = "Amkor1">

@@ -564,7 +564,7 @@ std::string XML_Node::fetchVal(const std::string& attribute, int index) const
 	for(int i = 0; i < numAttr(); i++) 
 	{
 
-		if (attr[index].compare(attribute) == 0)
+		if (attr[i].compare(attribute) == 0)
 		{
 			// increment index count..
 			index_count++;

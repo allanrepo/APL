@@ -57,6 +57,7 @@ protected:
 		CUtil::CLog m_Log;
 
 		// step parameters
+		bool bStep;
 		std::vector< STEP > steps;
 
 		// launch parameters
@@ -117,6 +118,7 @@ protected:
 			szLotInfoFilePath = "/tmp";
 			bSummary = false;
 			szSummaryPath = "/tmp";
+			bStep = false;
 		}
 
 		bool parse(const std::string& file);		

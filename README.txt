@@ -18,6 +18,7 @@ version beta.2.3.2019xxxx
 version beta.2.3.20190920
 -	bug fixes
 	- fixed a bug where network connection always use TCP even if you set to UDP. now UDP connection works
+	- fixed a bug in fetchVal() function in xml parser 
 
 
 version beta.2.3.20190918

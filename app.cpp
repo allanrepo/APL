@@ -863,7 +863,6 @@ bool CApp::CONFIG::parse(const std::string& file)
 		}
 		else m_Log << "Warning: Didn't find <Launch>. " << CUtil::CLog::endl;
 
-
 		// let's now find the <Binning> from <SiteConfiguration> 
 		XML_Node* pBinning = 0;
 		if (pConfig->fetchChild("Binning")){ if ( CUtil::toUpper( pConfig->fetchChild("Binning")->fetchVal("state") ).compare("TRUE") == 0) pBinning = pConfig->fetchChild("Binning"); }
@@ -877,7 +876,7 @@ bool CApp::CONFIG::parse(const std::string& file)
 		}
 		else m_Log << "Warning: Didn't find <Logging>. " << CUtil::CLog::endl;
 
-		// check if <LotInfo> is set
+		// check if <LotInfo> is setf
 		if (pConfig->fetchChild("LotInfo"))
 		{
 			if (pConfig->fetchChild("LotInfo")->fetchChild("File")){ szLotInfoFileName = pConfig->fetchChild("LotInfo")->fetchChild("File")->fetchText(); }
@@ -895,6 +894,40 @@ bool CApp::CONFIG::parse(const std::string& file)
 		}
 		else m_Log << "Warning: Didn't find <Summary>. " << CUtil::CLog::endl;
 
+		// check if <Step> is set
+		steps.clear();
+		if (pConfig->fetchChild("Step"))
+		{
+			bStep = false; // disabled by default
+			if ( CUtil::toUpper( pConfig->fetchChild("Step")->fetchVal("state") ).compare("TRUE") == 0) bStep = true;
+
+			for( int i = 0; i < pConfig->fetchChild("Step")->numChildren(); i++ )
+			{
+				if (!pConfig->fetchChild("Step")->fetchChild(i)) continue; // skip invalid object
+				if (pConfig->fetchChild("Step")->fetchChild(i)->fetchTag().compare("Param") != 0 ) continue; // skip tags that are not "Param"
+				if (!pConfig->fetchChild("Step")->fetchChild(i)->fetchText().size() ) continue; // skip <Param> with empty values
+				
+				// if this step value already exist in the list, we ignore this. we can only have unique step values
+				bool bFound = false;
+				for (unsigned int j = 0; j < steps.size(); j++)
+				{
+					if (steps[j].szStep.compare( pConfig->fetchChild("Step")->fetchChild(i)->fetchText() ) == 0 )
+					{
+						bFound = true;
+						break;
+					}
+				}
+				if (!bFound)
+				{
+					STEP s;
+					s.szStep = pConfig->fetchChild("Step")->fetchChild(i)->fetchText();
+					s.szFlowId = pConfig->fetchChild("Step")->fetchChild(i)->fetchVal("flow_id");
+					s.nRtstCod = CUtil::toLong( pConfig->fetchChild("Step")->fetchChild(i)->fetchVal("rtst_cod") );
+					steps.push_back(s);
+				}
+			}
+		}
+		else m_Log << "Warning: Didn't find <Step>. " << CUtil::CLog::endl;
 
 
 		// for debug purposes, print out all the parameters of <Binning>
@@ -1011,6 +1044,12 @@ void CApp::CONFIG::print()
 	m_Log << "Summary Appending with \"Step\" : " << (bSummary? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "Summary Path (if enabled): " << szSummaryPath << CUtil::CLog::endl;
 	m_Log << "Force Load: " << (bForceLoad? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Step: " << (bStep? "enabled" : "disabled") << CUtil::CLog::endl;
+	for (unsigned int i = 0; i < steps.size(); i++)
+	{
+		m_Log << "STEP: " << steps[i].szStep << ", flow_id: " << steps[i].szFlowId << ", rtst_cod: " << steps[i].nRtstCod << CUtil::CLog::endl;
+	}
+
 }
 
 
