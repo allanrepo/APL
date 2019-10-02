@@ -91,6 +91,10 @@ namespace CUtil
 	bool isFileExist(const std::string& szFile);
 	const std::string toUpper(const std::string& str);
 	int getFirstPIDByName( const std::string& name );
+
+	bool renameFile(const std::string& szOldFileNamePath, const std::string& szNewFileNamePath, int nAttempt = 5, int nDelaySecond = 1);
+	bool removeFile(const std::string& szFileNamePath, int nAttempt = 5, int nDelaySecond = 1);
+	bool openFile(const std::string& file, std::fstream& fs, std::ios_base::openmode mode, int nAttempt = 5, int nDelaySec = 1);
 };
 
 

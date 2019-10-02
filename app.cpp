@@ -732,16 +732,13 @@ void CApp::onReceiveFile(const std::string& name)
 		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field. and is valid?" << CUtil::CLog::endl;
 		return;
 	}
+	else m_Log << "successfully parsed '" << ssFullPathMonitorName.str() << "'" << CUtil::CLog::endl;
 
 	// if you reach this point, m_lotinfo object must now contain data from latest lotinfo.txt file received.
 	// does lotinfo.txt file contain STEP field? if yes, we have to handle it
-	if (!updateLotinfoFile(ssFullPathMonitorName.str()))
-	{
-		return;
-	}
+	if (m_CONFIG.bStep) updateLotinfoFile(ssFullPathMonitorName.str());
 
 	// if parsing lotinfo file is success, let's tell notify fd object to stop processing any incoming select() at this point
-	m_Log << "successfully parsed '" << ssFullPathMonitorName.str() << "'" << CUtil::CLog::endl;
 	m_pMonitorFileDesc->halt();
 
 	// let's halt this state now to make sure no other tasks from this state gets executed anymore
@@ -799,6 +796,9 @@ bool CApp::CONFIG::parse(const std::string& file)
 	XML_Node *root = new XML_Node (file.c_str());
 	if (root)
 	{
+		// since it's confirmed we found a valid config file, let's reset values to default first
+		clear();
+
 		std::string tag = CUtil::toUpper(root->fetchTag());
 		if (tag.compare("APL_CONF") != 0)
 		{
@@ -873,15 +873,47 @@ bool CApp::CONFIG::parse(const std::string& file)
 		}
 		else m_Log << "Warning: Didn't find <Logging>. " << CUtil::CLog::endl;
 
-		// check if <LotInfo> is setf
-		if (pConfig->fetchChild("LotInfo"))
+		// check if <LotInfo> is set
+		XML_Node* pLotInfo = pConfig->fetchChild("LotInfo");
+		if (pLotInfo)
 		{
-			if (pConfig->fetchChild("LotInfo")->fetchChild("File")){ szLotInfoFileName = pConfig->fetchChild("LotInfo")->fetchChild("File")->fetchText(); }
-			if (pConfig->fetchChild("LotInfo")->fetchChild("Path")){ szLotInfoFilePath = pConfig->fetchChild("LotInfo")->fetchChild("Path")->fetchText(); }		
-			if (pConfig->fetchChild("LotInfo")->fetchChild("Delete"))
-			{ 
-				bDeleteLotInfo = CUtil::toUpper(pConfig->fetchChild("LotInfo")->fetchChild("Delete")->fetchText()).compare("TRUE") == 0? true: false;		
+			if (pLotInfo->fetchChild("File")){ szLotInfoFileName = pLotInfo->fetchChild("File")->fetchText(); }
+			if (pLotInfo->fetchChild("Path")){ szLotInfoFilePath = pLotInfo->fetchChild("Path")->fetchText(); }		
+			if (pLotInfo->fetchChild("Delete")){ bDeleteLotInfo = CUtil::toUpper(pLotInfo->fetchChild("Delete")->fetchText()).compare("TRUE") == 0? true: false; }
+
+			if (pLotInfo->fetchChild("Step"))
+			{
+				bStep = false; // disabled by default
+				if ( CUtil::toUpper( pLotInfo->fetchChild("Step")->fetchVal("state") ).compare("TRUE") == 0) bStep = true;
+
+				for( int i = 0; i < pLotInfo->fetchChild("Step")->numChildren(); i++ )
+				{
+					if (!pLotInfo->fetchChild("Step")->fetchChild(i)) continue; // skip invalid object
+					if (pLotInfo->fetchChild("Step")->fetchChild(i)->fetchTag().compare("Param") != 0 ) continue; // skip tags that are not "Param"
+					if (!pLotInfo->fetchChild("Step")->fetchChild(i)->fetchText().size() ) continue; // skip <Param> with empty values
+				
+					// if this step value already exist in the list, we ignore this. we can only have unique step values
+					bool bFound = false;
+					for (unsigned int j = 0; j < steps.size(); j++)
+					{
+						if (steps[j].szStep.compare( CUtil::toUpper(pLotInfo->fetchChild("Step")->fetchChild(i)->fetchText() )) == 0 )
+						{
+							bFound = true;
+							break;
+						}
+					}
+					if (!bFound)
+					{
+						STEP s;
+						s.szStep = CUtil::toUpper(pLotInfo->fetchChild("Step")->fetchChild(i)->fetchText());
+						s.szFlowId = CUtil::toUpper(pLotInfo->fetchChild("Step")->fetchChild(i)->fetchVal("flow_id"));
+						s.nRtstCod = CUtil::toLong(pLotInfo->fetchChild("Step")->fetchChild(i)->fetchVal("rtst_cod"));
+						if (s.nRtstCod > 255) m_Log << "ERROR! RTST_COD value found in " << file << " is " <<  s.nRtstCod << ". acceptable values are 0-255." << CUtil::CLog::endl;
+						else steps.push_back(s);
+					}
+				}
 			}
+			else m_Log << "Warning: Didn't find <Step>. " << CUtil::CLog::endl;
 		}
 		else m_Log << "Warning: Didn't find <LotInfo>. " << CUtil::CLog::endl;
 
@@ -895,57 +927,7 @@ bool CApp::CONFIG::parse(const std::string& file)
 		}
 		else m_Log << "Warning: Didn't find <Summary>. " << CUtil::CLog::endl;
 
-		// check if <Step> is set
-		steps.clear();
-		if (pConfig->fetchChild("Step"))
-		{
-			bStep = false; // disabled by default
-			if ( CUtil::toUpper( pConfig->fetchChild("Step")->fetchVal("state") ).compare("TRUE") == 0) bStep = true;
-
-			for( int i = 0; i < pConfig->fetchChild("Step")->numChildren(); i++ )
-			{
-				if (!pConfig->fetchChild("Step")->fetchChild(i)) continue; // skip invalid object
-				if (pConfig->fetchChild("Step")->fetchChild(i)->fetchTag().compare("Param") != 0 ) continue; // skip tags that are not "Param"
-				if (!pConfig->fetchChild("Step")->fetchChild(i)->fetchText().size() ) continue; // skip <Param> with empty values
-				
-				// if this step value already exist in the list, we ignore this. we can only have unique step values
-				bool bFound = false;
-				for (unsigned int j = 0; j < steps.size(); j++)
-				{
-					if (steps[j].szStep.compare( pConfig->fetchChild("Step")->fetchChild(i)->fetchText() ) == 0 )
-					{
-						bFound = true;
-						break;
-					}
-				}
-				if (!bFound)
-				{
-					STEP s;
-					s.szStep = pConfig->fetchChild("Step")->fetchChild(i)->fetchText();
-					s.szFlowId = pConfig->fetchChild("Step")->fetchChild(i)->fetchVal("flow_id");
-					s.nRtstCod = CUtil::toLong( pConfig->fetchChild("Step")->fetchChild(i)->fetchVal("rtst_cod") );
-					steps.push_back(s);
-				}
-			}
-		}
-		else m_Log << "Warning: Didn't find <Step>. " << CUtil::CLog::endl;
-
-
-		// for debug purposes, print out all the parameters of <Binning>
-/*
-		if (pBinning)
-		{
-			for (int i = 0; i < pBinning->numChildren(); i++)
-			{
-				if ( pBinning->fetchChild(i) ) 
-				{ 
-					m_Log << "<" << pBinning->fetchChild(i)->fetchTag() << ">: '" << pBinning->fetchChild(i)->fetchText() << "'" << CUtil::CLog::endl; 
-				}
-			}
-		}
-*/
 		// lets extract STDF stuff
-
 		for (int i = 0; i < pConfig->numChildren(); i++)
 		{
 			if (!pConfig->fetchChild(i)) continue;
@@ -996,7 +978,6 @@ bool CApp::CONFIG::parse(const std::string& file)
 			bLogToFile = true;
 			if (pLogging->fetchChild("Path")){ szLogPath = pLogging->fetchChild("Path")->fetchText(); }
 		}
-
 	}	
 
 	if (root) delete root;
@@ -1174,7 +1155,13 @@ void CApp::onSummaryFile(const std::string& name)
 
 
 /* ------------------------------------------------------------------------------------------
-
+Utility: checks STEP value from lotinfo.txt and checks lotinfo.txt if ACTIVEFLOWNAME
+	 and RTSTCODE matches corresponding value for STEP. if any of them does not match,
+	 this function will edit lotinfo.txt file with correct ACTIVEFLOWNAME and RTSTCODE
+- if lotinfo.txt does not contain STEP value, returns FALSE
+- if the STEP value found in lotinfo.txt is not valid, returns FALSE
+- if failed to remove lotinfo.txt (to be replace with new one), returns FALSE
+- if failed to rename lotinfo.txt.temp to lotinfo.txt, returns FALSE
 ------------------------------------------------------------------------------------------ */
 bool CApp::updateLotinfoFile(const std::string& name)
 {
@@ -1190,13 +1177,13 @@ bool CApp::updateLotinfoFile(const std::string& name)
 	for (unsigned int i = 0; i < m_CONFIG.steps.size(); i++)
 	{
 		// found a match in list of valid step values
-		if ( m_CONFIG.steps[i].szStep.compare( m_lotinfo.szStep ) == 0 )
+		if ( CUtil::toUpper(m_CONFIG.steps[i].szStep).compare( CUtil::toUpper(m_lotinfo.szStep) ) == 0 )
 		{
 			pStep = &m_CONFIG.steps[i];
 			break;
 		}
 	}
-	// if the step we got from lotinfo.txt is not valid, bail
+	// if the step we got from lotinfo.txt is not valid, bail out
 	if (!pStep)
 	{
 		m_Log << "WARNING: " << m_lotinfo.szStep << " is not a valid STEP value" << CUtil::CLog::endl;
@@ -1208,15 +1195,17 @@ bool CApp::updateLotinfoFile(const std::string& name)
 	bool bEditLotInfo = false;
 	if (m_lotinfo.mir.FlowId.compare( pStep->szFlowId ) != 0)
 	{
-		m_Log << m_CONFIG.szLotInfoFileName << " contains FlowId: " << m_lotinfo.mir.FlowId << " but " << pStep->szFlowId << " is expected." << CUtil::CLog::endl;
+		m_Log << m_CONFIG.szLotInfoFileName << " contains FlowId: '" << m_lotinfo.mir.FlowId << "' but " << pStep->szFlowId << " is expected." << CUtil::CLog::endl;
 		bEditLotInfo = true;
 	} 
+	else m_Log << m_CONFIG.szLotInfoFileName << " contains FlowId: '" << m_lotinfo.mir.FlowId << "', matching expected value: " << pStep->szFlowId << CUtil::CLog::endl;
 
 	if (CUtil::toLong(m_lotinfo.mir.RtstCod) != pStep->nRtstCod )
 	{
-		m_Log << m_CONFIG.szLotInfoFileName << " contains RstCod: " << m_lotinfo.mir.RtstCod << " but " << pStep->nRtstCod << " is expected." << CUtil::CLog::endl;
+		m_Log << m_CONFIG.szLotInfoFileName << " contains RstCod: '" << m_lotinfo.mir.RtstCod << "' but " << pStep->nRtstCod << " is expected." << CUtil::CLog::endl;
 		bEditLotInfo = true;
 	}
+	else m_Log << m_CONFIG.szLotInfoFileName << " contains RstCod: '" << m_lotinfo.mir.RtstCod << "', matching expected value: " << pStep->nRtstCod << CUtil::CLog::endl;
 
 	if (bEditLotInfo)
 	{
@@ -1227,7 +1216,11 @@ bool CApp::updateLotinfoFile(const std::string& name)
 
 		// open lotinfo.txt for reading and transfer content to string
 		std::fstream fs;
-		fs.open(name.c_str(), std::ios::in);
+		if (!CUtil::openFile(name, fs, std::ios::in))
+		{
+			m_Log << "ERROR! Failed to open " << name << " for reading." << CUtil::CLog::endl;
+			return false;
+		}
 		std::stringstream ss;
 		ss << fs.rdbuf();
 		std::string s = ss.str();
@@ -1243,8 +1236,7 @@ bool CApp::updateLotinfoFile(const std::string& name)
 		// open lotinfo.txt.temp file for writing
 		ss.str(std::string());
 		ss << name << ".tmp";
-		fs.open(ss.str().c_str(), std::ios::out);
-		if (!fs.good()) 
+		if (!CUtil::openFile(ss.str(), fs, std::ios::out))
 		{
 			m_Log << "ERROR! Failed to open " << ss.str() << " for writing." << CUtil::CLog::endl;
 			return false;
@@ -1267,8 +1259,8 @@ bool CApp::updateLotinfoFile(const std::string& name)
 			std::string field, value;
 			if (getFieldValuePair(l, DELIMITER, field, value))
 			{
-				if (field.compare("ACTIVEFLOWNAME") == 0){ fs << field << " " << DELIMITER << " " << pStep->szFlowId << std::endl; }
-				else if (field.compare("RTSTCODE") == 0){fs << field << " " << DELIMITER << " " << pStep->nRtstCod << std::endl; }
+				if (field.compare("ACTIVEFLOWNAME") == 0){ continue; } // don't copy existing flowid
+				else if (field.compare("RTSTCODE") == 0){ continue; } // don't copy existing rtstcod
 				else{ fs << l << std::endl; }
 			}
 	
@@ -1276,36 +1268,31 @@ bool CApp::updateLotinfoFile(const std::string& name)
 			if (pos == std::string::npos) break;		
 		}	
 
+		// finally we insert the ACTIVEFLOWNAME and RTSTCODE with new flowid and rtstcod value
+		fs << "ACTIVEFLOWNAME" << " " << DELIMITER << " " << pStep->szFlowId << std::endl;
+		fs << "RTSTCODE" << " " << DELIMITER << " " << pStep->nRtstCod << std::endl;
 
-		// close file.
+		// close file
 		fs.close();
 
 		// delete lotinfo.txt file
-		unlink(name.c_str());
-
-		// check if file is deleted successfully
-		sleep(1);
-		if ( CUtil::isFileExist(name.c_str()) )
+		if (!CUtil::removeFile(name))
 		{
 			m_Log << "ERROR: " << name << " still exist after an attempt to delete it." << CUtil::CLog::endl;
+			return false;
 		}
 
 		// rename lotinfo.txt.temp to lotinfo.txt file		
-		rename(ss.str().c_str(), name.c_str());
-
-		// check if file is renamed successfully
-		sleep(1);
-		if ( !CUtil::isFileExist(name.c_str()) )
+		if (!CUtil::renameFile(ss.str(), name))
 		{
-			m_Log << "ERROR: " << name << " does not exist after an attempt to create it." << CUtil::CLog::endl;
+			m_Log << "ERROR: Failed to rename " << ss << " to " << name << CUtil::CLog::endl;
+			return false;
 		}
 
 		m_Log << "Successfully edited " << name.c_str() << " with valid STEP values." << CUtil::CLog::endl;
 	}
 
-
 	return true;
-	
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -1333,7 +1320,6 @@ bool CApp::parse(const std::string& name)
 	m_Log << s << CUtil::CLog::endl;
 	m_Log << "---------------------------------------------------------------------" << CUtil::CLog::endl;
  
-	//std::string szJobFile;
 	LOTINFO li;
 	while(s.size())  
 	{ 
@@ -1442,8 +1428,8 @@ bool CApp::parse(const std::string& name)
 	// ok did we find a valid JobFile in the lotinfo.txt?
 	if (li.szProgramFullPathName.empty()) return false;
 	else
-	{
-		m_lotinfo = li;
+	{ 
+		m_lotinfo = li; 
 		return true;
 	}
 } 
@@ -1469,14 +1455,14 @@ bool CApp::getFieldValuePair(const std::string& line, const char delimiter, std:
 	// is 'value' empty? if yes, move to next line.
 	if (pos + 1 >= line.size()) 
 	{
-		m_Log << "WARNING: This line: '" << line << "' has empty value '" << CUtil::CLog::endl;
+		m_Log << "WARNING: This line: '" << line << "' has empty value " << CUtil::CLog::endl;
 		return false;
 	}
 
 	value = line.substr(pos + 1);
 	if (value.empty())
 	{
-		m_Log << "WARNING: This line: '" << line << "' has empty value '" << CUtil::CLog::endl;
+		m_Log << "WARNING: This line: '" << line << "' has empty value " << CUtil::CLog::endl;
 		return false;
 	}
 
@@ -1713,7 +1699,7 @@ bool CApp::setLotInformation(const EVX_LOTINFO_TYPE type, const std::string& fie
 		// check if successful
 		if (field.compare( m_pProgCtrl->getLotInformation(type) ) != 0)
 		{
-			m_Log << "ERROR: Failed to set Lot Information to '" << field << "'" << CUtil::CLog::endl;
+			m_Log << "ERROR: Failed to set " << label << " to '" << field << "'" << CUtil::CLog::endl;
 			return false;
 		}
 		// otherwise it's successful

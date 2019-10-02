@@ -7,6 +7,58 @@ bool CUtil::CLog::silent = false;
 std::string CUtil::CLog::m_file = "";
 
 /*-----------------------------------------------------------------------------------------
+try to rename file a number of tries. each attempt delayed per time.
+-----------------------------------------------------------------------------------------*/
+bool CUtil::renameFile(const std::string& szOldFileNamePath, const std::string& szNewFileNamePath, int nAttempt, int nDelaySecond)
+{
+	while(nAttempt)
+	{
+		if (::rename(szOldFileNamePath.c_str(), szNewFileNamePath.c_str()) == 0) return true; 
+		else
+		{ 
+			if (nDelaySecond) sleep(nDelaySecond); 
+			nAttempt--; 
+		}
+	}	
+	return false;
+}
+
+/*-----------------------------------------------------------------------------------------
+try to delete a file a number of tries. each attempt delayed per time.
+-----------------------------------------------------------------------------------------*/
+bool CUtil::removeFile(const std::string& szFileNamePath, int nAttempt, int nDelaySecond)
+{
+	while(nAttempt)
+	{
+		if (::remove(szFileNamePath.c_str()) == 0) return true; 
+		else
+		{ 
+			if (nDelaySecond) sleep(nDelaySecond); 
+			nAttempt--; 
+		}
+	}	
+	return false;
+}
+
+/* ------------------------------------------------------------------------------------------
+opening a file a number of attempts until it succeeds
+------------------------------------------------------------------------------------------ */
+bool CUtil::openFile(const std::string& file, std::fstream& fs, std::ios_base::openmode mode, int nAttempt, int nDelaySec)
+{
+	while(nAttempt)
+	{
+		fs.open(file.c_str(), mode);
+		if (fs.good()) return true;
+		else
+		{ 
+			if (nDelaySec) sleep(nDelaySec); 
+			nAttempt--; 
+		}
+	}	
+	return false;
+}
+
+/*-----------------------------------------------------------------------------------------
 convert a string containing a number into a long type variable
 -----------------------------------------------------------------------------------------*/
 long CUtil::toLong(const std::string& n)

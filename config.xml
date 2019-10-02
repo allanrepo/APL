@@ -7,12 +7,12 @@
 		<Launch>
 			<Param name = "Type">prod</Param> <!-- prod, engr; default:prod -->
 			<Param name = "Kill Tester Before Launch">false</Param> <!-- true, false; default:false -->
-			<Param name = "Wait Time To Launch">120</Param> <!-- default:120 seconds -->
-			<Param name = "Max Attempt To Launch">5</Param> <!-- default: 3 -->
-			<Param name = "Wait Time To End Lot">20</Param> <!-- default: 30 seconds -->
-			<Param name = "Wait Time To Unload Program">20</Param> <!-- default: 30 seconds -->
-			<Param name = "Wait Time To FAModule">20</Param> <!-- default: 30 seconds -->
-			<Param name = "Wait Time To Kill Tester">30</Param> <!-- default: 30 seconds -->
+			<Param name = "Wait Time To Launch">129</Param> <!-- default:120 seconds -->
+			<Param name = "Max Attempt To Launch">9</Param> <!-- default: 3 -->
+			<Param name = "Wait Time To End Lot">29</Param> <!-- default: 30 seconds -->
+			<Param name = "Wait Time To Unload Program">29</Param> <!-- default: 30 seconds -->
+			<Param name = "Wait Time To FAModule">29</Param> <!-- default: 30 seconds -->
+			<Param name = "Wait Time To Kill Tester">39</Param> <!-- default: 30 seconds -->
 			<Param name = "Force Load">false</Param> <!-- true if APL will always launch OICU and load program; default: false -->
 		</Launch>
 		<Summary state = "true"> <!-- default: false -->
@@ -21,7 +21,14 @@
 		<LotInfo>
 			<File>b.txt</File> <!-- default: lotinfo.txt -->
 			<Path>/home/localuser/Desktop/APL</Path> <!-- default: /tmp -->
-			<Delete>true</Delete>
+			<Delete>false</Delete>
+			<Step state = "true">
+				<Param flow_id = "FT1" rtst_cod = "0">fT1</Param>
+				<Param flow_id = "FT1" rtst_cod = "1">rt1</Param>
+				<Param flow_id = "FT2" rtst_cod = "0">Ft2</Param>
+				<Param flow_id = "FT2" rtst_cod = "2">2RT2</Param>
+				<Param flow_id = "FT1" rtst_cod = "3">RT3</Param>
+			</Step>
 		</LotInfo>
 		<Binning state = "true">
 			<BinType>soft</BinType> <!-- hard, soft -->	
@@ -35,14 +42,6 @@
 		</Logging>
 		<STDF state = "true" />
 		<FAMODULE state = "true" />
-
-		<Step state = "true">
-			<Param flow_id = "FT1" rtst_cod = "0">FT1</Param>
-			<Param flow_id = "FT1" rtst_cod = "1">RT1</Param>
-			<Param flow_id = "FT2" rtst_cod = "0">FT2</Param>
-			<Param flow_id = "FT2" rtst_cod = "2">2RT2</Param>
-			<Param flow_id = "FT1" rtst_cod = "3">RT3</Param>
-		</Step>
 	</SiteConfiguration>
 
 	<SiteConfiguration name = "Amkor1">

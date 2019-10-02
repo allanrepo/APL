@@ -5,11 +5,43 @@ version beta.2.3.2019xxxx
 	- fixed a bug where APL can potentially crash when STEP feature is disabled. Credit to Cedric for finding this out and fixing it.
 	- fixed display bug where max launch attempt displays load type instead of the number of launch attempt
 
-- 	new feature
-	- 
+- 	new feature (STEP value setting RTST_COD and FLOW_ID)
+	- Amkor sends a lotinfo.txt file containing one of the fields called “STEP”. APL is required to and set FLOW_ID and RTST_COD values that corresponds to STEP value.
+	- Amkor provided a list of STEP values and corresponding RTST_COD and FLOW_ID values. However, it’s safe to assume that the list given to us is not complete. 
+	  Therefore to future proof the implementation, setting table for STEP, FLOW_ID, and RTST_COD is configurable. 
+	- APL can be configured to set a table of STEP value and corresponding values for RTST_COD and FLOW_ID. it can be set in config.xml as shown below
+		<LotInfo>
+			<Step state = "true">
+				<Param flow_id = "FT1" rtst_cod = "0">FT1</Param>
+				<Param flow_id = "FT1" rtst_cod = "1">Rt1</Param>
+				<Param flow_id = "FT2" rtst_cod = "0">FT2</Param>
+				<Param flow_id = "FT2" rtst_cod = "2">2RT2</Param>
+				<Param flow_id = "FT1" rtst_cod = "3">RT3</Param>
+			</Step>
+		</LotInfo
+	- APL cannot set RTST_COD and FLOW_ID by itself. STDF fields are governed by uprodtool to ensure STDF contents will always be compliant to ST specification. 
+	  Any STDF field value APL wants to set can only be done by passing the lotinfo.txt file to uprodtool (via FAModule). This function already exist in APL. 
+	  But APL must insert RTST_COD and FLOW_ID values in lotinfo.txt file (if there’s non yet) in order for uprodtool to consider setting them in STDF file. 
+	  APL achieves this by doing the following:
+		- APL parses lotinfo.txt file, gets the STEP value (if any) and take the corresponding rtst_cod and flow_id values from STEP table (config.xml)
+		- APL checks lotinfo.txt file if it already contains ACTIVEFLOWNAME and RTSTCODE fields. The values these fields contain refer to flow_id and rtst_cod respectively. 
+		  If the values of this fields matches corresponding values for STEP, APL will do nothing. Otherwise, it will attempt to edit lotinfo.txt file and 
+		  set the correct flow_id and rtst_cod 
+		- It will then proceed on passing the updated lotinfo.txt file to uprodtool
+	- algorithm and test cases
+		- APL ensures that possible RTS_COD values for STEP can only be between 0-255
+		- STEP value is NOT CASE sensitive. APL will always store STEP values from config file as all upper case letters. 
+			- if STEP value in lotinfo.txt file has lower case letters, APL will compare them to STEP table as all upper case letters
+		- RTST_COD value is CASE sensitive. APL will always store FLOWID values from config file as all upper case letters.
+			- if RTSTCODE value in lotinfo.txt file is valid but uses lower case letters, APL will flag it as mismatch and will edit lotinfo.txt with all upper case letters
+		- If lotinfo.txt file contains invalid STEP (does not match any in the STEP table), APL will log an error and will do nothing. 
+		  It will still proceed to load program (if required) , and eventually move to idle state
+		- If lotinfo.txt file does not contain STEP, APL will log error and do nothing. It will still proceed to load program (if required) , and eventually move to idle state
+		- If APL fails to update lotinfo.txt file with correct flow_id and rtst_cod, it will log an error. It will still proceed to load program (if required), 
+		  and eventually move to idle state
+
 
 -	update feature
-	- MIR.RST_COD can now be set (but not working yet)
 	- APL will not attempt to set MIR.BURN_TIM anymore
 	- STEP feature now ensures it only appends to .sum file, ignores others e.g. .sum_open
 	- STDF will not force empty value on fields not set by lotinfo.txt anymore
@@ -20,6 +52,8 @@ version beta.2.3.2019xxxx
 
 -	quality of life improvement
 	- Force Load config option setting now displayed when printing out config 
+	- added utility functions to safely open files for read/write as well as renaming and removing them
+	- error log with setLotInformation() is more information friendly now
 
 
 version beta.2.3.20190920

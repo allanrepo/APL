@@ -95,7 +95,8 @@ protected:
 		bool 		bSummary;
 		std::string	szSummaryPath;
 
-		CONFIG()
+		// clearing CONFIG doesn't empty parameters, it just sets them to default
+		void clear()
 		{
 			bProd = true;
 			bForceLoad = false;
@@ -121,8 +122,20 @@ protected:
 			szSummaryPath = "/tmp";
 			bStep = false;
 			bDeleteLotInfo = false;
+			steps.clear();
 		}
 
+		// constructor
+		CONFIG()
+		{
+			clear();
+		}
+
+		// too lazy to code this, so just prevent copying...
+		CONFIG(const CONFIG& p){}		
+		CONFIG& operator=(const CONFIG& p){}
+
+		// handle config file parsing
 		bool parse(const std::string& file);		
 		void print();
 	};
@@ -316,8 +329,6 @@ protected:
 	void onStateNotificationResponse(int fd);
 	void onSummaryFile(const std::string& name);	
 	
-	// parse XML config file
-//	bool config(const std::string& config);
 	
 	// utility functions. purpose are obvious in their function name and arguments
 	bool scan(int argc, char **argv);
