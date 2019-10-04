@@ -202,7 +202,7 @@ bool CUtil::isFileExist(const std::string& szFile)
 /*-----------------------------------------------------------------------------------------
 find the PID of the first thread found with specified name
 -----------------------------------------------------------------------------------------*/
-int CUtil::getFirstPIDByName( const std::string& name )
+int CUtil::getFirstPIDByName( const std::string& name, bool bSkipSelf )
 {
 	int pid = -1;
 
@@ -218,6 +218,8 @@ int CUtil::getFirstPIDByName( const std::string& name )
 			int id = CUtil::toLong(dirp->d_name);
 			if (id > 0)
 			{
+				if( bSkipSelf && id == getpid() ) continue;
+
 				// Read contents of virtual /proc/{pid}/cmdline file
 				std::string cmdPath = std::string("/proc/") + dirp->d_name + "/cmdline";
 				std::ifstream cmdFile(cmdPath.c_str());
@@ -232,6 +234,7 @@ int CUtil::getFirstPIDByName( const std::string& name )
 					// Keep program name only, removing the path
 					pos = cmdLine.rfind('/');
 					if (pos != std::string::npos) cmdLine = cmdLine.substr(pos + 1);
+
 
 					// Compare against requested process name
 					if (name == cmdLine) pid = id;		

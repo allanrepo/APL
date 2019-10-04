@@ -23,6 +23,8 @@ constants
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"
 #define KILLTESTERCMD "kill.tester.sh"
+#define POPUPSERVER "tcpServer"
+
 
 /* ------------------------------------------------------------------------------------------
 class declarations
@@ -95,6 +97,8 @@ protected:
 		bool 		bSummary;
 		std::string	szSummaryPath;
 
+		bool		bPopupServer;
+
 		// clearing CONFIG doesn't empty parameters, it just sets them to default
 		void clear()
 		{
@@ -123,6 +127,7 @@ protected:
 			bStep = false;
 			bDeleteLotInfo = false;
 			steps.clear();
+			bPopupServer = true;
 		}
 
 		// constructor
@@ -256,6 +261,8 @@ protected:
 	};
 
 protected:
+	CClient m_Client;
+
 	// lotinfo data
 	LOTINFO m_lotinfo;
 	
@@ -277,6 +284,7 @@ protected:
 	CMonitorFileDesc* m_pMonitorFileDesc; 
 	CMonitorFileDesc* m_pSummaryFileDesc; 
 	CFileDescriptorManager::CFileDescriptor* m_pStateNotificationFileDesc;
+	CClientFileDescriptorUDP* m_pClientFileDesc;
 
 	// state machine
 	CStateManager m_StateMgr;
@@ -310,6 +318,7 @@ protected:
 	void setLogFile(CTask&);
 	void connect(CTask&);
 	void select(CTask&);
+	void listen(CTask&);
 	void endLot(CTask&);
 	void timeOutEndLot(CTask&);
 	void unloadProg(CTask&);
@@ -327,7 +336,7 @@ protected:
 	// functions executed by file descriptor handlers
 	void onReceiveFile(const std::string& name);	
 	void onStateNotificationResponse(int fd);
-	void onSummaryFile(const std::string& name);	
+	void onSummaryFile(const std::string& name);
 	
 	
 	// utility functions. purpose are obvious in their function name and arguments
@@ -337,6 +346,7 @@ protected:
 	bool setLotInfo(); 
 
 	// functions to parse lotinfo.txt file 
+	void processLotInfoFile(const std::string& name);	
 	bool parse(const std::string& name);
 	bool getFieldValuePair(const std::string& line, const char delimiter, std::string& field, std::string& value);
 	bool updateLotinfoFile(const std::string& name);

@@ -10,6 +10,7 @@ CApp::CApp(int argc, char **argv)
 	m_pMonitorFileDesc = 0;
 	m_pStateNotificationFileDesc = 0;
 	m_pSummaryFileDesc = 0;
+	m_pClientFileDesc = 0;
 	m_lotinfo.clear();
 	m_map.clear();
    
@@ -23,6 +24,9 @@ CApp::CApp(int argc, char **argv)
 	m_pStateOnKillTester = new CAppState(*this, "onKillTester", &CApp::onKillTesterLoadState);
 	m_pStateOnLaunch = new CAppState(*this, "onLaunch", &CApp::onLaunchLoadState, &CApp::onLaunchUnloadState);
 	m_pSendLotInfo = new CAppState(*this, "onSetLotInfo", &CApp::onSetLotInfoLoadState);
+
+	m_pClientFileDesc = new CClientFileDescriptorUDP("127.0.0.1", 54000);
+
 
 	// add set the first active state 
 	m_StateMgr.set(m_pStateOnInit);
@@ -62,11 +66,13 @@ void CApp::onIdleLoadState(CState& state)
 
 	// add them to FD manager so we'll use them in select() task
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
-	if (m_CONFIG.bSummary)m_FileDescMgr.add( *m_pSummaryFileDesc );
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
+ 	m_FileDescMgr.add( *m_pClientFileDesc );
+	if (m_CONFIG.bSummary)m_FileDescMgr.add( *m_pSummaryFileDesc );
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
 	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
+	state.add(new CAppTask(*this, &CApp::listen, "listen", 1000, true, true));
 
 	CSequence* pSeq = new CSequence("seq0", true, true );
 	state.add(pSeq);
@@ -479,6 +485,29 @@ void CApp::init(CTask& task)
 	m_Log << "Config File: " << m_szConfigFullPathName << CUtil::CLog::endl;
 	m_CONFIG.print();
 	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
+
+
+	if (m_CONFIG.bPopupServer)
+	{
+		// launch popup server. launching it now forces other instance of this server to be killed off
+		std::stringstream ssCmd;
+		ssCmd << "apl_srvr" << "&";
+		m_Log << "Launching pop-up server... " << ssCmd.str() << CUtil::CLog::endl;		
+		system(ssCmd.str().c_str());		
+
+		// check if popup server is running. launch again if not.
+		while ( CUtil::getFirstPIDByName("apl_srvr") == -1 )
+		{
+			m_Log << "pop-up server is not running, attemping to launch again... " << ssCmd.str() << CUtil::CLog::endl;		
+			sleep(1);
+			system(ssCmd.str().c_str());		
+		}
+
+		// connect to popup server, send message to popup server to "register" to it
+		m_pClientFileDesc->connect();
+		m_pClientFileDesc->send("APL register");
+
+	}
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -502,6 +531,34 @@ void CApp::select(CTask& task)
 	// proccess any file descriptor notification on select every second.
 	m_FileDescMgr.select(200);
 }
+
+/* ------------------------------------------------------------------------------------------
+TASK: 	query listen, listen to popup server
+------------------------------------------------------------------------------------------ */
+void CApp::listen(CTask& task)
+{
+	if (m_CONFIG.bPopupServer)
+	{
+		// check if popup server is running. launch again if not.
+		if ( CUtil::getFirstPIDByName("apl_srvr") == -1 )
+		{
+			while ( CUtil::getFirstPIDByName("apl_srvr") == -1 )
+			{
+				std::stringstream ssCmd;
+				ssCmd << "apl_srvr" << "&";
+				m_Log << "pop-up server is not running, attemping to launch again... " << ssCmd.str() << CUtil::CLog::endl;		
+				sleep(1);
+				system(ssCmd.str().c_str());		
+			}
+
+			// connect to popup server, send message to popup server to "register" to it. 
+			// we do this everytime server has to launch
+			m_pClientFileDesc->connect();
+			m_pClientFileDesc->send("APL register");
+		}
+	}
+}
+
 
 /* ------------------------------------------------------------------------------------------
 TASK: 	end lot only if program exists
@@ -706,21 +763,13 @@ const std::string CApp::getUserName() const
 } 
 
 /* ------------------------------------------------------------------------------------------
-Utility: check the file if this is lotinfo.txt; parse if yes
+Utility: parse and update lotinfo.txt file
 ------------------------------------------------------------------------------------------ */
-void CApp::onReceiveFile(const std::string& name)
+void CApp::processLotInfoFile(const std::string& name)
 {
 	// create string that holds full path + monitor file 
 	std::stringstream ssFullPathMonitorName;
 	ssFullPathMonitorName << m_CONFIG.szLotInfoFilePath << "/" << name;
-
-	// is this the file we're waiting for? if not, bail out
-	if (name.compare(m_CONFIG.szLotInfoFileName) != 0)
-	{
-		m_Log << "File received but is not what we're waiting for: " << name << CUtil::CLog::endl;
-		return;
-	}
-	else m_Log << "'" << name << "' file received." << CUtil::CLog::endl;
 
 	// if this is the file, let's parse it.
 	// does it contain JobFile field? if yes, does it point to a valid unison program? 
@@ -737,9 +786,6 @@ void CApp::onReceiveFile(const std::string& name)
 	// if you reach this point, m_lotinfo object must now contain data from latest lotinfo.txt file received.
 	// does lotinfo.txt file contain STEP field? if yes, we have to handle it
 	if (m_CONFIG.bStep) updateLotinfoFile(ssFullPathMonitorName.str());
-
-	// if parsing lotinfo file is success, let's tell notify fd object to stop processing any incoming select() at this point
-	m_pMonitorFileDesc->halt();
 
 	// let's halt this state now to make sure no other tasks from this state gets executed anymore
 	if ( m_StateMgr.get() ) m_StateMgr.get()->halt();
@@ -770,6 +816,46 @@ void CApp::onReceiveFile(const std::string& name)
 		m_Log << "Could not open " << ssFullPathMonitorName.str().c_str() << " to add GDR.AUTOMATION data." << CUtil::CLog::endl;
 	}
 
+}
+
+/* ------------------------------------------------------------------------------------------
+Utility: check the file if this is lotinfo.txt; parse if yes
+------------------------------------------------------------------------------------------ */
+void CApp::onReceiveFile(const std::string& name)
+{
+	// is this the file we're waiting for? if not, bail out
+	if (name.compare(m_CONFIG.szLotInfoFileName) != 0)
+	{
+		m_Log << "File received but is not what we're waiting for: " << name << CUtil::CLog::endl;
+		return;
+	}
+	else m_Log << "'" << name << "' file received." << CUtil::CLog::endl;
+
+	// if parsing lotinfo file is success, let's tell notify fd object to stop processing any incoming select() at this point
+	m_pMonitorFileDesc->halt();
+
+	// is tester even ready? if no, we're safe to process this lotinfo.txt file
+	if (!isReady() || !m_pProgCtrl)
+	{
+		processLotInfoFile(name);
+		return;
+	}
+	else
+	{
+		// is program loaded?, if no, we're safe to process this lotinfo.txt file
+		if (!m_pProgCtrl->isProgramLoaded())
+		{
+			processLotInfoFile(name);
+			return;
+		}
+		// if program is loaded, then we need to ask operator first if we wish to proceed
+		else
+		{
+			std::stringstream ss;
+			ss << "LOADLOTINFO|" << name << "|" << m_pProgCtrl->getProgramPath();
+			m_pClientFileDesc->send( ss.str() );
+		}
+	}
 	return;
 }
 
@@ -1680,6 +1766,8 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 	}
 	c.send(send.str());
 	c.disconnect();
+
+//	m_pClientFileDesc->send(send.str());
 }
 
 /* ------------------------------------------------------------------------------------------

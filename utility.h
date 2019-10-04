@@ -12,6 +12,7 @@
 
 // linux specific include for access()
 #include <unistd.h>
+#include <sys/types.h>
 
 // linux specific include for dir
 #include <dirent.h>
@@ -90,7 +91,7 @@ namespace CUtil
 	const std::string removeLeadingTrailingSpace(const std::string& str);
 	bool isFileExist(const std::string& szFile);
 	const std::string toUpper(const std::string& str);
-	int getFirstPIDByName( const std::string& name );
+	int getFirstPIDByName( const std::string& name, bool bSkipSelf = false);
 
 	bool renameFile(const std::string& szOldFileNamePath, const std::string& szNewFileNamePath, int nAttempt = 5, int nDelaySecond = 1);
 	bool removeFile(const std::string& szFileNamePath, int nAttempt = 5, int nDelaySecond = 1);
