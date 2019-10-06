@@ -1,4 +1,8 @@
 RELEASE NOTES:
+version beta.2.5.20191006
+-	bug fixes
+	- fixed launch command on POPUP server to work on bash shell
+	- APL will now attempt to go back to IDLE state if PROGRAM_LOAD_FAIL occurs
 
 version beta.2.4.20191006
 -	bug fixes
