@@ -494,7 +494,7 @@ void CApp::init(CTask& task)
 	{
 		// launch popup server. launching it now forces other instance of this server to be killed off
 		std::stringstream ssCmd;
-		ssCmd << POPUPSERVER << " " << m_CONFIG.szServerIP << " " << m_CONFIG.nServerPort << " " << m_szName << " " << (m_bDebug? "DEBUG ":" ") << "&";
+		ssCmd << "./" << POPUPSERVER << " " << m_CONFIG.szServerIP << " " << m_CONFIG.nServerPort << " " << m_szName << " " << (m_bDebug? "DEBUG ":" ") << "&";
 		m_Log << "Launching pop-up server... " << ssCmd.str() << CUtil::CLog::endl;		
 		system(ssCmd.str().c_str());		
 
@@ -548,7 +548,7 @@ void CApp::listen(CTask& task)
 			while ( CUtil::getFirstPIDByName(POPUPSERVER) == -1 )
 			{
 				std::stringstream ssCmd;
-				ssCmd << POPUPSERVER << " " << m_CONFIG.szServerIP << " " << m_CONFIG.nServerPort << " " << m_szName << " " << (m_bDebug? "DEBUG ":" ") << "&";
+				ssCmd << "./" << POPUPSERVER << " " << m_CONFIG.szServerIP << " " << m_CONFIG.nServerPort << " " << m_szName << " " << (m_bDebug? "DEBUG ":" ") << "&";
 				m_Log << "pop-up server is not running, attemping to launch again... " << ssCmd.str() << CUtil::CLog::endl;		
 				sleep(1);
 				system(ssCmd.str().c_str());		
@@ -1675,8 +1675,11 @@ void CApp::onProgramChange(const EVX_PROGRAM_STATE state, const std::string& msg
 			m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOADING" << CUtil::CLog::endl;
 			break;
 		case EVX_PROGRAM_LOAD_FAILED:
+		{
+			m_StateMgr.set(m_pStateOnIdle);
 			m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOAD_FAILED" << CUtil::CLog::endl;
 			break;
+		}
 		case EVX_PROGRAM_LOADED:
 		{
 		    	m_Log << "programChange[" << state << "]: EVX_PROGRAM_LOADED" << CUtil::CLog::endl;
