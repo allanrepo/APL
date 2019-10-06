@@ -18,12 +18,12 @@ constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
 #define JOBFILE "JOBFILE"
-#define VERSION "beta.2.3.20190920"
+#define VERSION "beta.2.4.20191006"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"
 #define KILLTESTERCMD "kill.tester.sh"
-#define POPUPSERVER "tcpServer"
+#define POPUPSERVER ".widget"
 
 
 /* ------------------------------------------------------------------------------------------
@@ -35,6 +35,7 @@ class CAppState;
 class CMonitorFileDesc;
 class CAppFileDesc;
 class CMap;
+class CAppClientUDPFileDesc;
 
 class CApp: public CTester
 {
@@ -98,6 +99,8 @@ protected:
 		std::string	szSummaryPath;
 
 		bool		bPopupServer;
+		std::string 	szServerIP;
+		int		nServerPort;
 
 		// clearing CONFIG doesn't empty parameters, it just sets them to default
 		void clear()
@@ -128,6 +131,8 @@ protected:
 			bDeleteLotInfo = false;
 			steps.clear();
 			bPopupServer = true;
+			szServerIP = "127.0.0.1";
+			nServerPort = 54000;
 		}
 
 		// constructor
@@ -261,7 +266,6 @@ protected:
 	};
 
 protected:
-	CClient m_Client;
 
 	// lotinfo data
 	LOTINFO m_lotinfo;
@@ -278,6 +282,8 @@ protected:
 	CONFIG m_CONFIG;
 	std::string m_szConfigFullPathName;
 	std::string m_szTesterName;
+	std::string m_szName;
+	bool m_bDebug;
 
 	// file descriptor engine
 	CFileDescriptorManager m_FileDescMgr;
@@ -337,6 +343,7 @@ protected:
 	void onReceiveFile(const std::string& name);	
 	void onStateNotificationResponse(int fd);
 	void onSummaryFile(const std::string& name);
+	void onReceiveFromServer(const std::string& msg);
 	
 	
 	// utility functions. purpose are obvious in their function name and arguments
@@ -468,6 +475,27 @@ public:
 	virtual void onSelect()
 	{ 
 		if (m_onSelectPtr) (m_App.*m_onSelectPtr)(m_fd);	
+	}
+};
+
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
+class CAppClientUDPFileDesc: public CClientFileDescriptorUDP
+{
+protected:
+	CApp& m_App;
+	void (CApp::* m_onRecvPtr)(const std::string&);
+public:
+	CAppClientUDPFileDesc(CApp& app, void (CApp::* p)(const std::string&) = 0)
+	: m_App(app)
+	{
+		m_onRecvPtr = p;
+	}
+
+	virtual void onRecv(const std::string& msg)
+	{ 
+		if (m_onRecvPtr) (m_App.*m_onRecvPtr)(msg);	
 	}
 };
 

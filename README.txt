@@ -1,6 +1,6 @@
 RELEASE NOTES:
 
-version beta.2.3.2019xxxx
+version beta.2.3.20191006
 -	bug fixes
 	- fixed a bug where APL can potentially crash when STEP feature is disabled. Credit to Cedric for finding this out and fixing it.
 	- fixed display bug where max launch attempt displays load type instead of the number of launch attempt
@@ -35,11 +35,23 @@ version beta.2.3.2019xxxx
 		- RTST_COD value is CASE sensitive. APL will always store FLOWID values from config file as all upper case letters.
 			- if RTSTCODE value in lotinfo.txt file is valid but uses lower case letters, APL will flag it as mismatch and will edit lotinfo.txt with all upper case letters
 		- If lotinfo.txt file contains invalid STEP (does not match any in the STEP table), APL will log an error and will do nothing. 
-		  It will still proceed to load program (if required) , and eventually move to idle state
+		  It will still proceed to load program (if required), and eventually move to idle state
 		- If lotinfo.txt file does not contain STEP, APL will log error and do nothing. It will still proceed to load program (if required) , and eventually move to idle state
 		- If APL fails to update lotinfo.txt file with correct flow_id and rtst_cod, it will log an error. It will still proceed to load program (if required), 
 		  and eventually move to idle state
 
+-	new feature (popup Messagebox on loading lotinfo.txt when program is already loaded)
+	- Amkor requested that if lotinfo.txt file is received by APL but program is already loaded, APL must get confirmation first from operator to proceed processing the lotinfo.txt
+	  through a pop-up Message Box.
+	- When APL receives lotinfo.txt file and program is already loaded, APL will pop a Message Box asking operator to proceed. The message box will pop-up twice to ensure
+	  operator is really sure to proceed (prevents accidental acceptance). This is important because current lot will be reset and if APL is on "force-load" config, current program
+ 	  will be unloaded
+	- This feature is enabled by default and can be disabled through config file by setting <GUI> state to true
+		<GUI state = "true">
+			<IP>127.0.0.1</IP>
+			<Port>53213</Port>
+		</GUI>
+	- note that enabling/disabling and changing GUI configuration cannot take effect in real-time. changes will apply only after relaunching APL for security reasons
 
 -	update feature
 	- APL will not attempt to set MIR.BURN_TIM anymore
@@ -51,6 +63,7 @@ version beta.2.3.2019xxxx
 		</LotInfo>		
 
 -	quality of life improvement
+	- APL runs as singleton now. When you launch it, it will kill off any other instance of APL that is currently running, ensuring there's only one APL running at a time.
 	- Force Load config option setting now displayed when printing out config 
 	- added utility functions to safely open files for read/write as well as renaming and removing them
 	- error log with setLotInformation() is more information friendly now

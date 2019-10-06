@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sstream>
 #include <iostream>
+#include <socket.h>
 
 #define PORT    54000 
 #define MAXLINE 1024 
@@ -19,6 +20,17 @@
 // Driver code 
 int main(int argc, char **argv)  
 { 
+
+	CServerUDP udp;
+
+	udp.connect("127.0.0.1", 54000);
+
+	while(1)
+	{
+	udp.listen(1000);
+	}
+
+	return 0;
 
 	// let's make sure this is the only instance of this application that runs
 
@@ -78,16 +90,17 @@ int main(int argc, char **argv)
 	bool go = true;
 	while(go)
 	{
+		sleep(5);
 		// we'll be blocking here and wait for any file descriptor ready to be read.
 		fd_set ready = fds;
 //		int n = select(nMaxFD + 1, &ready, NULL, NULL, NULL);
 
 		struct timeval to;
-		to.tv_sec = 1;
-		to.tv_usec = 0;
+		to.tv_sec = 0;
+		to.tv_usec = 100;
 
 		int n = select(nMaxFD + 1, &ready, NULL, NULL, &to);
-//		std::cout << "server idle "<< std::endl;
+		std::cout << "server idle "<< std::endl;
 		if (n == 0) continue;
       
 		// check all file descriptors and find the one that is ready

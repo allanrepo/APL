@@ -13,6 +13,10 @@ CApp::CApp(int argc, char **argv)
 	m_pClientFileDesc = 0;
 	m_lotinfo.clear();
 	m_map.clear();
+	m_bDebug = false;
+
+	// remember this app's name
+	m_szName = std::string(argv[0]);
    
 	// parse command line arguments
 	scan(argc, argv);
@@ -25,8 +29,8 @@ CApp::CApp(int argc, char **argv)
 	m_pStateOnLaunch = new CAppState(*this, "onLaunch", &CApp::onLaunchLoadState, &CApp::onLaunchUnloadState);
 	m_pSendLotInfo = new CAppState(*this, "onSetLotInfo", &CApp::onSetLotInfoLoadState);
 
-	m_pClientFileDesc = new CClientFileDescriptorUDP("127.0.0.1", 54000);
-
+	// ceate our UDP client file descriptor that will talk to interface server
+	m_pClientFileDesc = new CAppClientUDPFileDesc(*this, &CApp::onReceiveFromServer);
 
 	// add set the first active state 
 	m_StateMgr.set(m_pStateOnInit);
@@ -67,8 +71,8 @@ void CApp::onIdleLoadState(CState& state)
 	// add them to FD manager so we'll use them in select() task
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
- 	m_FileDescMgr.add( *m_pClientFileDesc );
-	if (m_CONFIG.bSummary)m_FileDescMgr.add( *m_pSummaryFileDesc );
+ 	if (m_pClientFileDesc) m_FileDescMgr.add( *m_pClientFileDesc );
+	if (m_CONFIG.bSummary) m_FileDescMgr.add( *m_pSummaryFileDesc );
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
 	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
@@ -359,7 +363,6 @@ void CApp::killTester(CTask& task)
 		}
 	}
 
-
 	// kill tester
 	if (m_CONFIG.bKillTesterOnLaunch)
 	{
@@ -486,17 +489,17 @@ void CApp::init(CTask& task)
 	m_CONFIG.print();
 	m_Log << "--------------------------------------------------------" << CUtil::CLog::endl;
 
-
+	// if we're running popup server, let's launch it
 	if (m_CONFIG.bPopupServer)
 	{
 		// launch popup server. launching it now forces other instance of this server to be killed off
 		std::stringstream ssCmd;
-		ssCmd << "apl_srvr" << "&";
+		ssCmd << POPUPSERVER << " " << m_CONFIG.szServerIP << " " << m_CONFIG.nServerPort << " " << m_szName << " " << (m_bDebug? "DEBUG ":" ") << "&";
 		m_Log << "Launching pop-up server... " << ssCmd.str() << CUtil::CLog::endl;		
 		system(ssCmd.str().c_str());		
 
 		// check if popup server is running. launch again if not.
-		while ( CUtil::getFirstPIDByName("apl_srvr") == -1 )
+		while ( CUtil::getFirstPIDByName(POPUPSERVER) == -1 )
 		{
 			m_Log << "pop-up server is not running, attemping to launch again... " << ssCmd.str() << CUtil::CLog::endl;		
 			sleep(1);
@@ -504,9 +507,9 @@ void CApp::init(CTask& task)
 		}
 
 		// connect to popup server, send message to popup server to "register" to it
-		m_pClientFileDesc->connect();
-		m_pClientFileDesc->send("APL register");
-
+		m_pClientFileDesc->connect(m_CONFIG.szServerIP,  m_CONFIG.nServerPort);
+		sleep(1);
+		m_pClientFileDesc->send("APL_REGISTER|init");
 	}
 }
 
@@ -540,12 +543,12 @@ void CApp::listen(CTask& task)
 	if (m_CONFIG.bPopupServer)
 	{
 		// check if popup server is running. launch again if not.
-		if ( CUtil::getFirstPIDByName("apl_srvr") == -1 )
+		if ( CUtil::getFirstPIDByName(POPUPSERVER) == -1 )
 		{
-			while ( CUtil::getFirstPIDByName("apl_srvr") == -1 )
+			while ( CUtil::getFirstPIDByName(POPUPSERVER) == -1 )
 			{
 				std::stringstream ssCmd;
-				ssCmd << "apl_srvr" << "&";
+				ssCmd << POPUPSERVER << " " << m_CONFIG.szServerIP << " " << m_CONFIG.nServerPort << " " << m_szName << " " << (m_bDebug? "DEBUG ":" ") << "&";
 				m_Log << "pop-up server is not running, attemping to launch again... " << ssCmd.str() << CUtil::CLog::endl;		
 				sleep(1);
 				system(ssCmd.str().c_str());		
@@ -553,10 +556,25 @@ void CApp::listen(CTask& task)
 
 			// connect to popup server, send message to popup server to "register" to it. 
 			// we do this everytime server has to launch
-			m_pClientFileDesc->connect();
-			m_pClientFileDesc->send("APL register");
+			m_pClientFileDesc->connect(m_CONFIG.szServerIP,  m_CONFIG.nServerPort);
+			sleep(1);
+			m_pClientFileDesc->send("APL_REGISTER|idle");
 		}
+		//else m_pClientFileDesc->send("APL_PING");
 	}
+}
+
+/* ------------------------------------------------------------------------------------------
+utility: process all UPD message from APL server
+------------------------------------------------------------------------------------------ */
+void CApp::onReceiveFromServer(const std::string& msg)
+{
+	if ( msg.compare("APL_ACKNOWLEDGE") == 0){ m_Log << "Connection to APL Interface Server is GOOD"<< CUtil::CLog::endl; }
+	else if ( msg.compare("LOADLOTINFO") == 0)
+	{
+		processLotInfoFile(m_CONFIG.szLotInfoFileName);
+	}
+	else{}
 }
 
 
@@ -744,6 +762,13 @@ bool CApp::scan(int argc, char **argv)
 				continue;
 			}	
 		}
+		// look for -debug arg. if partial match is at first char, we found it
+		s = "-debug";
+		if (s.find(*it) == 0)
+		{
+			m_bDebug = true;
+			continue;
+		}
 	}	
 	return true;
 }
@@ -851,10 +876,20 @@ void CApp::onReceiveFile(const std::string& name)
 		// if program is loaded, then we need to ask operator first if we wish to proceed
 		else
 		{
-			std::stringstream ss;
-			ss << "LOADLOTINFO|" << name << "|" << m_pProgCtrl->getProgramPath();
-			m_pClientFileDesc->send( ss.str() );
-		}
+			// if popup server is disabled, we proceed to load lotinfo.txt
+			if(m_CONFIG.bPopupServer)
+			{
+				std::stringstream ss;
+				ss << "LOADLOTINFO|" << name << "|" << m_pProgCtrl->getProgramPath();
+				m_pClientFileDesc->send( ss.str() );
+				return;
+			}
+			else
+			{
+				processLotInfoFile(name);
+				return;
+			}
+		}	
 	}
 	return;
 }
@@ -1004,6 +1039,15 @@ bool CApp::CONFIG::parse(const std::string& file)
 		else m_Log << "Warning: Didn't find <LotInfo>. " << CUtil::CLog::endl;
 
 		// check if <Summary> is set
+		if (pConfig->fetchChild("GUI"))
+		{
+			bPopupServer = CUtil::toUpper( pConfig->fetchChild("GUI")->fetchVal("state") ).compare("TRUE") == 0? true : false;
+
+			if (pConfig->fetchChild("GUI")->fetchChild("IP")){ szServerIP = pConfig->fetchChild("GUI")->fetchChild("IP")->fetchText(); }		
+			if (pConfig->fetchChild("GUI")->fetchChild("Port")){ nServerPort = CUtil::toLong(pConfig->fetchChild("GUI")->fetchChild("Port")->fetchText()); }		
+		}
+
+		// check if <Summary> is set
 		if (pConfig->fetchChild("Summary"))
 		{
 			bSummary = false; // disabled by default
@@ -1118,6 +1162,9 @@ void CApp::CONFIG::print()
 	{
 		m_Log << "STEP: " << steps[i].szStep << ", flow_id: " << steps[i].szFlowId << ", rtst_cod: " << steps[i].nRtstCod << CUtil::CLog::endl;
 	}
+	m_Log << "GUI: " << (bPopupServer? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "GUI Server IP: " << szServerIP << CUtil::CLog::endl;
+	m_Log << "Port Server IP: " << nServerPort << CUtil::CLog::endl;
 }
 
 

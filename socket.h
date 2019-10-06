@@ -11,9 +11,13 @@
 #include <stdio.h>
 #include <utility.h>
 #include <fd.h>
+#include <errno.h>
 
-#define SOCKET_IP_DEFAULT "127.0.0.1"
-#define SOCKET_PORT_DEFAULT 54000 // default listenting port used if not specified in command line 
+extern int errno ;
+
+
+#define SOCKET_IP_DEFAULT "127.0.0.2"
+#define SOCKET_PORT_DEFAULT 53999 // default listenting port used if not specified in command line 
 #define MAXBYTEMESSAGE 256
 
 /* ------------------------------------------------------------------------------------------
@@ -37,6 +41,34 @@ public:
 	void listen(unsigned long ms);
 };
 
+/* ------------------------------------------------------------------------------------------
+UDP server class
+------------------------------------------------------------------------------------------ */
+class CServerUDP
+{
+protected:
+	std::string m_szIP;
+	unsigned short m_nPort;
+	struct sockaddr_in m_addrServ; 
+	int m_fd;
+	CUtil::CLog m_Log;
+	struct sockaddr_in m_addrClient;
+
+public:
+	CServerUDP(const std::string& ip = SOCKET_IP_DEFAULT, unsigned short port = SOCKET_PORT_DEFAULT);
+	virtual ~CServerUDP(){}
+	bool connect(const std::string& ip = SOCKET_IP_DEFAULT, unsigned short port = SOCKET_PORT_DEFAULT);
+	void listen(unsigned long ms);
+	bool send(const std::string& msg, int* pErrNum = 0);
+
+
+	virtual void onError(const std::string&){}
+	virtual void onRecv(const std::string&){}
+};
+
+/* ------------------------------------------------------------------------------------------
+ 
+------------------------------------------------------------------------------------------ */
 class CClientFileDescriptor: public CFileDescriptorManager::CFileDescriptor
 {
 protected:
@@ -53,6 +85,9 @@ public:
 	bool send(const std::string& msg);
 };
 
+/* ------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------ */
 class CClientFileDescriptorUDP: public CFileDescriptorManager::CFileDescriptor
 {
 protected:
@@ -62,11 +97,12 @@ protected:
 	struct sockaddr_in m_addrServ; 
 
 public:
-	CClientFileDescriptorUDP(const std::string& ip = SOCKET_IP_DEFAULT , unsigned short port = SOCKET_PORT_DEFAULT);
+	CClientFileDescriptorUDP();
 	virtual ~CClientFileDescriptorUDP();
 	virtual void onSelect();
 	bool send(const std::string& msg);
-	bool connect();
+	bool connect(const std::string& ip = SOCKET_IP_DEFAULT , unsigned short port = SOCKET_PORT_DEFAULT);
+	virtual void onRecv(const std::string&){};
 };
 
 #endif
