@@ -1,6 +1,6 @@
 RELEASE NOTES:
 
-version beta.2.3.20191006
+version beta.2.4.20191006
 -	bug fixes
 	- fixed a bug where APL can potentially crash when STEP feature is disabled. Credit to Cedric for finding this out and fixing it.
 	- fixed display bug where max launch attempt displays load type instead of the number of launch attempt
@@ -49,7 +49,7 @@ version beta.2.3.20191006
 	- This feature is enabled by default and can be disabled through config file by setting <GUI> state to true
 		<GUI state = "true">
 			<IP>127.0.0.1</IP>
-			<Port>53213</Port>
+			<Port>53213</Port> 
 		</GUI>
 	- note that enabling/disabling and changing GUI configuration cannot take effect in real-time. changes will apply only after relaunching APL for security reasons
 
