@@ -1186,7 +1186,7 @@ void CApp::onRenameSTDF(const std::string& name)
 	// if pos = npos, there's no '.' meaning no file extension
 	if (pos == std::string::npos)
 	{
-		m_Log << "onRenameSTDF(): " << name << " has no file extension." << CUtil::CLog::endl;
+	//	m_Log << "onRenameSTDF(): " << name << " has no file extension." << CUtil::CLog::endl;
 		return;
 	}
 
@@ -1194,7 +1194,7 @@ void CApp::onRenameSTDF(const std::string& name)
 	std::string ext = name.substr(pos + 1);
 	if (ext.compare("std") != 0)
 	{
-		m_Log << "onRenameSTDF(): " << name << " has extension: " << ext << ", we're expecting .std" << CUtil::CLog::endl;
+	//	m_Log << "onRenameSTDF(): " << name << " has extension: " << ext << ", we're expecting .std" << CUtil::CLog::endl;
 		return;
 	}
 
@@ -1203,7 +1203,9 @@ void CApp::onRenameSTDF(const std::string& name)
 	ssFullPathSTDF << m_CONFIG.szSTDFPath << "/" << name;
 
 	APLSTDF::CStdf stdf;
-	stdf.readMRR(ssFullPathSTDF.str());
+	APLSTDF::MRR mrr;
+	stdf.readMRR(ssFullPathSTDF.str(), mrr);
+	mrr.print();
 
 }
 

@@ -17,6 +17,11 @@ FYI, this class is just an idea for now.
 ------------------------------------------------------------------------------------------ */
 namespace APLSTDF
 {
+	class MRR;
+	class CField;
+	class CStdf;
+	class CRecord;
+
 	class CField
 	{
 	protected:
@@ -35,6 +40,8 @@ namespace APLSTDF
 
 	class CStdf
 	{
+	protected:
+		CUtil::CLog m_Log;
 	public:
 		struct header
 		{
@@ -47,7 +54,7 @@ namespace APLSTDF
 		CStdf(){}
 		virtual ~CStdf(){}
 	
-		bool readMRR(const std::string& file);
+		bool readMRR(const std::string& file, APLSTDF::MRR& mrr);
 	};
 
 	class CRecord
@@ -57,13 +64,15 @@ namespace APLSTDF
 	public:
 		CRecord(){}
 		virtual ~CRecord(){}
-		bool readVariableLengthString( std::ifstream& fs, unsigned long nMax,  std::string& out );
+		bool readVariableLengthString( std::ifstream& fs, unsigned long nMax,  std::string& out, unsigned short& curr );
+		bool readUnsignedInteger( std::ifstream& fs, unsigned len, unsigned int& out, unsigned short& curr );
 		virtual void print() = 0;
+		virtual void clear() = 0;
 	};
 
 	class MRR: public CRecord
 	{
-	public:
+	protected:
 		unsigned int	FINISH_T;
 		char 		DISP_COD;
 		std::string	USER_DESC;
@@ -74,7 +83,58 @@ namespace APLSTDF
 		virtual ~MRR(){}
 		virtual bool read( std::ifstream& fs, const unsigned short len );
 		virtual void print();		
+		virtual void clear();
 	};	
+
+	class MIR: public CRecord
+	{
+	protected:
+		unsigned int	SETUP_T;
+		unsigned int	START_T;
+		unsigned char	STAT_NUM;
+		char		MODE_COD;
+		char 		RTST_COD;
+		char		PROT_COD;
+		unsigned short 	BURN_TIM;
+		char		CMOD_COD;
+		std::string	LOT_ID;
+		std::string	PART_TYP;
+		std::string	NODE_NAM;
+		std::string	TSTR_TYP;
+		std::string	JOB_NAM;
+		std::string	JOB_REV;
+		std::string	SBLOT_ID;
+		std::string	OPER_NAM;
+		std::string	EXEC_TYP;
+		std::string	EXEC_VER;
+		std::string	TEST_COD;
+		std::string	TST_TEMP;
+		std::string	USER_TXT;
+		std::string	AUX_FILE;
+		std::string	PKG_TYP;
+		std::string	FAMLY_ID;
+		std::string	DATE_COD;
+		std::string	FACIL_ID;
+		std::string	FLOOR_ID;
+		std::string	PROC_ID;
+		std::string	OPER_FRQ;
+		std::string	SPEC_NAM;
+		std::string	SPEC_VER;
+		std::string	FLOW_ID;
+		std::string	SETUP_ID;
+		std::string	DSGN_REV;
+		std::string	ENG_ID;
+		std::string	ROM_COD;
+		std::string	SERL_NUM;
+		std::string	SUPR_NAM;	
+
+	public:
+		MIR(){}
+		virtual ~MIR(){}
+		virtual bool read( std::ifstream& fs, const unsigned short len );
+		virtual void print();
+		virtual void clear();		
+	};
 };
 
 /* ------------------------------------------------------------------------------------------

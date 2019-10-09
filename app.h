@@ -465,9 +465,9 @@ public:
 	CMonitorFileDesc(CApp& app, void (CApp::* p)(const std::string&), const std::string& path, unsigned short mask = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM)
 	: CNotifyFileDescriptor(path, mask), m_App(app){ m_pOnReceiveFile = p; }
 
-	virtual	void onFileCreate( const std::string& name ){ m_Log << "onFileCreate" << CUtil::CLog::endl; if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }	
-	virtual	void onFileMoveTo( const std::string& name ){ m_Log << "onFileMoveTo" << CUtil::CLog::endl; if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
-	virtual	void onFileModify( const std::string& name ){ m_Log << "onFileModify" << CUtil::CLog::endl; if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
+	virtual	void onFileCreate( const std::string& name ){ /*m_Log << "onFileCreate" << CUtil::CLog::endl; */if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }	
+	virtual	void onFileMoveTo( const std::string& name ){ /*m_Log << "onFileMoveTo" << CUtil::CLog::endl; */if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
+	virtual	void onFileModify( const std::string& name ){ /*m_Log << "onFileModify" << CUtil::CLog::endl; */if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
 };
 
 /* ------------------------------------------------------------------------------------------

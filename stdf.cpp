@@ -1,11 +1,11 @@
 #include <stdf.h>
 
-bool APLSTDF::CStdf::readMRR(const std::string& file)
+bool APLSTDF::CStdf::readMRR(const std::string& file, APLSTDF::MRR& mrr)
 {
 	// open file
 	std::ifstream fs;
 	fs.open(file.c_str(), std::fstream::in | std::fstream::binary);
-
+/*
 	// get file size
 	std::streampos fsize = fs.tellg();
 	fs.seekg(0, fs.end);
@@ -16,14 +16,14 @@ bool APLSTDF::CStdf::readMRR(const std::string& file)
 	std::cout << "file size: " << fsize << std::endl;	
 	std::cout << "file begin: " << fbeg << std::endl;	
 	std::cout << "file end: " << fend << std::endl;	
-
+*/
 	// before doing anything, let's remember beginning file position
 	fs.seekg(0, fs.beg);
-	fbeg = fs.tellg();
+	std::streampos fbeg = fs.tellg();
 
 	// also remember file end
 	fs.seekg(0, fs.end);
-	fend = fs.tellg();
+	std::streampos fend = fs.tellg();
 	
 	// MRR len size range from 5 to 517 so we search between those 
 	bool bFound = false;
@@ -31,18 +31,18 @@ bool APLSTDF::CStdf::readMRR(const std::string& file)
 	{
 		// calculate seek shift from end for this current iteration
 		int shift = -4 - i;
-		std::cout << "Curr Shift: " << shift << std::endl;
+//		std::cout << "Curr Shift: " << shift << std::endl;
 
 		// move to file position based on current shift
 		fs.seekg(shift, fs.end);
 
 		// remember current position shift
-		std::streampos curr = fs.tellg();
+//		std::streampos curr = fs.tellg();
 
 		// if we shift way past file begin, then something is wrong. bail out
 		if (fs.tellg() < fbeg)
 		{
-			std::cout << "error: shifting way past file begin." << std::endl;
+			m_Log << "error: shifting way past file begin." << CUtil::CLog::endl;
 			return false;
 		}
 
@@ -59,14 +59,15 @@ bool APLSTDF::CStdf::readMRR(const std::string& file)
 
 		// MRR data size must not go beyond file size
 		if ( (int)fs.tellg() + hd.len > fend) continue;
-
+/*
 		std::cout << "[" <<  std::hex<< curr << "]: '" << std::dec << hd.len << "'" << std::endl;
 		std::cout << "[" <<  std::hex<< ((int)curr + 2) << "]: '" << std::dec << (int)hd.typ << "'" << std::endl;
 		std::cout << "[" <<  std::hex<< ((int)curr + 3) << "]: '" << std::dec << (int)hd.sub << "'" << std::endl;
-
-		MRR mrr;
+*/
+//		MRR mrr;
 		mrr.read(fs, hd.len);		
-		mrr.print();
+//		mrr.print();
+		return 
 
 
 		// if we reach this point, we have a winner
@@ -82,7 +83,22 @@ bool APLSTDF::CStdf::readMRR(const std::string& file)
 	fs.close();
 
 }
-bool APLSTDF::CRecord::readVariableLengthString( std::ifstream& fs, unsigned long nMax,  std::string& out )
+
+bool APLSTDF::CRecord::readUnsignedInteger( std::ifstream& fs, unsigned len, unsigned int& out, unsigned short& curr )
+{
+	// len is the size of MIR content
+	// curr is the current byte position in the MIR content we intend to read U*4
+	if (len - curr < 4) return false;
+
+	// check if file is valid
+	if (!fs.is_open()) return false;
+
+	fs.read((char*)&out, sizeof(unsigned int));
+	curr += 4;
+	return true;
+}
+
+bool APLSTDF::CRecord::readVariableLengthString( std::ifstream& fs, unsigned long nMax,  std::string& out, unsigned short& curr )
 {
 	unsigned long r = 0;
 	out.clear();
@@ -107,6 +123,7 @@ bool APLSTDF::CRecord::readVariableLengthString( std::ifstream& fs, unsigned lon
 		out = ss.str();
 		r += n;
 	}
+	curr += (out.size() + 1);
 	return true;
 }
 
@@ -122,8 +139,9 @@ bool APLSTDF::MRR::read( std::ifstream& fs, const unsigned short len )
 	unsigned short nRead = 0;
 
 	// get FINISH_T
-	fs.read((char*)&FINISH_T, sizeof(unsigned int));
-	nRead = 4;
+	if (!readUnsignedInteger(fs, len, FINISH_T, nRead)) return false;
+//	fs.read((char*)&FINISH_T, sizeof(unsigned int));
+//	nRead = 4;
 
 	// get DISP_COD
 	if (len < nRead + 1) return true;
@@ -131,14 +149,18 @@ bool APLSTDF::MRR::read( std::ifstream& fs, const unsigned short len )
 	nRead += 1;
 
 	// get USER_DESC
-	if (!readVariableLengthString(fs, len - nRead, USER_DESC)) return true;
-	nRead += (USER_DESC.size() + 1);
+	if (!readVariableLengthString(fs, len - nRead, USER_DESC, nRead)) return true;
+//	nRead += (USER_DESC.size() + 1);
 
 	// get EXC_DESC
-	if (!readVariableLengthString(fs, len - nRead, EXC_DESC)) return true;
-	nRead += (EXC_DESC.size() + 1);
+	if (!readVariableLengthString(fs, len - nRead, EXC_DESC, nRead)) return true;
+//	nRead += (EXC_DESC.size() + 1);
 
 	return true;
+}
+
+void APLSTDF::MRR::clear()
+{
 }
 
 void APLSTDF::MRR::print()
@@ -159,6 +181,41 @@ void APLSTDF::MRR::print()
 //	time(&t);
 //	plt = localtime
 }
+
+void APLSTDF::MIR::clear()
+{
+}
+
+bool APLSTDF::MIR::read( std::ifstream& fs, const unsigned short len )
+{
+	// check if file is valid
+	if (!fs.is_open()) return false;
+
+	// first 9 bytes are required so if len < 9 then something is wrong
+	if (len < 9){ return false; }
+
+	// count how many bytes are read so far
+	unsigned short nRead = 0;
+
+	// get SETUP_T
+	if (len < nRead + 4) return true;
+	fs.read((char*)& SETUP_T, sizeof(unsigned int));
+	nRead += 4;
+
+	// get 
+	if (len < nRead + 4) return true;
+	fs.read((char*)& SETUP_T, sizeof(unsigned int));
+	nRead += 4;
+
+	return true;
+}
+
+void APLSTDF::MIR::print()
+{
+}
+
+
+
 
 
 APLSTDF::CField::CField()
