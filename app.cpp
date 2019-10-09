@@ -1206,6 +1206,9 @@ void CApp::onRenameSTDF(const std::string& name)
 	APLSTDF::MRR mrr;
 	stdf.readMRR(ssFullPathSTDF.str(), mrr);
 	mrr.print();
+	APLSTDF::MIR mir;
+	stdf.readMIR(ssFullPathSTDF.str(), mir);
+	mir.print();
 
 }
 

@@ -21,6 +21,7 @@ namespace APLSTDF
 	class CField;
 	class CStdf;
 	class CRecord;
+	class MIR;
 
 	class CField
 	{
@@ -55,6 +56,7 @@ namespace APLSTDF
 		virtual ~CStdf(){}
 	
 		bool readMRR(const std::string& file, APLSTDF::MRR& mrr);
+		bool readMIR(const std::string& file, APLSTDF::MIR& mir);
 	};
 
 	class CRecord
@@ -65,7 +67,10 @@ namespace APLSTDF
 		CRecord(){}
 		virtual ~CRecord(){}
 		bool readVariableLengthString( std::ifstream& fs, unsigned long nMax,  std::string& out, unsigned short& curr );
-		bool readUnsignedInteger( std::ifstream& fs, unsigned len, unsigned int& out, unsigned short& curr );
+		bool readUnsignedInteger( std::ifstream& fs, unsigned short len, unsigned int& out, unsigned short& curr );
+		bool readChar( std::ifstream& fs, unsigned short len, char& out, unsigned short& curr );
+		bool readUnsignedChar( std::ifstream& fs, unsigned short len, unsigned char& out, unsigned short& curr );
+		bool readUnsignedShort( std::ifstream& fs, unsigned short len, unsigned short& out, unsigned short& curr );
 		virtual void print() = 0;
 		virtual void clear() = 0;
 	};

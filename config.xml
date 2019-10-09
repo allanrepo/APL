@@ -16,7 +16,7 @@
 			<Param name = "Force Load">true</Param> <!-- true if APL will always launch OICU and load program; default: false -->
 			<Param name = "NewLot Config Path">/home/localuser/Desktop/APL</Param>
 			<Param name = "NewLot Config File">NewLotUnison.xml</Param>
-			<Param name = "Customer">Qualcomm</Param>
+			<Param name = "Customer">Cohu</Param>
 		</Launch>
 		<GUI state = "true">
 			<IP>127.0.0.1</IP>
