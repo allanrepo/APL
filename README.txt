@@ -1,4 +1,16 @@
 RELEASE NOTES:
+
+version xxxxx
+-	APL now has option to specify which NewLotConfig.xml to use if <customer> is QUALCOMM
+	- added new config parameter that specifies the filename and path of NewLotConfig.xml to use for specific customer. 
+	- also added <Customer> parameter to specify which customer will use this NewLotConfig.xml file
+
+-	fixed setLotInformation() to write RST_CODE. changed EVX_LOT_TYPE from LotLotStatus to LotLotState
+
+-	rename widget app title to "APL Commander 1.0"
+
+
+
 version beta.2.5.20191006
 -	bug fixes
 	- fixed launch command on POPUP server to work on bash shell

@@ -10,6 +10,7 @@ CApp::CApp(int argc, char **argv)
 	m_pMonitorFileDesc = 0;
 	m_pStateNotificationFileDesc = 0;
 	m_pSummaryFileDesc = 0;
+	m_pSTDFFileDesc = 0;
 	m_pClientFileDesc = 0;
 	m_lotinfo.clear();
 	m_map.clear();
@@ -67,12 +68,14 @@ void CApp::onIdleLoadState(CState& state)
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
 	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
 	if(m_CONFIG.bSummary)m_pSummaryFileDesc = new CMonitorFileDesc(*this, &CApp::onSummaryFile, m_CONFIG.szSummaryPath);
+	if(m_CONFIG.bSendInfo)m_pSTDFFileDesc = new CMonitorFileDesc(*this, &CApp::onRenameSTDF, m_CONFIG.szSTDFPath);
 
 	// add them to FD manager so we'll use them in select() task
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
  	if (m_pClientFileDesc) m_FileDescMgr.add( *m_pClientFileDesc );
 	if (m_CONFIG.bSummary) m_FileDescMgr.add( *m_pSummaryFileDesc );
+	if (m_CONFIG.bSendInfo) m_FileDescMgr.add( *m_pSTDFFileDesc );
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
 	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
@@ -98,6 +101,7 @@ void CApp::onIdleUnloadState(CState& state)
 	// now delete FD objects 
 	if (m_pMonitorFileDesc){ delete m_pMonitorFileDesc; m_pMonitorFileDesc = 0; }
 	if (m_pSummaryFileDesc){ delete m_pSummaryFileDesc; m_pSummaryFileDesc = 0; }
+	if (m_pSTDFFileDesc){ delete m_pSTDFFileDesc; m_pSTDFFileDesc = 0; }
 	if (m_pStateNotificationFileDesc){ delete m_pStateNotificationFileDesc; m_pStateNotificationFileDesc = 0; }
 }
 
@@ -682,7 +686,17 @@ void CApp::launch(CTask& task)
 	std::stringstream ssCmd;
 	ssCmd.str(std::string());
 	ssCmd.clear();
-	ssCmd << "UNISON_NEWLOT_CONFIG_FILE=$LTX_UPROD_PATH/newlot-config/NewLotUnison_" << m_lotinfo.mir.ProcId << ".xml ";
+	
+	if (m_CONFIG.szCustomer.compare("QUALCOMM") == 0)
+	{
+		ssCmd << "UNISON_NEWLOT_CONFIG_FILE=" << m_CONFIG.szNewLotConfigPath << "/" << m_CONFIG.szNewLotConfigFile << " ";
+	}
+	else
+	{
+		ssCmd << "UNISON_NEWLOT_CONFIG_FILE=$LTX_UPROD_PATH/newlot-config/NewLotUnison_";
+		ssCmd << m_lotinfo.mir.ProcId << ".xml ";
+	}
+
 	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
 	ssCmd << (m_lotinfo.szProgramFullPathName.empty()? "": "-load ") << (m_lotinfo.szProgramFullPathName.empty()? "" : m_lotinfo.szProgramFullPathName);
 	ssCmd << " -qual " << " -T " << m_szTesterName;// << "&";
@@ -977,6 +991,9 @@ bool CApp::CONFIG::parse(const std::string& file)
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Unload Program") == 0){ nUnloadProgTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To FAModule") == 0){ nFAModuleTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Kill Tester") == 0){ nKillTesterTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("NewLot Config Path") == 0){ szNewLotConfigPath = pLaunch->fetchChild(i)->fetchText(); }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("NewLot Config File") == 0){ szNewLotConfigFile = pLaunch->fetchChild(i)->fetchText(); }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Customer") == 0){ szCustomer = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()); }					
 			}
 		}
 		else m_Log << "Warning: Didn't find <Launch>. " << CUtil::CLog::endl;
@@ -1058,24 +1075,10 @@ bool CApp::CONFIG::parse(const std::string& file)
 		else m_Log << "Warning: Didn't find <Summary>. " << CUtil::CLog::endl;
 
 		// lets extract STDF stuff
-		for (int i = 0; i < pConfig->numChildren(); i++)
+		if (pConfig->fetchChild("STDF"))
 		{
-			if (!pConfig->fetchChild(i)) continue;
-			if (pConfig->fetchChild(i)->fetchTag().compare("STDF") != 0) continue;
-			
-			XML_Node* pStdf = pConfig->fetchChild(i);
-			
-			// if an <STDF> tag is found with attribute state = true, enable STDF feature	
-			if (CUtil::toUpper( pStdf->fetchVal("state") ).compare("TRUE") == 0){ bSendInfo = true; }
-
-//			m_Log << "<STDF>: '" << pStdf->fetchVal("Param") << "'" << CUtil::CLog::endl;
-			for (int j = 0; j < pStdf->numChildren(); j++)
-			{
-				if (!pStdf->fetchChild(j)) continue;
-				if (pStdf->fetchChild(j)->fetchTag().compare("Param") != 0) continue;					
-				
-//				m_Log << "	" << pStdf->fetchChild(j)->fetchVal("name") << ": " << pStdf->fetchChild(j)->fetchText() << CUtil::CLog::endl;
-			}			
+			if ( CUtil::toUpper( pConfig->fetchChild("STDF")->fetchVal("state") ).compare("TRUE") == 0) bSendInfo = true;
+			if (pConfig->fetchChild("STDF")->fetchChild("Path")){ szSTDFPath = pConfig->fetchChild("STDF")->fetchChild("Path")->fetchText(); }		
 		}
 
 		// if we found binning node, it means <Binning> is in config which means binning@EOT is enabled
@@ -1146,6 +1149,8 @@ void CApp::CONFIG::print()
 	m_Log << "Log To File: " << (bLogToFile? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "Log Path (if enabled): " << szLogPath << CUtil::CLog::endl;
 	m_Log << "LotInfo to STDF: " << (bSendInfo? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "STDF Dlog Path: " << szSTDFPath << CUtil::CLog::endl;
+
 	m_Log << "Launch Type: " << (bProd? "OICu" : "OpTool") << CUtil::CLog::endl;
 	m_Log << "Kill Tester Before Launch: " << (bKillTesterOnLaunch? "true" : "false") << CUtil::CLog::endl;
 	m_Log << "Launch Attempt Time-out (s): " << (nRelaunchTimeOutMS /1000) << CUtil::CLog::endl;
@@ -1165,8 +1170,42 @@ void CApp::CONFIG::print()
 	m_Log << "GUI: " << (bPopupServer? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "GUI Server IP: " << szServerIP << CUtil::CLog::endl;
 	m_Log << "Port Server IP: " << nServerPort << CUtil::CLog::endl;
+	m_Log << "New Lot Config Path: " << szNewLotConfigPath << CUtil::CLog::endl;
+	m_Log << "New Lot Config File: " << szNewLotConfigFile << CUtil::CLog::endl;
+	m_Log << "Customer: " << szCustomer << CUtil::CLog::endl;
 }
 
+/* ------------------------------------------------------------------------------------------
+Utility: monitor STDF file with .std extension. rename them 
+------------------------------------------------------------------------------------------ */
+void CApp::onRenameSTDF(const std::string& name)
+{
+	// check if this file has .std extension 
+	size_t pos = name.find_last_of('.');
+
+	// if pos = npos, there's no '.' meaning no file extension
+	if (pos == std::string::npos)
+	{
+		m_Log << "onRenameSTDF(): " << name << " has no file extension." << CUtil::CLog::endl;
+		return;
+	}
+
+	// if extension is not .sum, we bail
+	std::string ext = name.substr(pos + 1);
+	if (ext.compare("std") != 0)
+	{
+		m_Log << "onRenameSTDF(): " << name << " has extension: " << ext << ", we're expecting .std" << CUtil::CLog::endl;
+		return;
+	}
+
+	// create string that holds full path + monitor file 
+	std::stringstream ssFullPathSTDF;
+	ssFullPathSTDF << m_CONFIG.szSTDFPath << "/" << name;
+
+	APLSTDF::CStdf stdf;
+	stdf.readMRR(ssFullPathSTDF.str());
+
+}
 
 /* ------------------------------------------------------------------------------------------
 Utility: if monitoring incoming sublot summary file for appending amkor's "step" values
@@ -1182,7 +1221,7 @@ void CApp::onSummaryFile(const std::string& name)
 	// if pos = npos, there's no '.' meaning no file extension
 	if (pos == std::string::npos)
 	{
-		m_Log << name << " has no file extension." << CUtil::CLog::endl;
+//		m_Log << name << " has no file extension." << CUtil::CLog::endl;
 		return;
 	}
 
@@ -1190,7 +1229,7 @@ void CApp::onSummaryFile(const std::string& name)
 	std::string ext = name.substr(pos + 1);
 	if (ext.compare("sum") != 0)
 	{
-		m_Log << name << " has extension: " << ext << ", we're expecting .sum" << CUtil::CLog::endl;
+//		m_Log << name << " has extension: " << ext << ", we're expecting .sum" << CUtil::CLog::endl;
 		return;
 	}
 
@@ -1895,7 +1934,7 @@ bool CApp::setLotInfo()
 	if ( !setLotInformation(EVX_LotTestSpecName, 		m_lotinfo.mir.SpecNam, 	"MIR.LotTestSpecName")) bRslt = false;
 	if ( !setLotInformation(EVX_LotTestSpecRev, 		m_lotinfo.mir.SpecVer, 	"MIR.LotTestSpecRev")) bRslt = false;
 	if ( !setLotInformation(EVX_LotProtectionCode, 		m_lotinfo.mir.ProtCod, 	"MIR.LotProtectionCode")) bRslt = false;
-	if ( !setLotInformation(EVX_LotLotStatus, 			m_lotinfo.mir.RtstCod, 	"MIR.LotLotStatus")) bRslt = false;
+	if ( !setLotInformation(EVX_LotLotState, 		m_lotinfo.mir.RtstCod, 	"MIR.LotLotState")) bRslt = false;
 
 	// use this commmand because there's no matching id from evxa
 #if 0

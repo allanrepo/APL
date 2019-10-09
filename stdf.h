@@ -3,6 +3,79 @@
 
 #include <tester.h>
 #include <evxa/EVXA.hxx>
+#include <utility.h>
+
+/* ------------------------------------------------------------------------------------------
+FYI, this class is just an idea for now. 
+-	i'm thinking of a generic class that represents an STDF field where it has 
+	functions to set value to Unison and also ensures the values are within 
+	accepted/valid values
+- 	a field also has reference to NewLotConfig.xml so it knows which <entry> it will 
+	take the acceptable values
+-	a field has reference to specific EVX_LOTINFO_TYPE so it knows which LOTINFO in
+	Unison it will set
+------------------------------------------------------------------------------------------ */
+namespace APLSTDF
+{
+	class CField
+	{
+	protected:
+		EVX_LOTINFO_TYPE m_evxType;
+		std::string m_szNewLotInfoLabel;
+		std::list< std::string > m_validValues;
+
+	public:
+		CField();
+		virtual ~CField() = 0;
+
+		void pushValidValues(const std::string& val);
+		bool set(const std::string& val, bool bVerify = false);
+		bool sendToUnison();
+	};
+
+	class CStdf
+	{
+	public:
+		struct header
+		{
+			unsigned short len;
+			unsigned char typ;
+			unsigned char sub;	
+		};
+
+	public:
+		CStdf(){}
+		virtual ~CStdf(){}
+	
+		bool readMRR(const std::string& file);
+	};
+
+	class CRecord
+	{
+	protected:
+		CUtil::CLog m_Log;
+	public:
+		CRecord(){}
+		virtual ~CRecord(){}
+		bool readVariableLengthString( std::ifstream& fs, unsigned long nMax,  std::string& out );
+		virtual void print() = 0;
+	};
+
+	class MRR: public CRecord
+	{
+	public:
+		unsigned int	FINISH_T;
+		char 		DISP_COD;
+		std::string	USER_DESC;
+		std::string	EXC_DESC;
+
+	public:
+		MRR(){}
+		virtual ~MRR(){}
+		virtual bool read( std::ifstream& fs, const unsigned short len );
+		virtual void print();		
+	};	
+};
 
 /* ------------------------------------------------------------------------------------------
 MIR class for STDF

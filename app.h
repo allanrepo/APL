@@ -88,6 +88,7 @@ protected:
 
 		// STDF parameters
 		bool 		bSendInfo;
+		std::string 	szSTDFPath;	
 
 		// lotinfo file parameters
 		std::string 	szLotInfoFileName;
@@ -98,9 +99,15 @@ protected:
 		bool 		bSummary;
 		std::string	szSummaryPath;
 
+		// GUI interface server parameters
 		bool		bPopupServer;
 		std::string 	szServerIP;
 		int		nServerPort;
+
+		// NewLotConfig.xml parameters
+		std::string	szCustomer;
+		std::string	szNewLotConfigFile;
+		std::string	szNewLotConfigPath;
 
 		// clearing CONFIG doesn't empty parameters, it just sets them to default
 		void clear()
@@ -133,6 +140,10 @@ protected:
 			bPopupServer = true;
 			szServerIP = "127.0.0.1";
 			nServerPort = 54000;
+			szNewLotConfigFile = "NewLotConfig.xml";
+			szNewLotConfigPath = "./";
+			szCustomer = "cohu";
+			szSTDFPath = "/home/localuser/synchro_sim/localuser_sim/dlog";
 		}
 
 		// constructor
@@ -291,6 +302,7 @@ protected:
 	CMonitorFileDesc* m_pSummaryFileDesc; 
 	CFileDescriptorManager::CFileDescriptor* m_pStateNotificationFileDesc;
 	CClientFileDescriptorUDP* m_pClientFileDesc;
+	CMonitorFileDesc* m_pSTDFFileDesc; 
 
 	// state machine
 	CStateManager m_StateMgr;
@@ -344,6 +356,7 @@ protected:
 	void onStateNotificationResponse(int fd);
 	void onSummaryFile(const std::string& name);
 	void onReceiveFromServer(const std::string& msg);
+	void onRenameSTDF(const std::string& name);
 	
 	
 	// utility functions. purpose are obvious in their function name and arguments

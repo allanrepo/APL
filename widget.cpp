@@ -55,7 +55,7 @@ bool CxAPL::OnInit()
 	if(!runThisInstanceOnly()) return false;
 
 	// create frame 
-	m_pFrame = new wxFrame((wxFrame*) NULL, wxID_ANY, "APL Interface Server", wxPoint(50,50), wxSize(800, 600));
+	m_pFrame = new wxFrame((wxFrame*) NULL, wxID_ANY, "APL Commander 1.0", wxPoint(50,50), wxSize(800, 600));
 	m_pFrame->Show( m_bDebug? true : false );
 
 	// create menu bar
