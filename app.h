@@ -87,13 +87,18 @@ protected:
 		bool 		bLogToFile;
 
 		// STDF parameters
-		bool 		bSendInfo;
 		std::string 	szSTDFPath;	
+		bool		bZipSTDF;
+		std::string	szZipSTDFCmd;
+		std::string	szZipSTDFExt;
+		bool		bRenameSTDF;
+		std::string	szRenameSTDFFormat;
 
 		// lotinfo file parameters
 		std::string 	szLotInfoFileName;
 		std::string 	szLotInfoFilePath;
 		bool		bDeleteLotInfo;
+		bool 		bSendInfo;
 
 		// summary appending feature
 		bool 		bSummary;
@@ -105,9 +110,13 @@ protected:
 		int		nServerPort;
 
 		// NewLotConfig.xml parameters
-		std::string	szCustomer;
 		std::string	szNewLotConfigFile;
 		std::string	szNewLotConfigPath;
+
+		// customer/factory parameters
+		std::string	szCustomer;
+		std::string 	szTestSite;
+		std::string	szSupplier;
 
 		// clearing CONFIG doesn't empty parameters, it just sets them to default
 		void clear()
@@ -143,7 +152,14 @@ protected:
 			szNewLotConfigFile = "NewLotConfig.xml";
 			szNewLotConfigPath = "./";
 			szCustomer = "cohu";
-			szSTDFPath = "/home/localuser/synchro_sim/localuser_sim/dlog";
+			szSTDFPath = "/tmp";
+			szTestSite = "cohu";
+			szSupplier = "cohu";
+			bZipSTDF = false;
+			szZipSTDFCmd = "/usr/bin/gzip";
+			szZipSTDFExt = ".gz";
+			bRenameSTDF = false;
+			szRenameSTDFFormat = "QUALCOMM";		
 		}
 
 		// constructor
@@ -166,6 +182,7 @@ protected:
 		std::string szProgramFullPathName;
 		std::string szStep;
 		std::string szLotId;
+		std::string szDevice;
 		MIR mir;
 		SDR sdr;		
 		LOTINFO()
@@ -178,8 +195,10 @@ protected:
 			szProgramFullPathName = p.szProgramFullPathName;
 			szStep = p.szStep;
 			szLotId = p.szLotId;
+			szDevice = p.szDevice;
 			mir = p.mir;
 			sdr = p.sdr;
+			
 		}
 		
 		LOTINFO& operator=(const LOTINFO& p)
@@ -187,6 +206,7 @@ protected:
 			szProgramFullPathName = p.szProgramFullPathName;
 			szStep = p.szStep;
 			szLotId = p.szLotId;
+			szDevice = p.szDevice;
 			mir = p.mir;
 			sdr = p.sdr;
 		}
@@ -196,6 +216,7 @@ protected:
 			szProgramFullPathName = "";
 			szStep = "";
 			szLotId = "";
+			szDevice = "";
 			mir.clear();
 			sdr.clear();
 		}
@@ -356,7 +377,7 @@ protected:
 	void onStateNotificationResponse(int fd);
 	void onSummaryFile(const std::string& name);
 	void onReceiveFromServer(const std::string& msg);
-	void onRenameSTDF(const std::string& name);
+	void onWatchSTDF(const std::string& name);
 	
 	
 	// utility functions. purpose are obvious in their function name and arguments
@@ -465,9 +486,9 @@ public:
 	CMonitorFileDesc(CApp& app, void (CApp::* p)(const std::string&), const std::string& path, unsigned short mask = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO | IN_MOVED_FROM)
 	: CNotifyFileDescriptor(path, mask), m_App(app){ m_pOnReceiveFile = p; }
 
-	virtual	void onFileCreate( const std::string& name ){ /*m_Log << "onFileCreate" << CUtil::CLog::endl; */if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }	
-	virtual	void onFileMoveTo( const std::string& name ){ /*m_Log << "onFileMoveTo" << CUtil::CLog::endl; */if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
-	virtual	void onFileModify( const std::string& name ){ /*m_Log << "onFileModify" << CUtil::CLog::endl; */if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
+	virtual	void onFileCreate( const std::string& name ){ if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }	
+	virtual	void onFileMoveTo( const std::string& name ){ if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
+	virtual	void onFileModify( const std::string& name ){ if (m_pOnReceiveFile) (m_App.*m_pOnReceiveFile)(name); }
 };
 
 /* ------------------------------------------------------------------------------------------

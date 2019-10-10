@@ -67,15 +67,15 @@ void CApp::onIdleLoadState(CState& state)
 	// create the fd objects for both inotify and state notification. we need them both for this state
 	m_pMonitorFileDesc = new CMonitorFileDesc(*this, &CApp::onReceiveFile, m_CONFIG.szLotInfoFilePath);
 	m_pStateNotificationFileDesc = new CAppFileDesc(*this, &CApp::onStateNotificationResponse, m_pState? m_pState->getSocketId(): -1);
-	if(m_CONFIG.bSummary)m_pSummaryFileDesc = new CMonitorFileDesc(*this, &CApp::onSummaryFile, m_CONFIG.szSummaryPath);
-	if(m_CONFIG.bSendInfo)m_pSTDFFileDesc = new CMonitorFileDesc(*this, &CApp::onRenameSTDF, m_CONFIG.szSTDFPath);
+	if(m_CONFIG.bSummary)m_pSummaryFileDesc = new CMonitorFileDesc(*this, &CApp::onSummaryFile, m_CONFIG.szSummaryPath, IN_CREATE | IN_MOVED_TO);
+	if(m_CONFIG.bZipSTDF || m_CONFIG.bRenameSTDF)m_pSTDFFileDesc = new CMonitorFileDesc(*this, &CApp::onWatchSTDF, m_CONFIG.szSTDFPath, IN_CREATE | IN_MOVED_TO);
 
 	// add them to FD manager so we'll use them in select() task
 	m_FileDescMgr.add( *m_pMonitorFileDesc );
  	m_FileDescMgr.add( *m_pStateNotificationFileDesc );
  	if (m_pClientFileDesc) m_FileDescMgr.add( *m_pClientFileDesc );
 	if (m_CONFIG.bSummary) m_FileDescMgr.add( *m_pSummaryFileDesc );
-	if (m_CONFIG.bSendInfo) m_FileDescMgr.add( *m_pSTDFFileDesc );
+	if(m_CONFIG.bZipSTDF || m_CONFIG.bRenameSTDF)m_FileDescMgr.add( *m_pSTDFFileDesc );
 
 	state.add(new CAppTask(*this, &CApp::connect, "connect", 1000, true, true));
 	state.add(new CAppTask(*this, &CApp::select, "select", 0, true, true));
@@ -994,6 +994,8 @@ bool CApp::CONFIG::parse(const std::string& file)
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("NewLot Config Path") == 0){ szNewLotConfigPath = pLaunch->fetchChild(i)->fetchText(); }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("NewLot Config File") == 0){ szNewLotConfigFile = pLaunch->fetchChild(i)->fetchText(); }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Customer") == 0){ szCustomer = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()); }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Test Site") == 0){ szTestSite = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()); }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Supplier") == 0){ szSupplier = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()); }					
 			}
 		}
 		else m_Log << "Warning: Didn't find <Launch>. " << CUtil::CLog::endl;
@@ -1018,6 +1020,7 @@ bool CApp::CONFIG::parse(const std::string& file)
 			if (pLotInfo->fetchChild("File")){ szLotInfoFileName = pLotInfo->fetchChild("File")->fetchText(); }
 			if (pLotInfo->fetchChild("Path")){ szLotInfoFilePath = pLotInfo->fetchChild("Path")->fetchText(); }		
 			if (pLotInfo->fetchChild("Delete")){ bDeleteLotInfo = CUtil::toUpper(pLotInfo->fetchChild("Delete")->fetchText()).compare("TRUE") == 0? true: false; }
+			if (pLotInfo->fetchChild("STDF")){ bSendInfo = CUtil::toUpper(pLotInfo->fetchChild("STDF")->fetchText()).compare("TRUE") == 0? true: false; }
 
 			if (pLotInfo->fetchChild("Step"))
 			{
@@ -1077,8 +1080,18 @@ bool CApp::CONFIG::parse(const std::string& file)
 		// lets extract STDF stuff
 		if (pConfig->fetchChild("STDF"))
 		{
-			if ( CUtil::toUpper( pConfig->fetchChild("STDF")->fetchVal("state") ).compare("TRUE") == 0) bSendInfo = true;
 			if (pConfig->fetchChild("STDF")->fetchChild("Path")){ szSTDFPath = pConfig->fetchChild("STDF")->fetchChild("Path")->fetchText(); }		
+			if (pConfig->fetchChild("STDF")->fetchChild("Rename"))
+			{ 
+				bRenameSTDF = CUtil::toUpper(pConfig->fetchChild("STDF")->fetchChild("Rename")->fetchVal("state")).compare("TRUE") == 0? true: false;
+				szRenameSTDFFormat = CUtil::toUpper(pConfig->fetchChild("STDF")->fetchChild("Rename")->fetchVal("format"));
+			}
+			if (pConfig->fetchChild("STDF")->fetchChild("Compress"))
+			{	
+				bZipSTDF = CUtil::toUpper(pConfig->fetchChild("STDF")->fetchChild("Compress")->fetchVal("state")).compare("TRUE") == 0? true: false;
+				if (pConfig->fetchChild("STDF")->fetchChild("Compress")->fetchVal("cmd").size()) szZipSTDFCmd = pConfig->fetchChild("STDF")->fetchChild("Compress")->fetchVal("cmd");
+				if (pConfig->fetchChild("STDF")->fetchChild("Compress")->fetchVal("ext").size()) szZipSTDFExt = pConfig->fetchChild("STDF")->fetchChild("Compress")->fetchVal("ext");
+			}		
 		}
 
 		// if we found binning node, it means <Binning> is in config which means binning@EOT is enabled
@@ -1173,12 +1186,19 @@ void CApp::CONFIG::print()
 	m_Log << "New Lot Config Path: " << szNewLotConfigPath << CUtil::CLog::endl;
 	m_Log << "New Lot Config File: " << szNewLotConfigFile << CUtil::CLog::endl;
 	m_Log << "Customer: " << szCustomer << CUtil::CLog::endl;
+	m_Log << "Test Site: " << szTestSite << CUtil::CLog::endl;
+	m_Log << "Supplier: " << szSupplier << CUtil::CLog::endl;
+	m_Log << "Rename STDF: " << (bRenameSTDF? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Rename STDF Format: " << szRenameSTDFFormat << CUtil::CLog::endl;
+	m_Log << "Zip STDF: " << (bZipSTDF? "enabled" : "disabled") << CUtil::CLog::endl;
+	m_Log << "Zip STDF Command: " << szZipSTDFCmd << CUtil::CLog::endl;
+	m_Log << "Zip STDF Extension: " << szZipSTDFExt << CUtil::CLog::endl;
 }
 
 /* ------------------------------------------------------------------------------------------
 Utility: monitor STDF file with .std extension. rename them 
 ------------------------------------------------------------------------------------------ */
-void CApp::onRenameSTDF(const std::string& name)
+void CApp::onWatchSTDF(const std::string& name)
 {
 	// check if this file has .std extension 
 	size_t pos = name.find_last_of('.');
@@ -1186,7 +1206,7 @@ void CApp::onRenameSTDF(const std::string& name)
 	// if pos = npos, there's no '.' meaning no file extension
 	if (pos == std::string::npos)
 	{
-	//	m_Log << "onRenameSTDF(): " << name << " has no file extension." << CUtil::CLog::endl;
+		//m_Log << "onWatchSTDF(): " << name << " has no file extension." << CUtil::CLog::endl;
 		return;
 	}
 
@@ -1194,22 +1214,79 @@ void CApp::onRenameSTDF(const std::string& name)
 	std::string ext = name.substr(pos + 1);
 	if (ext.compare("std") != 0)
 	{
-	//	m_Log << "onRenameSTDF(): " << name << " has extension: " << ext << ", we're expecting .std" << CUtil::CLog::endl;
+		//m_Log << "onWatchSTDF(): " << name << " has extension: " << ext << ", we're expecting .std" << CUtil::CLog::endl;
 		return;
 	}
 
-	// create string that holds full path + monitor file 
+	// create string that holds full path + STDF file 
 	std::stringstream ssFullPathSTDF;
 	ssFullPathSTDF << m_CONFIG.szSTDFPath << "/" << name;
 
-	APLSTDF::CStdf stdf;
-	APLSTDF::MRR mrr;
-	stdf.readMRR(ssFullPathSTDF.str(), mrr);
-	mrr.print();
-	APLSTDF::MIR mir;
-	stdf.readMIR(ssFullPathSTDF.str(), mir);
-	mir.print();
+	// are we renaming STDF file?
+	if (m_CONFIG.bRenameSTDF)
+	{
+		// are we renaming to qualcomm's format?
+		if (m_CONFIG.szRenameSTDFFormat.compare("QUALCOMM") == 0)
+		{
+			// extract MIR and MRR from this STDF file
+			APL::CSTDF stdf;
+			APL::MRR mrr;
+			APL::MIR mir;
+			if (!stdf.readMRR(ssFullPathSTDF.str(), mrr)){ m_Log << "ERROR: Something went wrong extracting MRR from '" << ssFullPathSTDF.str() << "'" << CUtil::CLog::endl; return; }
+			if (!stdf.readMIR(ssFullPathSTDF.str(), mir)){ m_Log << "ERROR: Something went wrong extracting MIR from '" << ssFullPathSTDF.str() << "'" << CUtil::CLog::endl; return; }
 
+			// if we reach this point, we found a valid STDF file with good MIR and MRR records. let's ignore any incoming select() notification
+			m_pSTDFFileDesc->halt();
+
+			// create end-lot timestamp formatted for qualcomm
+			time_t t = (unsigned long)mrr.FINISH_T;
+			tm* p = gmtime((const time_t*)&t); 
+			std::stringstream ssEndLotTimeStamp; // YYYYMMDDhhmmss
+			ssEndLotTimeStamp << (p->tm_year + 1900); // YYYY
+			ssEndLotTimeStamp << (p->tm_mon + 1 < 10? "0":"") << (p->tm_mon + 1); // MM
+		 	ssEndLotTimeStamp << (p->tm_mday + 1 < 10? "0":"") << (p->tm_mday); // DD
+		 	ssEndLotTimeStamp << (p->tm_hour + 1 < 10? "0":"") << (p->tm_hour); // hh
+		 	ssEndLotTimeStamp << (p->tm_min + 1 < 10? "0":"") << (p->tm_min); // mm
+		 	ssEndLotTimeStamp << (p->tm_sec + 1 < 10? "0":"") << (p->tm_sec); // ss
+
+			// create the filename to be replacement. somehow this does not trigger inotify MOVE_TO and CREATE so that's good
+			std::stringstream ssNewFileName;
+			ssNewFileName << m_CONFIG.szSTDFPath << "/";
+			ssNewFileName << m_CONFIG.szSupplier << "_" << m_CONFIG.szTestSite << "_";
+			ssNewFileName << mir.PART_TYP << "_" << mir.JOB_NAM << "_" << mir.LOT_ID << "_";
+			ssNewFileName << ssEndLotTimeStamp.str() << "_" << mir.RTST_COD << "_" << mir.FLOW_ID << "_" << mir.NODE_NAM << "_" << m_lotinfo.szDevice <<  ".std";
+
+			// rename the file
+			if (!CUtil::renameFile(ssFullPathSTDF.str(), ssNewFileName.str()))
+			{ 
+				m_Log << "ERROR: Failed to rename '" << ssFullPathSTDF.str() << "' to '" << ssNewFileName.str() << "'" << CUtil::CLog::endl; 
+			}
+			else
+			{ 
+				m_Log << "Successfully renamed STDF file to: '" << ssNewFileName.str() << "'" << CUtil::CLog::endl; 
+				ssFullPathSTDF.str(std::string());
+				ssFullPathSTDF << ssNewFileName.str();
+			}
+		}
+	}
+
+	// are we compressing STDF file?
+	if (m_CONFIG.bZipSTDF)
+	{
+		// create system command to compress STDF file
+		std::stringstream ssCmd;
+		ssCmd << m_CONFIG.szZipSTDFCmd << " " << ssFullPathSTDF.str();
+		system(ssCmd.str().c_str());
+
+		// now let's check if the compressed file exists
+		std::stringstream ssCompressedFile;
+		ssCompressedFile << ssFullPathSTDF.str() << m_CONFIG.szZipSTDFExt;
+		if (!CUtil::isFileExist(ssCompressedFile.str(), 20, 1))
+		{
+			m_Log << "ERROR: Failed to compress '" << ssFullPathSTDF.str() << "' into '" << ssCompressedFile.str() << "'" << CUtil::CLog::endl;
+		}
+		else m_Log << "Successfully compressed STDF file to '" << ssCompressedFile.str() << "'" << CUtil::CLog::endl;	
+	}
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -1595,6 +1672,12 @@ bool CApp::parse(const std::string& name)
 			{
 				m_Log << field << " field found, value: '" << value << CUtil::CLog::endl;
 				li.szLotId = value;
+			}
+			// if we receive "device" field from amkor
+			if (field.compare("DEVICE") == 0)
+			{
+				m_Log << field << " field found, value: '" << value << CUtil::CLog::endl;
+				li.szDevice = value;
 			}
 		}
 	

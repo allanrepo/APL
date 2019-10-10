@@ -15,11 +15,11 @@ FYI, this class is just an idea for now.
 -	a field has reference to specific EVX_LOTINFO_TYPE so it knows which LOTINFO in
 	Unison it will set
 ------------------------------------------------------------------------------------------ */
-namespace APLSTDF
+namespace APL
 {
 	class MRR;
 	class CField;
-	class CStdf;
+	class CSTDF;
 	class CRecord;
 	class MIR;
 
@@ -39,7 +39,7 @@ namespace APLSTDF
 		bool sendToUnison();
 	};
 
-	class CStdf
+	class CSTDF
 	{
 	protected:
 		CUtil::CLog m_Log;
@@ -52,11 +52,13 @@ namespace APLSTDF
 		};
 
 	public:
-		CStdf(){}
-		virtual ~CStdf(){}
+		CSTDF(){}
+		virtual ~CSTDF(){}
+
+		bool getFileSize(const std::string& file, unsigned long& size);
 	
-		bool readMRR(const std::string& file, APLSTDF::MRR& mrr);
-		bool readMIR(const std::string& file, APLSTDF::MIR& mir);
+		bool readMRR(const std::string& file, APL::MRR& mrr);
+		bool readMIR(const std::string& file, APL::MIR& mir);
 	};
 
 	class CRecord
@@ -66,18 +68,18 @@ namespace APLSTDF
 	public:
 		CRecord(){}
 		virtual ~CRecord(){}
-		bool readVariableLengthString( std::ifstream& fs, unsigned long nMax,  std::string& out, unsigned short& curr );
-		bool readUnsignedInteger( std::ifstream& fs, unsigned short len, unsigned int& out, unsigned short& curr );
-		bool readChar( std::ifstream& fs, unsigned short len, char& out, unsigned short& curr );
-		bool readUnsignedChar( std::ifstream& fs, unsigned short len, unsigned char& out, unsigned short& curr );
-		bool readUnsignedShort( std::ifstream& fs, unsigned short len, unsigned short& out, unsigned short& curr );
+		bool readVariableLengthString( std::fstream& fs, long len,  std::string& out, unsigned short& curr );
+		bool readUnsignedInteger( std::fstream& fs, long len, unsigned int& out, unsigned short& curr );
+		bool readChar( std::fstream& fs, long len, char& out, unsigned short& curr );
+		bool readUnsignedChar( std::fstream& fs, long len, unsigned char& out, unsigned short& curr );
+		bool readUnsignedShort( std::fstream& fs, long len, unsigned short& out, unsigned short& curr );
 		virtual void print() = 0;
 		virtual void clear() = 0;
 	};
 
 	class MRR: public CRecord
 	{
-	protected:
+	public:
 		unsigned int	FINISH_T;
 		char 		DISP_COD;
 		std::string	USER_DESC;
@@ -86,14 +88,14 @@ namespace APLSTDF
 	public:
 		MRR(){}
 		virtual ~MRR(){}
-		virtual bool read( std::ifstream& fs, const unsigned short len );
+		virtual bool read( std::fstream& fs, const unsigned short len );
 		virtual void print();		
 		virtual void clear();
 	};	
 
 	class MIR: public CRecord
 	{
-	protected:
+	public:
 		unsigned int	SETUP_T;
 		unsigned int	START_T;
 		unsigned char	STAT_NUM;
@@ -136,7 +138,7 @@ namespace APLSTDF
 	public:
 		MIR(){}
 		virtual ~MIR(){}
-		virtual bool read( std::ifstream& fs, const unsigned short len );
+		virtual bool read( std::fstream& fs, const unsigned short len );
 		virtual void print();
 		virtual void clear();		
 	};

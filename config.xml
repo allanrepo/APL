@@ -16,7 +16,9 @@
 			<Param name = "Force Load">true</Param> <!-- true if APL will always launch OICU and load program; default: false -->
 			<Param name = "NewLot Config Path">/home/localuser/Desktop/APL</Param>
 			<Param name = "NewLot Config File">NewLotUnison.xml</Param>
-			<Param name = "Customer">Cohu</Param>
+			<Param name = "Customer">Qualcomm</Param>
+			<Param name = "Test Site">AMKKR3-S</Param>
+			<Param name = "Supplier">AMKOR</Param>
 		</Launch>
 		<GUI state = "true">
 			<IP>127.0.0.1</IP>
@@ -29,6 +31,7 @@
 			<File>b.txt</File> <!-- default: lotinfo.txt -->
 			<Path>/home/localuser/Desktop/APL</Path> <!-- default: /tmp -->
 			<Delete>false</Delete>
+			<STDF>true</STDF> <!-- if true, sends STDF field from lotinfo.txt to unison; default: false-->
 			<Step state = "true">
 				<Param flow_id = "FT1" rtst_cod = "0">fT1</Param>
 				<Param flow_id = "FT1" rtst_cod = "1">rt1</Param>
@@ -47,8 +50,10 @@
 		<Logging state = "true">
 			<Path>/home/localuser/Desktop</Path>
 		</Logging>
-		<STDF state = "true">
+		<STDF>
 			<Path>/home/localuser/synchro_sim/localuser_sim/dlog</Path>
+			<Rename state = "false" format = "qualcomm" />
+			<Compress state = "true" cmd = "/usr/bin/gzip" ext = ".gz" />
 		</STDF>
 		<FAMODULE state = "true" />
 	</SiteConfiguration>

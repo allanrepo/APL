@@ -1,48 +1,52 @@
 #include <stdf.h>
 
-bool APLSTDF::CStdf::readMIR(const std::string& file, APLSTDF::MIR& mir)
+/* ------------------------------------------------------------------------------------------
+quickly opens STDF file and find MIR. reads its contents
+------------------------------------------------------------------------------------------ */
+bool APL::CSTDF::readMIR(const std::string& file, APL::MIR& mir)
 {
-	// open file
-	std::ifstream fs;
-	fs.open(file.c_str(), std::fstream::in | std::fstream::binary);
+	// safely open file
+	std::fstream fs;
+	if (!CUtil::openFile(file.c_str(), fs, std::fstream::in | std::fstream::binary)) return false;
 
-	// before doing anything, let's remember beginning file position
-//	fs.seekg(0, fs.beg);
-//	std::streampos fbeg = fs.tellg();
-
-	// remember file end
+	// remember file end. we need it to check later
 	fs.seekg(0, fs.end);
 	std::streampos fend = fs.tellg();
 	fs.seekg(0, fs.beg);
 
-	bool go = true;
 	bool bFirst = true;
-	while(go)
+	bool bRslt = true;
+	while(1)
 	{		
-		std::streampos curr = fs.tellg();
+		//std::streampos curr = fs.tellg();
 
 		// read header
 		header hd;
 		fs.read((char*) &hd, sizeof(header));	
 
 		// let's check if we hit the EOF while reading. bail if yes
-		if (fs.eof()) return false;
+		if (fs.eof())
+		{
+			bRslt = false;
+			break;
+		}
 
-		std::cout << "[" <<  std::hex<< curr << "]: '" << std::dec << hd.len << "'" << std::endl;
-		std::cout << "[" <<  std::hex<< ((int)curr + 2) << "]: '" << std::dec << (int)hd.typ << "'" << std::endl;
-		std::cout << "[" <<  std::hex<< ((int)curr + 3) << "]: '" << std::dec << (int)hd.sub << "'" << std::endl;
+		//std::cout << "[" <<  std::hex<< curr << "]: '" << std::dec << hd.len << "'" << std::endl;
+		//std::cout << "[" <<  std::hex<< ((int)curr + 2) << "]: '" << std::dec << (int)hd.typ << "'" << std::endl;
+		//std::cout << "[" <<  std::hex<< ((int)curr + 3) << "]: '" << std::dec << (int)hd.sub << "'" << std::endl;
 
-
+		// first record read. we expect it to be FAR. is it?
 		if (bFirst)
 		{
-			// is this FAR?
-			if (hd.typ != 0) return false;
-			if (hd.sub != 10) return false;		
+			if (hd.typ != 0){ bRslt = false; break; }
+			if (hd.sub != 10){ bRslt = false; break; }
 			bFirst = false;
 			fs.seekg(hd.len, fs.cur);
 			continue;
 		}
-
+		
+		// if this is not the first record, it must be ATR or MIR. anything else is flagged as error
+		
 		// is this ATR?
 		if (hd.typ == 0 && hd.sub == 20)
 		{
@@ -50,67 +54,72 @@ bool APLSTDF::CStdf::readMIR(const std::string& file, APLSTDF::MIR& mir)
 			continue;
 		}
 
-		// if this is not MIR, then error
-		if (hd.typ != 1 || hd.sub != 10) return false;
+		// if this is not ATR, it must be MIR. anything else is flagged as error
+		if (hd.typ != 1 || hd.sub != 10){ bRslt = false; break; }
 
 		// MIR data size must not go beyond file size
-		if ( (int)fs.tellg() + hd.len > fend) return false;
+		if ((long)fs.tellg() + hd.len > fend){ bRslt = false; break; }
 
-		m_Log << "Found MIR" << CUtil::CLog::endl;
-
+		// if we reach this point, we found a valid MIR
 		mir.read(fs, hd.len);
 		break;
 	}
 
 	fs.close();
+	return bRslt;
+}
+
+/* ------------------------------------------------------------------------------------------
+get file size of STDF file in bytes by reading it
+------------------------------------------------------------------------------------------ */
+bool APL::CSTDF::getFileSize(const std::string& file, unsigned long& size)
+{
+	// safely open file
+	std::fstream fs;
+	if (!CUtil::openFile(file.c_str(), fs, std::fstream::in | std::fstream::binary)) return false;
+
+	fs.seekg(0, fs.beg);
+	std::streampos fsize = fs.tellg();
+	fs.seekg(0, fs.end);
+	fsize = fs.tellg() - fsize;
+	size = fsize;
+//	std::cout << "file size: " << fsize << std::endl;	
+//	std::cout << "file begin: " << fbeg << std::endl;	
+//	std::cout << "file end: " << fend << std::endl;	
 	return true;
 }
 
-bool APLSTDF::CStdf::readMRR(const std::string& file, APLSTDF::MRR& mrr)
+/* ------------------------------------------------------------------------------------------
+ 
+------------------------------------------------------------------------------------------ */
+bool APL::CSTDF::readMRR(const std::string& file, APL::MRR& mrr)
 {
-	// open file
-	std::ifstream fs;
-	fs.open(file.c_str(), std::fstream::in | std::fstream::binary);
-/*
-	// get file size
-	std::streampos fsize = fs.tellg();
-	fs.seekg(0, fs.end);
-	std::streampos fend = fs.tellg();
-	fsize = fs.tellg() - fsize;
-	fs.seekg(0, fs.beg);
-	std::streampos fbeg = fs.tellg();
-	std::cout << "file size: " << fsize << std::endl;	
-	std::cout << "file begin: " << fbeg << std::endl;	
-	std::cout << "file end: " << fend << std::endl;	
-*/
-	// before doing anything, let's remember beginning file position
-	fs.seekg(0, fs.beg);
-	std::streampos fbeg = fs.tellg();
+	// safely open file
+	std::fstream fs;
+	if (!CUtil::openFile(file.c_str(), fs, std::fstream::in | std::fstream::binary)) return false;
 
-	// also remember file end
+	// before doing anything, let's remember beginning and end file position
+	fs.seekg(0, fs.beg);
+	std::streampos fbeg = fs.tellg();
 	fs.seekg(0, fs.end);
 	std::streampos fend = fs.tellg();
 	
-	// MRR len size range from 5 to 517 so we search between those 
-	bool bFound = false;
+	// MRR len size range from 4 to 517 so we search between those 
+	bool bRslt = false;
 	for (unsigned int i = 4; i <= 517; i++)
 	{
 		// calculate seek shift from end for this current iteration
 		int shift = -4 - i;
-//		std::cout << "Curr Shift: " << shift << std::endl;
 
 		// move to file position based on current shift
 		fs.seekg(shift, fs.end);
-
-		// remember current position shift
-//		std::streampos curr = fs.tellg();
 
 		// if we shift way past file begin, then something is wrong. bail out
 		if (fs.tellg() < fbeg)
 		{
 			m_Log << "error: shifting way past file begin." << CUtil::CLog::endl;
-			
-			return false;
+			bRslt = false;
+			break;	
 		}
 
 		// read header
@@ -125,35 +134,27 @@ bool APLSTDF::CStdf::readMRR(const std::string& file, APLSTDF::MRR& mrr)
 		if (hd.len < 4) continue;
 
 		// MRR data size must not go beyond file size
-		if ( (int)fs.tellg() + hd.len > fend) continue;
-/*
-		std::cout << "[" <<  std::hex<< curr << "]: '" << std::dec << hd.len << "'" << std::endl;
-		std::cout << "[" <<  std::hex<< ((int)curr + 2) << "]: '" << std::dec << (int)hd.typ << "'" << std::endl;
-		std::cout << "[" <<  std::hex<< ((int)curr + 3) << "]: '" << std::dec << (int)hd.sub << "'" << std::endl;
-*/
-//		MRR mrr;
+		if ( (long)fs.tellg() + hd.len > fend) continue;
+
 		mrr.read(fs, hd.len);		
-//		mrr.print();
 		
 		// if we reach this point, we have a winner
-		bFound = true;
+		bRslt = true;
 		break;
 	}
-	if (!bFound)
-	{
-		std::cout << "error: did not find MRR" << std::endl;
-	}
 
-	// close
 	fs.close();
-
+	return bRslt;
 }
 
-bool APLSTDF::CRecord::readUnsignedInteger( std::ifstream& fs, unsigned short len, unsigned int& out, unsigned short& curr )
+/* ------------------------------------------------------------------------------------------
+ 
+------------------------------------------------------------------------------------------ */
+bool APL::CRecord::readUnsignedInteger( std::fstream& fs, long len, unsigned int& out, unsigned short& curr )
 {
 	// len is the size of MIR content
 	// curr is the current byte position in the MIR content we intend to read U*4
-//	if (len - curr < 4) return false;
+	if (len - curr < 4) return false;
 
 	// check if file is valid
 	if (!fs.is_open()) return false;
@@ -163,7 +164,10 @@ bool APLSTDF::CRecord::readUnsignedInteger( std::ifstream& fs, unsigned short le
 	return true;
 }
 
-bool APLSTDF::CRecord::readChar( std::ifstream& fs, unsigned short len, char& out, unsigned short& curr )
+/* ------------------------------------------------------------------------------------------
+ 
+------------------------------------------------------------------------------------------ */
+bool APL::CRecord::readChar( std::fstream& fs, long len, char& out, unsigned short& curr )
 {
 	if (len - curr < 1) return false;
 
@@ -175,7 +179,10 @@ bool APLSTDF::CRecord::readChar( std::ifstream& fs, unsigned short len, char& ou
 	return true;
 }
 
-bool APLSTDF::CRecord::readUnsignedChar( std::ifstream& fs, unsigned short len, unsigned char& out, unsigned short& curr )
+/* ------------------------------------------------------------------------------------------
+ 
+------------------------------------------------------------------------------------------ */
+bool APL::CRecord::readUnsignedChar( std::fstream& fs, long len, unsigned char& out, unsigned short& curr )
 {
 	if (len - curr < 1) return false;
 
@@ -187,7 +194,10 @@ bool APLSTDF::CRecord::readUnsignedChar( std::ifstream& fs, unsigned short len, 
 	return true;
 }
 
-bool APLSTDF::CRecord::readUnsignedShort( std::ifstream& fs, unsigned short len, unsigned short& out, unsigned short& curr )
+/* ------------------------------------------------------------------------------------------
+ 
+------------------------------------------------------------------------------------------ */
+bool APL::CRecord::readUnsignedShort( std::fstream& fs, long len, unsigned short& out, unsigned short& curr )
 {
 	if (len - curr < 2) return false;
 
@@ -200,9 +210,13 @@ bool APLSTDF::CRecord::readUnsignedShort( std::ifstream& fs, unsigned short len,
 }
 
 
-bool APLSTDF::CRecord::readVariableLengthString( std::ifstream& fs, unsigned long nMax,  std::string& out, unsigned short& curr )
+/* ------------------------------------------------------------------------------------------
+ 
+------------------------------------------------------------------------------------------ */
+bool APL::CRecord::readVariableLengthString( std::fstream& fs, long len,  std::string& out, unsigned short& curr )
 {
-	unsigned long r = 0;
+	long nMax = len - curr;
+	long r = 0;
 	out.clear();
 	if (r >= nMax) return false;
 
@@ -229,7 +243,7 @@ bool APLSTDF::CRecord::readVariableLengthString( std::ifstream& fs, unsigned lon
 	return true;
 }
 
-bool APLSTDF::MRR::read( std::ifstream& fs, const unsigned short len )
+bool APL::MRR::read( std::fstream& fs, const unsigned short len )
 {
 	// check if file is valid
 	if (!fs.is_open()) return false;
@@ -239,27 +253,20 @@ bool APLSTDF::MRR::read( std::ifstream& fs, const unsigned short len )
 
 	// count how many bytes are read so far
 	unsigned short nRead = 0;
-
-	// get FINISH_T
-	if (!readUnsignedInteger(fs, len, FINISH_T, nRead)) return false;
-
-	// get DISP_COD
-	if (!readChar(fs, len, DISP_COD, nRead)) return true;
-
-	// get USER_DESC
-	if (!readVariableLengthString(fs, len - nRead, USER_DESC, nRead)) return true;
-
-	// get EXC_DESC
-	if (!readVariableLengthString(fs, len - nRead, EXC_DESC, nRead)) return true;
+	
+	if (!readUnsignedInteger(fs, len, FINISH_T, nRead)) return false; // get FINISH_T	
+	if (!readChar(fs, len, DISP_COD, nRead)) return true; // get DISP_COD	
+	if (!readVariableLengthString(fs, len, USER_DESC, nRead)) return true; // get USER_DESC	
+	if (!readVariableLengthString(fs, len, EXC_DESC, nRead)) return true; // get EXC_DESC
 
 	return true;
 }
 
-void APLSTDF::MRR::clear()
+void APL::MRR::clear()
 {
 }
 
-void APLSTDF::MRR::print()
+void APL::MRR::print()
 {
 	time_t t = (unsigned long)FINISH_T;
 	tm* plt = gmtime((const time_t*)&t); 
@@ -278,11 +285,11 @@ void APLSTDF::MRR::print()
 //	plt = localtime
 }
 
-void APLSTDF::MIR::clear()
+void APL::MIR::clear()
 {
 }
 
-bool APLSTDF::MIR::read( std::ifstream& fs, const unsigned short len )
+bool APL::MIR::read( std::fstream& fs, const unsigned short len )
 {
 	// check if file is valid
 	if (!fs.is_open()) return false;
@@ -298,17 +305,41 @@ bool APLSTDF::MIR::read( std::ifstream& fs, const unsigned short len )
 	if (!readChar(fs, len, PROT_COD, nRead)) return true;
 	if (!readUnsignedShort(fs, len, BURN_TIM, nRead)) return true;
 	if (!readChar(fs, len, CMOD_COD, nRead)) return true;
-	if (!readVariableLengthString(fs, len - nRead, LOT_ID, nRead)) return true;
-	if (!readVariableLengthString(fs, len - nRead, PART_TYP, nRead)) return true;
-	if (!readVariableLengthString(fs, len - nRead, NODE_NAM, nRead)) return true;
-	if (!readVariableLengthString(fs, len - nRead, TSTR_TYP, nRead)) return true;
-	if (!readVariableLengthString(fs, len - nRead, JOB_NAM, nRead)) return true;
-	if (!readVariableLengthString(fs, len - nRead, JOB_REV, nRead)) return true;
+	if (!readVariableLengthString(fs, len, LOT_ID, nRead)) return true;
+	if (!readVariableLengthString(fs, len, PART_TYP, nRead)) return true;
+	if (!readVariableLengthString(fs, len, NODE_NAM, nRead)) return true;
+	if (!readVariableLengthString(fs, len, TSTR_TYP, nRead)) return true;
+	if (!readVariableLengthString(fs, len, JOB_NAM, nRead)) return true;
+	if (!readVariableLengthString(fs, len, JOB_REV, nRead)) return true;
+	if (!readVariableLengthString(fs, len, SBLOT_ID, nRead)) return true;
+	if (!readVariableLengthString(fs, len, OPER_NAM, nRead)) return true;
+	if (!readVariableLengthString(fs, len, EXEC_TYP, nRead)) return true;
+	if (!readVariableLengthString(fs, len, EXEC_VER, nRead)) return true;
+	if (!readVariableLengthString(fs, len, TEST_COD, nRead)) return true;
+	if (!readVariableLengthString(fs, len, TST_TEMP, nRead)) return true;
+	if (!readVariableLengthString(fs, len, USER_TXT, nRead)) return true;
+	if (!readVariableLengthString(fs, len, AUX_FILE, nRead)) return true;
+	if (!readVariableLengthString(fs, len, PKG_TYP, nRead)) return true;
+	if (!readVariableLengthString(fs, len, FAMLY_ID, nRead)) return true;
+	if (!readVariableLengthString(fs, len, DATE_COD, nRead)) return true;
+	if (!readVariableLengthString(fs, len, FACIL_ID, nRead)) return true;
+	if (!readVariableLengthString(fs, len, FLOOR_ID, nRead)) return true;
+	if (!readVariableLengthString(fs, len, PROC_ID, nRead)) return true;
+	if (!readVariableLengthString(fs, len, OPER_FRQ, nRead)) return true;
+	if (!readVariableLengthString(fs, len, SPEC_NAM, nRead)) return true;
+	if (!readVariableLengthString(fs, len, SPEC_VER, nRead)) return true;
+	if (!readVariableLengthString(fs, len, FLOW_ID, nRead)) return true;
+	if (!readVariableLengthString(fs, len, SETUP_ID, nRead)) return true;
+	if (!readVariableLengthString(fs, len, DSGN_REV, nRead)) return true;
+	if (!readVariableLengthString(fs, len, ENG_ID, nRead)) return true;
+	if (!readVariableLengthString(fs, len, ROM_COD, nRead)) return true;
+	if (!readVariableLengthString(fs, len, SERL_NUM, nRead)) return true;
+	if (!readVariableLengthString(fs, len, SUPR_NAM, nRead)) return true;
 
 	return true;
 }
 
-void APLSTDF::MIR::print()
+void APL::MIR::print()
 {
 	m_Log << "SETUP_T: '" << SETUP_T << "'" << CUtil::CLog::endl;
 	m_Log << "START_T: '" << START_T << "'" << CUtil::CLog::endl;
@@ -324,14 +355,37 @@ void APLSTDF::MIR::print()
 	m_Log << "TSTR_TYP: \"" << TSTR_TYP << "\"" << CUtil::CLog::endl;
 	m_Log << "JOB_NAM: \"" << JOB_NAM << "\"" << CUtil::CLog::endl;
 	m_Log << "JOB_REV: \"" << JOB_REV << "\"" << CUtil::CLog::endl;
-
+	m_Log << "SBLOT_ID: \"" << SBLOT_ID << "\"" << CUtil::CLog::endl;
+	m_Log << "OPER_NAM: \"" << OPER_NAM << "\"" << CUtil::CLog::endl;
+	m_Log << "EXEC_TYP: \"" << EXEC_TYP << "\"" << CUtil::CLog::endl;
+	m_Log << "EXEC_VER: \"" << EXEC_VER << "\"" << CUtil::CLog::endl;
+	m_Log << "TEST_COD: \"" << TEST_COD << "\"" << CUtil::CLog::endl;
+	m_Log << "TST_TEMP: \"" << TST_TEMP << "\"" << CUtil::CLog::endl;
+	m_Log << "USER_TXT: \"" << USER_TXT << "\"" << CUtil::CLog::endl;
+	m_Log << "AUX_FILE: \"" << AUX_FILE << "\"" << CUtil::CLog::endl;
+	m_Log << "PKG_TYP: \"" << PKG_TYP << "\"" << CUtil::CLog::endl;
+	m_Log << "FAMLY_ID: \"" << FAMLY_ID << "\"" << CUtil::CLog::endl;
+	m_Log << "DATE_COD: \"" << DATE_COD << "\"" << CUtil::CLog::endl;
+	m_Log << "FACIL_ID: \"" << FACIL_ID << "\"" << CUtil::CLog::endl;
+	m_Log << "FLOOR_ID: \"" << FLOOR_ID << "\"" << CUtil::CLog::endl;
+	m_Log << "PROC_ID: \"" << PROC_ID << "\"" << CUtil::CLog::endl;
+	m_Log << "OPER_FRQ: \"" << OPER_FRQ << "\"" << CUtil::CLog::endl;
+	m_Log << "SPEC_NAM: \"" << SPEC_NAM << "\"" << CUtil::CLog::endl;
+	m_Log << "SPEC_VER: \"" << SPEC_VER << "\"" << CUtil::CLog::endl;
+	m_Log << "FLOW_ID: \"" << FLOW_ID << "\"" << CUtil::CLog::endl;
+	m_Log << "SETUP_ID: \"" << SETUP_ID << "\"" << CUtil::CLog::endl;
+	m_Log << "DSGN_REV: \"" << DSGN_REV << "\"" << CUtil::CLog::endl;
+	m_Log << "ENG_ID: \"" << ENG_ID << "\"" << CUtil::CLog::endl;
+	m_Log << "ROM_COD: \"" << ROM_COD << "\"" << CUtil::CLog::endl;
+	m_Log << "SERL_NUM: \"" << SERL_NUM << "\"" << CUtil::CLog::endl;
+	m_Log << "SUPR_NAM: \"" << SUPR_NAM << "\"" << CUtil::CLog::endl;
 }
 
 
 
 
 
-APLSTDF::CField::CField()
+APL::CField::CField()
 {
 }
 

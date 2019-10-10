@@ -89,13 +89,13 @@ namespace CUtil
 	bool isInteger(const std::string& n);
 	char toUpper(const char c);
 	const std::string removeLeadingTrailingSpace(const std::string& str);
-	bool isFileExist(const std::string& szFile);
 	const std::string toUpper(const std::string& str);
 	int getFirstPIDByName( const std::string& name, bool bSkipSelf = false);
 
 	bool renameFile(const std::string& szOldFileNamePath, const std::string& szNewFileNamePath, int nAttempt = 5, int nDelaySecond = 1);
 	bool removeFile(const std::string& szFileNamePath, int nAttempt = 5, int nDelaySecond = 1);
 	bool openFile(const std::string& file, std::fstream& fs, std::ios_base::openmode mode, int nAttempt = 5, int nDelaySec = 1);
+	bool isFileExist(const std::string& szFile, int nAttempt = 1, int nDelaySec = 0);
 };
 
 

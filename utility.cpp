@@ -6,6 +6,26 @@ bool CUtil::CLog::immediate = true;
 bool CUtil::CLog::silent = false;
 std::string CUtil::CLog::m_file = "";
 
+
+/*-----------------------------------------------------------------------------------------
+check if file exist
+-----------------------------------------------------------------------------------------*/
+bool CUtil::isFileExist(const std::string& szFile, int nAttempt, int nDelaySecond)
+{
+	while(nAttempt)
+	{
+		if (::access(szFile.c_str(), F_OK) > -1) return true; 
+		else
+		{ 
+			if (nDelaySecond) sleep(nDelaySecond); 
+			nAttempt--; 
+		}
+	}	
+	return false;
+
+//     	return (access(szFile.c_str(), F_OK) > -1)? true : false;
+} 
+
 /*-----------------------------------------------------------------------------------------
 try to rename file a number of tries. each attempt delayed per time.
 -----------------------------------------------------------------------------------------*/
@@ -190,14 +210,6 @@ const std::string CUtil::removeLeadingTrailingSpace(const std::string& str)
 
 	return s.substr(0,pos + 1);
 }
-
-/*-----------------------------------------------------------------------------------------
-check if file exist
------------------------------------------------------------------------------------------*/
-bool CUtil::isFileExist(const std::string& szFile)
-{
-     	return (access(szFile.c_str(), F_OK) > -1)? true : false;
-} 
 
 /*-----------------------------------------------------------------------------------------
 find the PID of the first thread found with specified name
