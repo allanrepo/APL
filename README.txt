@@ -166,3 +166,10 @@ Version beta.2.0.20190726
 	-	LoaderApiNam 
 	-	LoaderApiRev
 -	sample config.xml accompanied in the software package has been updated to remove <STDF> params
+
+
+DEBUG NOTES:
+
+-	compile test program command line
+	>MethodCompiler -force -f <una file>
+

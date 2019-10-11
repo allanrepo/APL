@@ -15,8 +15,7 @@
 			<Param name = "Wait Time To Kill Tester">39</Param> <!-- default: 30 seconds -->
 			<Param name = "Force Load">true</Param> <!-- true if APL will always launch OICU and load program; default: false -->
 			<Param name = "NewLot Config Path">/home/localuser/Desktop/APL</Param>
-			<Param name = "NewLot Config File">NewLotUnison.xml</Param>
-			<Param name = "Customer">Qualcomm</Param>
+			<Param name = "NewLot Config File">NewLotUnison</Param>
 			<Param name = "Test Site">AMKKR3-S</Param>
 			<Param name = "Supplier">AMKOR</Param>
 		</Launch>
@@ -52,7 +51,7 @@
 		</Logging>
 		<STDF>
 			<Path>/home/localuser/synchro_sim/localuser_sim/dlog</Path>
-			<Rename state = "false" format = "qualcomm" />
+			<Rename state = "true" format = "qualcomm" />
 			<Compress state = "true" cmd = "/usr/bin/gzip" ext = ".gz" />
 		</STDF>
 		<FAMODULE state = "true" />

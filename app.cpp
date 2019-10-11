@@ -573,7 +573,7 @@ utility: process all UPD message from APL server
 ------------------------------------------------------------------------------------------ */
 void CApp::onReceiveFromServer(const std::string& msg)
 {
-	if ( msg.compare("APL_ACKNOWLEDGE") == 0){ m_Log << "Connection to APL Interface Server is GOOD"<< CUtil::CLog::endl; }
+	if ( msg.compare("APL_ACKNOWLEDGE") == 0){ m_Log << "Connection to APL Commander is GOOD"<< CUtil::CLog::endl; }
 	else if ( msg.compare("LOADLOTINFO") == 0)
 	{
 		processLotInfoFile(m_CONFIG.szLotInfoFileName);
@@ -687,16 +687,8 @@ void CApp::launch(CTask& task)
 	ssCmd.str(std::string());
 	ssCmd.clear();
 	
-	if (m_CONFIG.szCustomer.compare("QUALCOMM") == 0)
-	{
-		ssCmd << "UNISON_NEWLOT_CONFIG_FILE=" << m_CONFIG.szNewLotConfigPath << "/" << m_CONFIG.szNewLotConfigFile << " ";
-	}
-	else
-	{
-		ssCmd << "UNISON_NEWLOT_CONFIG_FILE=$LTX_UPROD_PATH/newlot-config/NewLotUnison_";
-		ssCmd << m_lotinfo.mir.ProcId << ".xml ";
-	}
-
+	ssCmd << "UNISON_NEWLOT_CONFIG_FILE=" << m_CONFIG.szNewLotConfigPath << "/" << m_CONFIG.szNewLotConfigFile << "_";
+	ssCmd << m_lotinfo.mir.ProcId << ".xml ";
 	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
 	ssCmd << (m_lotinfo.szProgramFullPathName.empty()? "": "-load ") << (m_lotinfo.szProgramFullPathName.empty()? "" : m_lotinfo.szProgramFullPathName);
 	ssCmd << " -qual " << " -T " << m_szTesterName;// << "&";

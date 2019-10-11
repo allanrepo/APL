@@ -149,8 +149,8 @@ protected:
 			bPopupServer = true;
 			szServerIP = "127.0.0.1";
 			nServerPort = 54000;
-			szNewLotConfigFile = "NewLotConfig.xml";
-			szNewLotConfigPath = "./";
+			szNewLotConfigFile = "NewLotUnison";
+			szNewLotConfigPath = "$LTX_UPROD_PATH/newlot-config";
 			szCustomer = "cohu";
 			szSTDFPath = "/tmp";
 			szTestSite = "cohu";

@@ -1,5 +1,6 @@
 //JobFile:/home/localuser/Desktop/BinChecker_R01P02/Program/BinChecker.una
-JobFile:/home/localuser/Desktop/ST/remote/binChecker_qcom_u1903/Program/BinChecker.una
+//JobFile:/home/localuser/Desktop/ST/remote/binChecker_qcom_u1903/Program/BinChecker.una
+JobFile:/home/localuser/Desktop/ST/remote/binChecker_qcom_u1909/Program/BinChecker.una
 STEP: FT1
 OPERATOR		: QCOM6789
 OPERFREQ		: QCOM_OPERFREQ
@@ -14,7 +15,7 @@ TESTSETUP		: QCOM_TESTSETUP
 COMMANDMODE		: QCOM_COMMANDMODE
 ACTIVEFLOWNAME		:   ft2
 DATECODE		: 936
-FABRICATIONID		: BL
+FABRICATIONID		: FT
 TESTFLOOR		: QCOM_TESTFLOOR
 TESTFACILITY		: ATK3
 TEMPERATURE		: 25
