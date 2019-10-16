@@ -40,6 +40,49 @@ class CAppClientUDPFileDesc;
 class CApp: public CTester
 {
 protected:
+	class CFieldValuePair
+	{
+	protected:
+		struct FIELDVALUE
+		{
+			std::string field;
+			std::string value;
+		};
+
+		std::vector< FIELDVALUE > m_fvs;
+
+	public:
+		CFieldValuePair(){}
+		virtual ~CFieldValuePair(){ m_fvs.clear(); }
+		void clear(){ m_fvs.clear(); }
+
+		void add(const std::string& field, const std::string& value)
+		{
+			FIELDVALUE fv;
+			fv.field = field;
+			fv.value = value;
+			m_fvs.push_back(fv);	
+		}
+
+		const std::string getValue(const std::string& field)
+		{
+			for(unsigned int i = 0; i < m_fvs.size(); i++)
+			{
+				if (m_fvs[i].field.compare(field) == 0) return m_fvs[i].value;
+			}
+			return std::string();
+		}
+
+		const std::string getField(const std::string& value)
+		{
+			for(unsigned int i = 0; i < m_fvs.size(); i++)
+			{
+				if (m_fvs[i].value.compare(value) == 0) return m_fvs[i].field;
+			}
+			return std::string();
+		}
+	};
+
 	struct CONFIG
 	{
 		struct STEP
@@ -55,6 +98,10 @@ protected:
 			APL_FINAL,
 			APL_MANUAL
 		};
+
+		// STDF field labels 
+		CFieldValuePair mir;
+		CFieldValuePair sdr;
 
 		// resources
 		CUtil::CLog m_Log;
@@ -160,7 +207,68 @@ protected:
 			szZipSTDFExt = ".gz";
 			bRenameSTDF = false;
 			szRenameSTDFFormat = "QUALCOMM";		
+			mir.clear();
+			sdr.clear();
+			
+			// add and set default field/value for MIR fields						
+			mir.add("SETUP_T", "SETUP_T");
+			mir.add("START_T", "START_T");
+			mir.add("STAT_NUM", "STAT_NUM");
+			mir.add("MODE_COD", "TESTMODE");
+			mir.add("RTST_COD", "LOTSTATE");
+			mir.add("PROT_COD", "PROTECTIONCODE");
+			mir.add("BURN_TIM", "BURN_TIM");
+			mir.add("CMOD_COD", "COMMANDMODE");
+			mir.add("LOT_ID", "LOTID");
+			mir.add("PART_TYP", "DEVICE");
+			mir.add("NODE_NAM", "NODE_NAM");
+			mir.add("TSTR_TYP", "TESTERTYPE");
+			mir.add("JOB_NAM", "JOB_NAM");
+			mir.add("JOB_REV", "FILENAMEREV");
+			mir.add("SBLOT_ID", "SUBLOTID");
+			mir.add("OPER_NAM", "OPERATOR");
+			mir.add("EXEC_TYP", "SYSTEMNAME");
+			mir.add("EXEC_VER", "TARGETNAME");
+			mir.add("TEST_COD", "TESTPHASE");
+			mir.add("TST_TEMP", "TEMPERATURE");
+			mir.add("USER_TXT", "USERTEXT");
+			mir.add("AUX_FILE", "AUXDATAFILE");
+			mir.add("PKG_TYP", "PACKAGE");
+			mir.add("FAMLY_ID", "PRODUCTID");
+			mir.add("DATE_COD", "DATECODE");
+			mir.add("FACIL_ID", "TESTFACILITY");
+			mir.add("FLOOR_ID", "TESTFLOOR");
+			mir.add("PROC_ID", "FABRICATIONID");
+			mir.add("OPER_FRQ", "OPERFREQ");
+			mir.add("SPEC_NAM", "TESTSPECNAME");
+			mir.add("SPEC_VER", "TESTSPECREV");
+			mir.add("FLOW_ID", "ACTIVEFLOWNAME");
+			mir.add("SETUP_ID", "TESTSETUP");
+			mir.add("DSGN_REV", "DESIGNREV");
+			mir.add("ENG_ID ", "ENGRLOTID");
+			mir.add("ROM_COD", "ROMCODE");
+			mir.add("SERL_NUM", "TESTERSERNUM");
+			mir.add("SUPR_NAM", "SUPERVISOR");	
+
+			// add and set default field/value for SDR fields						
+			sdr.add("HAND_TYP", "PROBERHANDLERTYPE");
+			sdr.add("CARD_ID", "CARDID");
+			sdr.add("CARD_TYP", "CARDTYPE");
+			sdr.add("LOAD_ID", "BOARDID");
+			sdr.add("HAND_ID", "PROBERHANDLERID");
+			sdr.add("DIB_TYP", "DIBTYPE");
+			sdr.add("CABL_ID", "CABLEID");	
+			sdr.add("CONT_TYP", "CONTACTORTYPE");	
+			sdr.add("LOAD_TYP", "BOARDTYPE");	
+			sdr.add("CONT_ID", "CONTACTORID");	
+			sdr.add("LASR_TYP", "LASERTYPE");	
+			sdr.add("LASR_ID", "LASERID");	
+			sdr.add("EXTR_TYP", "EXTRAEQUIPMENTTYPE");	
+			sdr.add("EXTR_ID", "EXTRAEQUIPMENTID");	
+			sdr.add("DIB_ID ", "DIBID");		
+			sdr.add("CABL_TYP", "CABLETYPE");
 		}
+
 
 		// constructor
 		CONFIG()

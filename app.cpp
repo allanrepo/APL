@@ -1581,59 +1581,59 @@ bool CApp::parse(const std::string& name)
 		// get the field/value pair from the line. empty value is ignored. trail/lead spaces removed
 		std::string field, value;
 		if (getFieldValuePair(l, DELIMITER, field, value))
-		{
+		{  
 			// extract STDF fields
-			if (field.compare("OPERATOR") == 0)		{ li.mir.OperNam = value; }
-			if (field.compare("OPERFREQ") == 0)		{ li.mir.OperFrq = value; }
-			if (field.compare("LOTID") == 0)		{ li.mir.LotId = value; }
-			if (field.compare("SUBLOTID") == 0)		{ li.mir.SblotId = value; }
-			if (field.compare("DEVICE") == 0)		{ li.mir.PartTyp = value; }
-			if (field.compare("PRODUCTID") == 0)		{ li.mir.FamlyId = value; }
-			if (field.compare("PACKAGE") == 0)		{ li.mir.PkgTyp = value; }
-			if (field.compare("FILENAMEREV") == 0)		{ li.mir.JobRev = value; }
-			if (field.compare("TESTMODE") == 0)		{ li.mir.ModeCod = value; }
-			if (field.compare("TESTSETUP") == 0)		{ li.mir.SetupId = value; }
-			if (field.compare("COMMANDMODE") == 0)		{ li.mir.CmodCod = value; }
-			if (field.compare("DATECODE") == 0)		{ li.mir.DateCod = value; }
-			if (field.compare("FABRICATIONID") == 0)	{ li.mir.ProcId = value; }
-			if (field.compare("TESTFLOOR") == 0)		{ li.mir.FloorId = value; }
-			if (field.compare("TESTFACILITY") == 0)		{ li.mir.FacilId = value; }
-			if (field.compare("TEMPERATURE") == 0)		{ li.mir.TstTemp = value; }
-			if (field.compare("USERTEXT") == 0)		{ li.mir.UserTxt = value; }
-			if (field.compare("DESIGNREV") == 0)		{ li.mir.DsgnRev = value; }
-			if (field.compare("ENGRLOTID") == 0)		{ li.mir.EngId = value; }
-			if (field.compare("TCNAME") == 0)		{ li.mir.NodeNam = value; }
-			if (field.compare("AUXDATAFILE") == 0)		{ li.mir.AuxFile = value; }
-			if (field.compare("TESTPHASE") == 0)		{ li.mir.TestCod = value; }
-			if (field.compare("ROMCODE") == 0)		{ li.mir.RomCod = value; }
-			if (field.compare("TESTERSERNUM") == 0)		{ li.mir.SerlNum = value; }
-			if (field.compare("TESTERTYPE") == 0)		{ li.mir.TstrTyp = value; }
-			if (field.compare("SUPERVISOR") == 0)		{ li.mir.SuprNam = value; }
-			if (field.compare("SYSTEMNAME") == 0)		{ li.mir.ExecTyp = value; }
-			if (field.compare("TARGETNAME") == 0)		{ li.mir.ExecVer = value; }
-			if (field.compare("TESTSPECNAME") == 0)		{ li.mir.SpecNam = value; }
-			if (field.compare("TESTSPECREV") == 0)		{ li.mir.SpecVer = value; }
-			if (field.compare("PROTECTIONCODE") == 0)	{ li.mir.ProtCod = value; }
-			if (field.compare("BURNINTIME") == 0)		{ li.mir.BurnTim = value; }
-			if (field.compare("ACTIVEFLOWNAME") == 0)	{ li.mir.FlowId = value; }
-			if (field.compare("RTSTCODE") == 0)		{ li.mir.RtstCod = value; }
+			if (m_CONFIG.mir.getField(field).compare("OPER_NAM") == 0) 		{ li.mir.OperNam = value; }
+			if (m_CONFIG.mir.getField(field).compare("OPER_FRQ") == 0)		{ li.mir.OperFrq = value; }
+			if (m_CONFIG.mir.getField(field).compare("LOT_ID") == 0)		{ li.mir.LotId = value; }
+			if (m_CONFIG.mir.getField(field).compare("SBLOT_ID") == 0)		{ li.mir.SblotId = value; }
+			if (m_CONFIG.mir.getField(field).compare("PART_TYP") == 0)		{ li.mir.PartTyp = value; }
+			if (m_CONFIG.mir.getField(field).compare("FAMLY_ID") == 0)		{ li.mir.FamlyId = value; }
+			if (m_CONFIG.mir.getField(field).compare("PKG_TYP") == 0)		{ li.mir.PkgTyp = value; }
+			if (m_CONFIG.mir.getField(field).compare("JOB_REV") == 0)	 	{ li.mir.JobRev = value; }
+			if (m_CONFIG.mir.getField(field).compare("MODE_COD") == 0)		{ li.mir.ModeCod = value; }
+			if (m_CONFIG.mir.getField(field).compare("SETUP_ID") == 0)		{ li.mir.SetupId = value; }
+			if (m_CONFIG.mir.getField(field).compare("CMOD_COD") == 0)		{ li.mir.CmodCod = value; }
+			if (m_CONFIG.mir.getField(field).compare("DATE_COD") == 0)		{ li.mir.DateCod = value; }
+			if (m_CONFIG.mir.getField(field).compare("PROC_ID") == 0)		{ li.mir.ProcId = value; }
+			if (m_CONFIG.mir.getField(field).compare("FLOOR_ID") == 0)		{ li.mir.FloorId = value; }
+			if (m_CONFIG.mir.getField(field).compare("FACIL_ID") == 0)		{ li.mir.FacilId = value; }
+			if (m_CONFIG.mir.getField(field).compare("TST_TEMP") == 0)		{ li.mir.TstTemp = value; }
+			if (m_CONFIG.mir.getField(field).compare("USER_TXT") == 0)		{ li.mir.UserTxt = value; }
+			if (m_CONFIG.mir.getField(field).compare("DSGN_REV") == 0)		{ li.mir.DsgnRev = value; }
+			if (m_CONFIG.mir.getField(field).compare("ENG_ID") == 0)		{ li.mir.EngId = value; }
+			if (m_CONFIG.mir.getField(field).compare("NODE_NAM") == 0)		{ li.mir.NodeNam = value; }
+			if (m_CONFIG.mir.getField(field).compare("AUX_FILE") == 0)		{ li.mir.AuxFile = value; }
+			if (m_CONFIG.mir.getField(field).compare("TEST_COD") == 0)		{ li.mir.TestCod = value; }
+			if (m_CONFIG.mir.getField(field).compare("ROM_COD") == 0)		{ li.mir.RomCod = value; }
+			if (m_CONFIG.mir.getField(field).compare("SERL_NUM") == 0)		{ li.mir.SerlNum = value; }
+			if (m_CONFIG.mir.getField(field).compare("TSTR_TYP") == 0)		{ li.mir.TstrTyp = value; }
+			if (m_CONFIG.mir.getField(field).compare("SUPR_NAM") == 0)		{ li.mir.SuprNam = value; }
+			if (m_CONFIG.mir.getField(field).compare("EXEC_TYP") == 0)		{ li.mir.ExecTyp = value; }
+			if (m_CONFIG.mir.getField(field).compare("EXEC_VER") == 0)		{ li.mir.ExecVer = value; }
+			if (m_CONFIG.mir.getField(field).compare("SPEC_NAM") == 0)		{ li.mir.SpecNam = value; }
+			if (m_CONFIG.mir.getField(field).compare("SPEC_VER") == 0)		{ li.mir.SpecVer = value; }
+			if (m_CONFIG.mir.getField(field).compare("PROT_COD") == 0)		{ li.mir.ProtCod = value; }
+			if (m_CONFIG.mir.getField(field).compare("BURN_TIM") == 0)		{ li.mir.BurnTim = value; }
+			if (m_CONFIG.mir.getField(field).compare("FLOW_ID") == 0)		{ li.mir.FlowId = value; }
+			if (m_CONFIG.mir.getField(field).compare("RTST_COD") == 0)		{ li.mir.RtstCod = value; }
 
-			if (field.compare("PROBERHANDLERTYPE") == 0)	{ li.sdr.HandTyp = value; }
-			if (field.compare("PROBERHANDLERID") == 0)	{ li.sdr.HandId = value; }
-			if (field.compare("CARDID") == 0)		{ li.sdr.CardId = value; }
-			if (field.compare("CARDTYPE") == 0)		{ li.sdr.CardTyp = value; }
-			if (field.compare("BOARDID") == 0)		{ li.sdr.LoadId = value; }
-			if (field.compare("BOARDTYPE") == 0)		{ li.sdr.LoadTyp = value; }
-			if (field.compare("DIBTYPE") == 0)		{ li.sdr.DibTyp = value; }
-			if (field.compare("DIBID") == 0)		{ li.sdr.DibId = value; }
-			if (field.compare("CABLEID") == 0)		{ li.sdr.CableId = value; }
-			if (field.compare("CABLETYPE") == 0)		{ li.sdr.CableTyp = value; }
-			if (field.compare("CONTACTORTYPE") == 0)	{ li.sdr.ContTyp = value; }
-			if (field.compare("CONTACTORID") == 0)		{ li.sdr.ContId = value; }
-			if (field.compare("LASERTYPE") == 0)		{ li.sdr.LasrTyp = value; }
-			if (field.compare("LASERID") == 0)		{ li.sdr.LasrId = value; }
-			if (field.compare("EXTRAEQUIPMENTTYPE") == 0)	{ li.sdr.ExtrTyp = value; }
-			if (field.compare("EXTRAEQUIPMENTID") == 0)	{ li.sdr.ExtrId = value; }
+			if (m_CONFIG.sdr.getField(field).compare("HAND_TYP") == 0)		{ li.sdr.HandTyp = value; }
+			if (m_CONFIG.sdr.getField(field).compare("HAND_ID") == 0)		{ li.sdr.HandId = value; }
+			if (m_CONFIG.sdr.getField(field).compare("CARD_ID") == 0)		{ li.sdr.CardId = value; }
+			if (m_CONFIG.sdr.getField(field).compare("CARD_TYP") == 0)		{ li.sdr.CardTyp = value; }
+			if (m_CONFIG.sdr.getField(field).compare("LOAD_ID") == 0)		{ li.sdr.LoadId = value; }
+			if (m_CONFIG.sdr.getField(field).compare("LOAD_TYP") == 0)		{ li.sdr.LoadTyp = value; }
+			if (m_CONFIG.sdr.getField(field).compare("DIB_TYP") == 0)		{ li.sdr.DibTyp = value; }
+			if (m_CONFIG.sdr.getField(field).compare("DIB_ID") == 0)		{ li.sdr.DibId = value; }
+			if (m_CONFIG.sdr.getField(field).compare("CABL_ID") == 0)		{ li.sdr.CableId = value; }
+			if (m_CONFIG.sdr.getField(field).compare("CABL_TYP") == 0)		{ li.sdr.CableTyp = value; }
+			if (m_CONFIG.sdr.getField(field).compare("CONT_TYP") == 0)		{ li.sdr.ContTyp = value; }
+			if (m_CONFIG.sdr.getField(field).compare("CONT_ID") == 0)		{ li.sdr.ContId = value; }
+			if (m_CONFIG.sdr.getField(field).compare("LASR_TYP") == 0)		{ li.sdr.LasrTyp = value; }
+			if (m_CONFIG.sdr.getField(field).compare("LASR_ID") == 0)		{ li.sdr.LasrId = value; }
+			if (m_CONFIG.sdr.getField(field).compare("EXTR_TYP") == 0)		{ li.sdr.ExtrTyp = value; }
+			if (m_CONFIG.sdr.getField(field).compare("EXTR_ID") == 0)		{ li.sdr.ExtrId = value; }
 
 			// if we didn't find anything we looked for including jobfile, let's move to next field
 			if (field.compare(JOBFILE) == 0)

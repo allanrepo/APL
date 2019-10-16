@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <APL_CONF>
-	<CurrentSiteConfiguration>Singapore</CurrentSiteConfiguration>
+	<CurrentSiteConfiguration>ATK3</CurrentSiteConfiguration>
 
-	<SiteConfiguration name = "Singapore">
+	<SiteConfiguration name = "ATK3">
 		<Launch>
-			<Param name = "Type">prod</Param> <!-- prod, engr; default:prod -->
+			<Param name = "Type">engr</Param> <!-- prod, engr; default:prod -->
 			<Param name = "Kill Tester Before Launch">true</Param> <!-- true, false; default:false -->
 			<Param name = "Wait Time To Launch">129</Param> <!-- default:120 seconds -->
 			<Param name = "Max Attempt To Launch">9</Param> <!-- default: 3 -->
@@ -14,7 +14,7 @@
 			<Param name = "Wait Time To FAModule">29</Param> <!-- default: 30 seconds -->
 			<Param name = "Wait Time To Kill Tester">39</Param> <!-- default: 30 seconds -->
 			<Param name = "Force Load">true</Param> <!-- true if APL will always launch OICU and load program; default: false -->
-			<Param name = "NewLot Config Path">/home/localuser/Desktop/APL</Param>
+			<Param name = "NewLot Config Path">/var/home/service/Desktop/Cohu_Debug/APL</Param>
 			<Param name = "NewLot Config File">NewLotUnison</Param>
 			<Param name = "Test Site">AMKKR3-S</Param>
 			<Param name = "Supplier">AMKOR</Param>
@@ -23,38 +23,55 @@
 			<IP>127.0.0.1</IP>
 			<Port>54000</Port>
 		</GUI>
-		<Summary state = "true"> <!-- default: false -->
-			<Path>/home/localuser/</Path> <!-- default: /tmp -->
-		</Summary>
+
 		<LotInfo>
-			<File>b.txt</File> <!-- default: lotinfo.txt -->
-			<Path>/home/localuser/Desktop/APL</Path> <!-- default: /tmp -->
+			<File>K3PAx_LotInfo.txt</File> <!-- default: lotinfo.txt -->
+			<Path>/var/home/service/Desktop/Cohu_Debug/APL</Path> <!-- default: /tmp -->
 			<Delete>false</Delete>
 			<STDF>true</STDF> <!-- if true, sends STDF field from lotinfo.txt to unison; default: false-->
-			<Step state = "true">
+			<Field>
+				<Param name = "MIR.LOT_ID">LOTID</Param>
+				<Param name = "MIR.PART_TYP">PARTTYPE</Param>
+				<Param name = "MIR.OPER_NAM">OPERATORID</Param>
+				<Param name = "MIR.DATE_COD">DATECODE</Param>
+				<Param name = "MIR.TEST_COD">TESTCODE</Param>
+				<Param name = "MIR.TST_TEMP">TEMPERATURE</Param>
+				<Param name = "MIR.JOB_NAM">PROGRAM</Param>
+				<Param name = "MIR.RTST_COD">RETESTCODE</Param>
+				<Param name = "MIR.NODE_NAM">HOSTNAME</Param>
+				<Param name = "SDR.HAND_TYP">HANDLERNAME</Param>
+				<Param name = "SDR.HAND_ID">HANDLERID</Param>
+				<Param name = "SDR.LOAD_ID">LOADBOARD</Param>
+				<Param name = "SDR.DIB_ID">DUTBOARD</Param>
+				<Param name = "SDR.CONT_ID">SOCKET</Param>
+				<Param name = "JOBFILE">PROGRAMPATH</Param>
+				<Param name = "CUSTOMER">CUSTOMER</Param>
+			</Field>
+			<Step state = "false">
 				<Param flow_id = "FT1" rtst_cod = "0">fT1</Param>
 				<Param flow_id = "FT1" rtst_cod = "1">rt1</Param>
 				<Param flow_id = "FT2" rtst_cod = "0">Ft2</Param>
 				<Param flow_id = "FT2" rtst_cod = "2">2RT2</Param>
 				<Param flow_id = "FT1" rtst_cod = "3">RT3</Param>
+				<Param flow_id = "FT4" rtst_cod = "5">RT5</Param>
 			</Step>
 		</LotInfo>
 		<Binning state = "true">
 			<BinType>soft</BinType> <!-- hard, soft -->	
-			<TestType>wafer</TestType> <!-- final, wafer -->		
+			<TestType>final</TestType> <!-- final, wafer -->		
 			<SocketType>udp</SocketType>
 			<IP>127.0.0.1</IP>
 			<Port>4000</Port>
 		</Binning>
 		<Logging state = "true">
-			<Path>/home/localuser/Desktop</Path>
+			<Path>/var/home/service/Desktop/Cohu_Debug/APL/log</Path>
 		</Logging>
 		<STDF>
-			<Path>/home/localuser/synchro_sim/localuser_sim/dlog</Path>
+			<Path>/opt/ltx_nic/dlog</Path>
 			<Rename state = "true" format = "qualcomm" />
 			<Compress state = "true" cmd = "/usr/bin/gzip" ext = ".gz" />
 		</STDF>
-		<FAMODULE state = "true" />
+		<FAMODULE state = "false" />
 	</SiteConfiguration>
 
 	<SiteConfiguration name = "Amkor1">

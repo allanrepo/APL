@@ -52,7 +52,7 @@
     <Entry Label="WaferID"> </Entry>
     <Entry Label="FabricationID"> </Entry>
     <Entry Label="ProberHandlerID"> </Entry>
-	<Entry Label="LotState" Type="Choice" ReadOnly = "Yes" >
+	<Entry Label="LotState" Type="Choice">
 		<Value> </Value>
 		<Value>0</Value>
 		<Value>1</Value>
