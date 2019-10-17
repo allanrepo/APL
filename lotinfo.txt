@@ -1,6 +1,6 @@
 //JobFile:/home/localuser/Desktop/BinChecker_R01P02/Program/BinChecker.una
 //JobFile:/home/localuser/Desktop/ST/remote/binChecker_qcom_u1903/Program/BinChecker.una
-JobFile:/var/home/service/Desktop/Cohu_Debug/binChecker_qcom_u1909/Program/BinChecker.una
+programPaTH:/var/home/service/Desktop/Cohu_Debug/binChecker_qcom_u1909/Program/BinChecker.una
 STEP: RT5
 OPERATOR		: QCOM6789
 OPERFREQ		: QCOM_OPERFREQ

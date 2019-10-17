@@ -222,6 +222,11 @@ void CApp::sendLotInfoToFAModule(CTask& task)
 	}
 	
 	// if this feature is disabled, let's just move on to next state
+	if (!m_CONFIG.bFAModule)
+	{
+		m_StateMgr.set(m_pStateOnIdle);
+		return;
+	}
 	
 	// create string that holds full path + monitor file
 	std::stringstream ssFullPathMonitorName;
@@ -687,8 +692,9 @@ void CApp::launch(CTask& task)
 	ssCmd.str(std::string());
 	ssCmd.clear();
 	
-	ssCmd << "UNISON_NEWLOT_CONFIG_FILE=" << m_CONFIG.szNewLotConfigPath << "/" << m_CONFIG.szNewLotConfigFile << "_";
-	ssCmd << m_lotinfo.mir.ProcId << ".xml ";
+	ssCmd << "UNISON_NEWLOT_CONFIG_FILE=" << m_CONFIG.szNewLotConfigPath << "/" << m_CONFIG.szNewLotConfigFile;
+	if (m_lotinfo.szCustomer.compare("QUALCOMM") == 0) ssCmd << ".xml ";
+	else ssCmd << "_" << m_lotinfo.mir.ProcId << ".xml ";
 	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
 	ssCmd << (m_lotinfo.szProgramFullPathName.empty()? "": "-load ") << (m_lotinfo.szProgramFullPathName.empty()? "" : m_lotinfo.szProgramFullPathName);
 	ssCmd << " -qual " << " -T " << m_szTesterName;// << "&";
@@ -809,7 +815,7 @@ void CApp::processLotInfoFile(const std::string& name)
 	if (!parse(ssFullPathMonitorName.str()))
 	{
 		m_Log << ssFullPathMonitorName.str() << " file received but didn't find a program to load.";
-		m_Log << " can you check if " << name << " has '" << JOBFILE << "' field. and is valid?" << CUtil::CLog::endl;
+		m_Log << " can you check if " << name << " has '" << m_CONFIG.fields.getValue("JOBFILE") << "' field. and is valid?" << CUtil::CLog::endl;
 		return;
 	}
 	else m_Log << "successfully parsed '" << ssFullPathMonitorName.str() << "'" << CUtil::CLog::endl;
@@ -985,7 +991,6 @@ bool CApp::CONFIG::parse(const std::string& file)
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Kill Tester") == 0){ nKillTesterTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("NewLot Config Path") == 0){ szNewLotConfigPath = pLaunch->fetchChild(i)->fetchText(); }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("NewLot Config File") == 0){ szNewLotConfigFile = pLaunch->fetchChild(i)->fetchText(); }					
-				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Customer") == 0){ szCustomer = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()); }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Test Site") == 0){ szTestSite = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()); }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Supplier") == 0){ szSupplier = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()); }					
 			}
@@ -1013,6 +1018,37 @@ bool CApp::CONFIG::parse(const std::string& file)
 			if (pLotInfo->fetchChild("Path")){ szLotInfoFilePath = pLotInfo->fetchChild("Path")->fetchText(); }		
 			if (pLotInfo->fetchChild("Delete")){ bDeleteLotInfo = CUtil::toUpper(pLotInfo->fetchChild("Delete")->fetchText()).compare("TRUE") == 0? true: false; }
 			if (pLotInfo->fetchChild("STDF")){ bSendInfo = CUtil::toUpper(pLotInfo->fetchChild("STDF")->fetchText()).compare("TRUE") == 0? true: false; }
+
+			if (pLotInfo->fetchChild("Field"))
+			{
+				XML_Node* pField = pLotInfo->fetchChild("Field");
+				for (int i = 0; i < pField->numChildren(); i++)
+				{
+					if (!pField->fetchChild(i)) continue;
+					if (pField->fetchChild(i)->fetchTag().compare("Param") != 0) continue;
+
+					// try mapping lotinfo field to MIR
+					if ( mir.setValue( pField->fetchChild(i)->fetchVal("name"), CUtil::toUpper( pField->fetchChild(i)->fetchText()) ) )
+					{
+					}
+					// if fail on MIR, try on SDR
+					else if ( sdr.setValue( pField->fetchChild(i)->fetchVal("name"), CUtil::toUpper( pField->fetchChild(i)->fetchText()) ) )
+					{
+					}
+					// if fail on SDR, try generic field
+					else if ( fields.setValue( pField->fetchChild(i)->fetchVal("name"), CUtil::toUpper( pField->fetchChild(i)->fetchText()) ) )
+					{
+					}
+					// if does not exist on SDR, MIR, and existing generic field list, let's add it to generic field list			
+					else 
+					{
+						fields.add( pField->fetchChild(i)->fetchVal("name"), CUtil::toUpper( pField->fetchChild(i)->fetchText()) );
+						m_Log << "NOTICE: Didn't find field value pair for '" << pField->fetchChild(i)->fetchVal("name");
+						m_Log << "'. adding to generic field list as '" << CUtil::toUpper( pField->fetchChild(i)->fetchText()) << "'" << CUtil::CLog::endl;
+					}
+				}
+			}
+			
 
 			if (pLotInfo->fetchChild("Step"))
 			{
@@ -1077,6 +1113,7 @@ bool CApp::CONFIG::parse(const std::string& file)
 			{ 
 				bRenameSTDF = CUtil::toUpper(pConfig->fetchChild("STDF")->fetchChild("Rename")->fetchVal("state")).compare("TRUE") == 0? true: false;
 				szRenameSTDFFormat = CUtil::toUpper(pConfig->fetchChild("STDF")->fetchChild("Rename")->fetchVal("format"));
+				bTimeStampIsEndLot = CUtil::toUpper(pConfig->fetchChild("STDF")->fetchChild("Rename")->fetchVal("timestamp")).compare("END") == 0? true: false;
 			}
 			if (pConfig->fetchChild("STDF")->fetchChild("Compress"))
 			{	
@@ -1177,11 +1214,11 @@ void CApp::CONFIG::print()
 	m_Log << "Port Server IP: " << nServerPort << CUtil::CLog::endl;
 	m_Log << "New Lot Config Path: " << szNewLotConfigPath << CUtil::CLog::endl;
 	m_Log << "New Lot Config File: " << szNewLotConfigFile << CUtil::CLog::endl;
-	m_Log << "Customer: " << szCustomer << CUtil::CLog::endl;
 	m_Log << "Test Site: " << szTestSite << CUtil::CLog::endl;
 	m_Log << "Supplier: " << szSupplier << CUtil::CLog::endl;
 	m_Log << "Rename STDF: " << (bRenameSTDF? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "Rename STDF Format: " << szRenameSTDFFormat << CUtil::CLog::endl;
+	m_Log << "Rename TimeStamp Format: " << (bTimeStampIsEndLot? "end lot" : "start lot") << CUtil::CLog::endl;
 	m_Log << "Zip STDF: " << (bZipSTDF? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "Zip STDF Command: " << szZipSTDFCmd << CUtil::CLog::endl;
 	m_Log << "Zip STDF Extension: " << szZipSTDFExt << CUtil::CLog::endl;
@@ -1204,7 +1241,7 @@ void CApp::onWatchSTDF(const std::string& name)
 
 	// if extension is not .sum, we bail
 	std::string ext = name.substr(pos + 1);
-	if (ext.compare("std") != 0)
+	if (ext.compare("std") != 0 && ext.compare("sum") != 0)
 	{
 		//m_Log << "onWatchSTDF(): " << name << " has extension: " << ext << ", we're expecting .std" << CUtil::CLog::endl;
 		return;
@@ -1231,22 +1268,22 @@ void CApp::onWatchSTDF(const std::string& name)
 			m_pSTDFFileDesc->halt();
 
 			// create end-lot timestamp formatted for qualcomm
-			time_t t = (unsigned long)mrr.FINISH_T;
+			time_t t = (unsigned long)(m_CONFIG.bTimeStampIsEndLot? mrr.FINISH_T : mir.START_T);
 			tm* p = gmtime((const time_t*)&t); 
 			std::stringstream ssEndLotTimeStamp; // YYYYMMDDhhmmss
 			ssEndLotTimeStamp << (p->tm_year + 1900); // YYYY
 			ssEndLotTimeStamp << (p->tm_mon + 1 < 10? "0":"") << (p->tm_mon + 1); // MM
-		 	ssEndLotTimeStamp << (p->tm_mday + 1 < 10? "0":"") << (p->tm_mday); // DD
-		 	ssEndLotTimeStamp << (p->tm_hour + 1 < 10? "0":"") << (p->tm_hour); // hh
-		 	ssEndLotTimeStamp << (p->tm_min + 1 < 10? "0":"") << (p->tm_min); // mm
-		 	ssEndLotTimeStamp << (p->tm_sec + 1 < 10? "0":"") << (p->tm_sec); // ss
+		 	ssEndLotTimeStamp << (p->tm_mday < 10? "0":"") << (p->tm_mday); // DD
+		 	ssEndLotTimeStamp << (p->tm_hour < 10? "0":"") << (p->tm_hour); // hh
+		 	ssEndLotTimeStamp << (p->tm_min < 10? "0":"") << (p->tm_min); // mm
+		 	ssEndLotTimeStamp << (p->tm_sec < 10? "0":"") << (p->tm_sec); // ss
 
 			// create the filename to be replacement. somehow this does not trigger inotify MOVE_TO and CREATE so that's good
 			std::stringstream ssNewFileName;
 			ssNewFileName << m_CONFIG.szSTDFPath << "/";
 			ssNewFileName << m_CONFIG.szSupplier << "_" << m_CONFIG.szTestSite << "_";
 			ssNewFileName << mir.PART_TYP << "_" << mir.JOB_NAM << "_" << mir.LOT_ID << "_";
-			ssNewFileName << ssEndLotTimeStamp.str() << "_" << mir.RTST_COD << "_" << mir.FLOW_ID << "_" << mir.NODE_NAM << "_" << m_lotinfo.szDevice <<  ".std";
+			ssNewFileName << ssEndLotTimeStamp.str() << "_" << mir.RTST_COD << "_" << mir.FLOW_ID << "_" << mir.NODE_NAM << "_" << m_lotinfo.szDeviceNickName <<  ".std";
 
 			// rename the file
 			if (!CUtil::renameFile(ssFullPathSTDF.str(), ssNewFileName.str()))
@@ -1386,8 +1423,7 @@ void CApp::onSummaryFile(const std::string& name)
 	sf.open(ssFullPathSummaryName.str().c_str(), std::ofstream::out | std::ofstream::app);
 	if(sf.good()) 
 	{
-		m_Log << "opened " << ssFullPathSummaryName.str().c_str() << CUtil::CLog::endl;
-	
+		m_Log << "opened " << ssFullPathSummaryName.str().c_str() << CUtil::CLog::endl;	
 		sf << "STEP:" << m_lotinfo.szStep << std::endl;
 		sf.close();
 		m_Log << "STEP value '" << m_lotinfo.szStep << "' appended to " << ssFullPathSummaryName.str().c_str() << CUtil::CLog::endl;
@@ -1636,7 +1672,7 @@ bool CApp::parse(const std::string& name)
 			if (m_CONFIG.sdr.getField(field).compare("EXTR_ID") == 0)		{ li.sdr.ExtrId = value; }
 
 			// if we didn't find anything we looked for including jobfile, let's move to next field
-			if (field.compare(JOBFILE) == 0)
+			if (field.compare(m_CONFIG.fields.getValue("JOBFILE")) == 0)
 			{
 				m_Log << field << " field found, test program to load: '" << value << "'. checking if valid..." << CUtil::CLog::endl;
 
@@ -1652,6 +1688,9 @@ bool CApp::parse(const std::string& name)
 					li.szProgramFullPathName = value;			
 				}
 			}
+
+			if (m_CONFIG.fields.getField(field).compare("CUSTOMER") == 0)		{ li.szCustomer = value; }
+			if (m_CONFIG.fields.getField(field).compare("DEVICENICKNAME") == 0)	{ li.szDeviceNickName = value; }
 			
 			// if we receive "step" field from amkor
 			if (field.compare("STEP") == 0)

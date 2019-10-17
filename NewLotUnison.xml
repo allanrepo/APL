@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+ 
+<!-- File format:
+
+	<Entry [attribute]+>
+		[<Value> ... </Value>]*
+	</Entry>
+
+	Attributes:
+		Label="..."
+			Label is required and must be one of the recognized values.
+			See Sapphire D manual for the list of labels.
+		Type="[Text|Unsigned|Signed|Float|Choice]"
+			Type defines the type of control used for the entry:
+				Text [default] - Single line text control
+				Unsigned - Single line text control which will only accept
+				  unsigned numbers.
+				Signed - Single line text control which will only accept
+				  signed numbers.
+				Float - Single line text control which will only accept
+				  floating point numbers.
+				Choice - Choice control with the Value elements as the
+				  choices.
+			NOTE: If a text element defines one or more values, a combo
+			box is used.
+		Optional="Yes"
+			By default, all entries are required.  Use this attribute to
+			make the entry optional.
+		Default="..."
+			The default value for this entry.  If the entry is a Choice
+			control, the default value needs to be one of the values listed.
+			The special value "%SYSTEM%" specifies to use the value received
+			from test executive (if defined).
+        ReadOnly="Yes"
+			By default, all entries can be modified by user. Use this attribute to
+			disallow modifications.
+        See also original comments at the end of this file
+-->
+
+<NewLot>
+    <Entry Label="User" ReadOnly="Yes"> </Entry>
+    <Entry Label="Operator"> </Entry>
+    <Entry Label="StartTime" ReadOnly="Yes" Optional="Yes"> </Entry>
+    <Entry Label="Shift"> </Entry>
+    <Entry Label="Device"> </Entry>
+<!-- Remove this line for "Head"
+    <Entry Label="NextSerial" Type="Unsigned"> </Entry>
+-->
+    <Entry Label="TestPhase"> </Entry>
+    <Entry Label="DateCode"> </Entry>
+    <Entry Label="LotID"> </Entry>
+    <Entry Label="TestTemp"> </Entry>
+    <Entry Label="HandlerType"> </Entry>
+    <Entry Label="ProberHandlerID"> </Entry>
+    <Entry Label="LoadBrdId"> </Entry>
+    <Entry Label="ActiveLoadBrdName"> </Entry>
+    <Entry Label="ContactorId"> </Entry>
+	<Entry Label="LotState" Type="Choice">
+		<Value> </Value>
+		<Value>0</Value>
+		<Value>1</Value>
+		<Value>2</Value>
+		<Value>3</Value>
+		<Value>4</Value>
+		<Value>5</Value>
+		<Value>6</Value>
+		<Value>7</Value>
+		<Value>8</Value>
+		<Value>9</Value>
+	</Entry>
+    <Entry Label="LotDescription"> </Entry>
+
+
+<!-- Remove this line for "Head"
+    <Entry Label="Head"> </Entry>
+     Remove this line for "Head" -->
+    
+<!-- Remove this line for "TestMode"
+    <Entry Label="TestMode"> </Entry>
+     Remove this line for "TestMode" -->
+
+<!-- Remove this line for "ProtectionCode"
+    <Entry Label="ProtectionCode"> </Entry>
+     Remove this line for "ProtectionCode" -->
+
+<!-- Remove this line for "CommandMode"
+    <Entry Label="CommandMode"> </Entry>
+     Remove this line for "CommandMode" -->
+
+<!-- Remove this line for "TcName"
+    <Entry Label="TcName"> </Entry>
+     Remove this line for "TcName" -->
+
+<!-- Remove this line for "TesterType"
+    <Entry Label="TesterType"> </Entry>
+     Remove this line for "TesterType" -->
+
+<!-- Remove this line for "FileName"
+    <Entry Label="FileName"> </Entry>
+     Remove this line for "FileName" -->
+
+<!-- Remove this line for "FileNameRev"
+    <Entry Label="FileNameRev"> </Entry>
+     Remove this line for "FileNameRev" -->
+
+<!-- Remove this line for "SystemName"
+    <Entry Label="SystemName"> </Entry>
+     Remove this line for "SystemName" -->
+
+<!-- Remove this line for "TargetName"
+    <Entry Label="TargetName"> </Entry>
+     Remove this line for "TargetName" -->
+
+<!-- Remove this line for "TestPhase"
+    <Entry Label="TestPhase"> </Entry>
+     Remove this line for "TestPhase" -->
+
+<!-- Remove this line for "TestTemp"
+    <Entry Label="TestTemp"> </Entry>
+     Remove this line for "TestTemp" -->
+
+<!-- Remove this line for "UserText"
+    <Entry Label="UserText"> </Entry>
+     Remove this line for "UserText" -->
+
+<!-- Remove this line for "AuxDataFile"
+    <Entry Label="AuxDataFile"> </Entry>
+     Remove this line for "AuxDataFile" -->
+
+<!-- Remove this line for "Package"
+    <Entry Label="Package"> </Entry>
+     Remove this line for "Package" -->
+
+<!-- Remove this line for "DateCode"
+    <Entry Label="DateCode"> </Entry>
+     Remove this line for "DateCode" -->
+
+<!-- Remove this line for "TestFacility"
+    <Entry Label="TestFacility"> </Entry>
+     Remove this line for "TestFacility" -->
+
+<!-- Remove this line for "TestFloor"
+    <Entry Label="TestFloor"> </Entry>
+     Remove this line for "TestFloor" -->
+
+<!-- Remove this line for "OperFreq"
+    <Entry Label="OperFreq"> </Entry>
+     Remove this line for "OperFreq" -->
+
+<!-- Remove this line for "TestSpecName"
+    <Entry Label="TestSpecName"> </Entry>
+     Remove this line for "TestSpecName" -->
+
+<!-- Remove this line for "TestSpecRev"
+    <Entry Label="TestSpecRev"> </Entry>
+     Remove this line for "TestSpecRev" -->
+
+<!-- Remove this line for "ActiveFlowName"
+    <Entry Label="ActiveFlowName"> </Entry>
+     Remove this line for "ActiveFlowName" -->
+
+<!-- Remove this line for "TestSetup"
+    <Entry Label="TestSetup"> </Entry>
+     Remove this line for "TestSetup" -->
+
+<!-- Remove this line for "DesignRev"
+    <Entry Label="DesignRev"> </Entry>
+     Remove this line for "DesignRev" -->
+
+<!-- Remove this line for "EngrLotId"
+    <Entry Label="EngrLotId"> </Entry>
+     Remove this line for "EngrLotId" -->
+
+<!-- Remove this line for "RomCode"
+    <Entry Label="RomCode"> </Entry>
+     Remove this line for "RomCode" -->
+
+<!-- Remove this line for "TesterSerNum"
+    <Entry Label="TesterSerNum"> </Entry>
+     Remove this line for "TesterSerNum" -->
+
+<!-- Remove this line for "Supervisor"
+    <Entry Label="Supervisor"> </Entry>
+     Remove this line for "Supervisor" -->
+
+<!-- Remove this line for "DispCode"
+    <Entry Label="DispCode"> </Entry>
+     Remove this line for "DispCode" -->
+
+<!-- Remove this line for "ExecDesc"
+    <Entry Label="ExecDesc"> </Entry>
+     Remove this line for "ExecDesc" -->
+
+<!-- Remove this line for "HandlerType"
+    <Entry Label="HandlerType"> </Entry>
+     Remove this line for "HandlerType" -->
+
+<!-- Remove this line for "CardType"
+    <Entry Label="CardType"> </Entry>
+     Remove this line for "CardType" -->
+
+<!-- Remove this line for "CardId"
+    <Entry Label="CardId"> </Entry>
+     Remove this line for "CardId" -->
+
+<!-- Remove this line for "LoadBrdType"
+    <Entry Label="LoadBrdType"> </Entry>
+     Remove this line for "LoadBrdType" -->
+
+<!-- Remove this line for "LoadBrdId"
+    <Entry Label="LoadBrdId"> </Entry>
+     Remove this line for "LoadBrdId" -->
+
+<!-- Remove this line for "DIBType"
+    <Entry Label="DIBType"> </Entry>
+     Remove this line for "DIBType" -->
+
+<!-- Remove this line for "ActiveLoadBrdName"
+    <Entry Label="ActiveLoadBrdName"> </Entry>
+     Remove this line for "ActiveLoadBrdName" -->
+
+<!-- Remove this line for "IfCableType"
+    <Entry Label="IfCableType"> </Entry>
+     Remove this line for "IfCableType" -->
+
+<!-- Remove this line for "IfCableId"
+    <Entry Label="IfCableId"> </Entry>
+     Remove this line for "IfCableId" -->
+
+<!-- Remove this line for "ContactorType"
+    <Entry Label="ContactorType"> </Entry>
+     Remove this line for "ContactorType" -->
+
+<!-- Remove this line for "ContactorId"
+    <Entry Label="ContactorId"> </Entry>
+     Remove this line for "ContactorId" -->
+
+<!-- Remove this line for "LaserType"
+    <Entry Label="LaserType"> </Entry>
+     Remove this line for "LaserType" -->
+
+<!-- Remove this line for "LaserId"
+    <Entry Label="LaserId"> </Entry>
+     Remove this line for "LaserId" -->
+
+<!-- Remove this line for "ExtEquipType"
+    <Entry Label="ExtEquipType"> </Entry>
+     Remove this line for "ExtEquipType" -->
+
+<!-- Remove this line for "ExtEquipId"
+    <Entry Label="ExtEquipId"> </Entry>
+     Remove this line for "ExtEquipId" -->
+
+<!-- Remove this line for ""
+    <Entry Label="FabWaferId"> </Entry>
+     Remove this line for "" -->
+
+<!-- Remove this line for "FabWaferFrame"
+    <Entry Label="FabWaferFrame"> </Entry>
+     Remove this line for "FabWaferFrame" -->
+
+<!-- Remove this line for "WaferMask"
+    <Entry Label="WaferMask"> </Entry>
+     Remove this line for "WaferMask" -->
+
+<!-- Remove this line for "WaferUserDesc"
+    <Entry Label="WaferUserDesc"> </Entry>
+     Remove this line for "WaferUserDesc" -->
+
+<!-- Remove this line for "ActiveWaferMapName"
+    <Entry Label="ActiveWaferMapName"> </Entry>
+     Remove this line for "ActiveWaferMapName" --> 
+    
+ </NewLot>
+
+
+<!--
+# Only the LOT INFO VARIABLE names are used to define the LotInfo dialog.  The
+# STDF V4 RECORD/FIELD and COMMENTS fields are included in this file for
+# infomational purposes only.
+#
+# LOT INFO VARIABLE    STDFV4 RECORD/FIELD   COMMENTS
+# ===============================================
+User                   # (None)
+Operator               # MIR/OPER_NAM
+StartTime              # MIR/START_T
+Shift                  # (None)
+Device                 # MIR/PART_TYP
+NextSerial             # PRR/PART_ID
+LotID                  # MIR/LOT_ID
+SublotID               # MIR/SBLOT_ID
+ProductID              # MIR/FAMLY_ID
+WaferID                # WIR/WAFER_ID
+FabricationID          # MIR/PROC_ID
+ProberHandlerID        # SDR/HAND_ID
+LotState               # MIR/RTST_COD        New, Retest or Unknown 
+LotStatus              # (None)              Pre-, Post-burn in, Unknown
+LotDescription         # MRR/USR_DESC
+#Head                  # MIR/STAT_NUM
+#TestMode              # MIR/MODE_COD
+#ProtectionCode        # MIR/PROT_COD
+#CommandMode           # MIR/CMOD_COD
+#TcName                # MIR/NODE_NAM
+#TesterType            # MIR/TSTR_TYP
+#FileName              # (None)
+#FileNameRev           # MIR/JOB_REV
+#SystemName            # MIR/EXEC_TYP
+#TargetName            # MIR/EXEC_VER
+#TestPhase             # MIR/TEST_COD
+#TestTemp              # MIR/TST_TEMP
+#UserText              # MIR/USER_TXT
+#AuxDataFile           # MIR/AUX_FILE
+#Package               # MIR/PKG_TYP
+#DateCode              # MIR/DATE_COD
+#TestFacility          # MIR/FACIL_ID
+#TestFloor             # MIR/FLOOR_ID
+#OperFreq              # MIR/OPER_FRQ
+#TestSpecName          # MIR/SPEC_NAM
+#TestSpecRev           # MIR/SPEC_VER
+#ActiveFlowName        # MIR/FLOW_ID
+#TestSetup             # MIR/SETUP_ID
+#DesignRev             # MIR/DSGN_REV
+#EngrLotId             # MIR/ENG_ID
+#RomCode               # MIR/ROM_COD
+#TesterSerNum          # MIR/SERL_NUM
+#Supervisor            # MIR/SUPR_NAM
+#DispCode              # MRR/DISP_COD
+#ExecDesc              # MRR/EXC_DESC
+#HandlerType           # SDR/HAND_TYP
+#CardType              # SDR/CARD_TYP
+#CardId                # SDR/CARD_ID
+#LoadBrdType           # SDR/LOAD_TYP
+#LoadBrdId             # SDR/LOAD_ID
+#DIBType               # SDR/DIB_TYP
+#ActiveLoadBrdName     # SDR/DIB_ID
+#IfCableType           # SDR/CABL_TYP
+#IfCableId             # SDR/CABL_ID
+#ContactorType         # SDR/CONT_TYP
+#ContactorId           # SDR/CONT_ID
+#LaserType             # SDR/LASR_TYP
+#LaserId               # SDR/LASR_ID
+#ExtEquipType          # SDR/EXTR_TYP
+#ExtEquipId            # SDR/EXTR_ID
+#FabWaferId            # WRR/FABWF_ID
+#FabWaferFrame         # WRR/FRAME_ID
+#WaferMask             # WRR/MASK_ID
+#WaferUserDesc         # WRR/USR_DESC
+#ActiveWaferMapName    # WRR/EXC_DESC
+
+-->
+

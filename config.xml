@@ -5,7 +5,7 @@
 
 	<SiteConfiguration name = "ATK3">
 		<Launch>
-			<Param name = "Type">engr</Param> <!-- prod, engr; default:prod -->
+			<Param name = "Type">prod</Param> <!-- prod, engr; default:prod -->
 			<Param name = "Kill Tester Before Launch">true</Param> <!-- true, false; default:false -->
 			<Param name = "Wait Time To Launch">129</Param> <!-- default:120 seconds -->
 			<Param name = "Max Attempt To Launch">9</Param> <!-- default: 3 -->
@@ -30,23 +30,25 @@
 			<Delete>false</Delete>
 			<STDF>true</STDF> <!-- if true, sends STDF field from lotinfo.txt to unison; default: false-->
 			<Field>
-				<Param name = "MIR.LOT_ID">LOTID</Param>
-				<Param name = "MIR.PART_TYP">PARTTYPE</Param>
-				<Param name = "MIR.OPER_NAM">OPERATORID</Param>
-				<Param name = "MIR.DATE_COD">DATECODE</Param>
-				<Param name = "MIR.TEST_COD">TESTCODE</Param>
-				<Param name = "MIR.TST_TEMP">TEMPERATURE</Param>
-				<Param name = "MIR.JOB_NAM">PROGRAM</Param>
-				<Param name = "MIR.RTST_COD">RETESTCODE</Param>
-				<Param name = "MIR.NODE_NAM">HOSTNAME</Param>
-				<Param name = "SDR.HAND_TYP">HANDLERNAME</Param>
-				<Param name = "SDR.HAND_ID">HANDLERID</Param>
-				<Param name = "SDR.LOAD_ID">LOADBOARD</Param>
-				<Param name = "SDR.DIB_ID">DUTBOARD</Param>
-				<Param name = "SDR.CONT_ID">SOCKET</Param>
+				<Param name = "LOT_ID">LOTID</Param>
+				<Param name = "PART_TYP">DEVICE_type</Param>
+				<Param name = "OPER_NAM">OPERATORID</Param>
+				<Param name = "DATE_COD">DATECODE</Param>
+				<Param name = "TEST_COD">TESTCODE</Param>
+				<Param name = "TST_TEMP">TEMPERATURE</Param>
+				<Param name = "JOB_NAM">PROGRAM</Param>
+				<Param name = "RTST_COD">RETESTCODE</Param>
+				<Param name = "NODE_NAM">HOSTNAME</Param>
+				<Param name = "HAND_TYP">HANDLERNAME</Param>
+				<Param name = "HAND_ID">HANDLERID</Param>
+				<Param name = "LOAD_ID">LOADBOARD</Param>
+				<Param name = "DIB_ID">DUTBOARD</Param>
+				<Param name = "CONT_ID">SOCKET</Param>
 				<Param name = "JOBFILE">PROGRAMPATH</Param>
 				<Param name = "CUSTOMER">CUSTOMER</Param>
+				<Param name = "DEVICENICKNAME">DEVICENICKNAME</Param>
 			</Field>
+
 			<Step state = "false">
 				<Param flow_id = "FT1" rtst_cod = "0">fT1</Param>
 				<Param flow_id = "FT1" rtst_cod = "1">rt1</Param>
@@ -54,21 +56,25 @@
 				<Param flow_id = "FT2" rtst_cod = "2">2RT2</Param>
 				<Param flow_id = "FT1" rtst_cod = "3">RT3</Param>
 				<Param flow_id = "FT4" rtst_cod = "5">RT5</Param>
+				<Param flow_id = "FT4" rtst_cod = "5">RT5</Param>
 			</Step>
 		</LotInfo>
+
 		<Binning state = "true">
 			<BinType>soft</BinType> <!-- hard, soft -->	
 			<TestType>final</TestType> <!-- final, wafer -->		
-			<SocketType>udp</SocketType>
+			<SocketType>udp</SocketType> <!-- udp, tcp -->
 			<IP>127.0.0.1</IP>
 			<Port>4000</Port>
 		</Binning>
+
 		<Logging state = "true">
 			<Path>/var/home/service/Desktop/Cohu_Debug/APL/log</Path>
 		</Logging>
 		<STDF>
 			<Path>/opt/ltx_nic/dlog</Path>
-			<Rename state = "true" format = "qualcomm" />
+			<TimeStamp></TimeStamp> 
+			<Rename state = "true" format = "qualcomm" timestamp = "end"/> <!-- timestamp: start, end -->
 			<Compress state = "true" cmd = "/usr/bin/gzip" ext = ".gz" />
 		</STDF>
 		<FAMODULE state = "false" />

@@ -1,4 +1,3 @@
-programpath:/var/home/service/Desktop/Cohu_Debug/binChecker_qcom_u1909/Program/BinChecker.una
 lotid:test
 parttype:TD90-PB847-6
 operatorid:12345678
@@ -12,7 +11,7 @@ loadboard:28-2
 dutboard:23-S4-12/23-S4-6/23-S4-7/23-S4-8
 socket:QC5-8/QC5-23/QC5-5/QC5-27
 hostname:k3pax01
-customer:QUALCOMM
-retestcode:3
-DEVICENICKNAme: LIBRE
+customer:QUALCOMM N 
+retestcode:0
+programpath:/home/test/PROD/k3pax01/pgms/program name.oper
 

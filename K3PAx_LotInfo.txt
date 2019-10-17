@@ -16,3 +16,7 @@ customer:QUALCOMM
 retestcode:3
 DEVICENICKNAme: LIBRE
 
+AutomationNam : APL
+AutomationVer : beta.2.5.20191016
+LoaderApiNam : APL
+LoaderApiRev : beta.2.5.20191016

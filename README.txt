@@ -1,15 +1,57 @@
 RELEASE NOTES:
 
 version xxxxx
--	APL now has option to specify which NewLotConfig.xml to use if <customer> is QUALCOMM
-	- added new config parameter that specifies the filename and path of NewLotConfig.xml to use for specific customer. 
-	- also added <Customer> parameter to specify which customer will use this NewLotConfig.xml file
+-	if lotinfo.txt provided "CUSTOMER" field and its value is "QUALCOMM, APL will now use a NewLotConfig file as what was specified in xml config shown below + '.xml'
+-	so with below settings, NewLotConfig file is 'NewLotUnison.xml'
+		<Launch>
+			<Param name = "NewLot Config Path">/var/home/service/Desktop/Cohu_Debug/APL</Param>
+			<Param name = "NewLot Config File">NewLotUnison</Param>
+		</Launch>
 
--	fixed setLotInformation() to write RST_CODE. changed EVX_LOT_TYPE from LotLotStatus to LotLotState
+-	fixed setLotInformation() to write RTST_CODE. changed EVX_LOT_TYPE from LotLotStatus to LotLotState
 
 -	rename widget app title to "APL Commander 1.0"
 
+-	feature that sends lotinfo.txt to FAModule (ST Galileo flow) which is part of uprodtool can now be disabled
+		<SiteConfiguration name = "ATK3">
+				<FAMODULE state = "false" />
+		</SiteConfiguration>
 
+-	lotinfo.txt file can now customize its field/value pair labels. example is MIR.LOT_ID field. if customer/amkor wants APL to set MIR.LOT_ID, it can specify any field as MIR.LOT_ID
+	in lotinfo.txt file. customer can set something like this in lotinfo.txt file 
+	- MyLotId: CUST1234
+	- To tell APL that the value corresponding to field 'MyLotId" refers to MIR.LOT_ID, APL can be configured as shown below:
+		<LotInfo>
+			<Field>
+				<Param name = "LOT_ID">MyLotId</Param>
+			</Field>
+		</LotInfo>
+	- below is an example of several MIR and SDR fields that can be set to specific field labels
+		<LotInfo>
+			<Field>
+				<Param name = "LOT_ID">LOTID</Param>
+				<Param name = "PART_TYP">PARTTYPE</Param>
+				<Param name = "OPER_NAM">OPERATORID</Param>
+				<Param name = "DATE_COD">DATECODE</Param>
+				<Param name = "TEST_COD">TESTCODE</Param>
+				<Param name = "TST_TEMP">TEMPERATURE</Param>
+				<Param name = "JOB_NAM">PROGRAM</Param>
+				<Param name = "RTST_COD">RETESTCODE</Param>
+				<Param name = "NODE_NAM">HOSTNAME</Param>
+				<Param name = "HAND_TYP">HANDLERNAME</Param>
+				<Param name = "HAND_ID">HANDLERID</Param>
+				<Param name = "LOAD_ID">LOADBOARD</Param>
+				<Param name = "DIB_ID">DUTBOARD</Param>
+				<Param name = "CONT_ID">SOCKET</Param>
+				<Param name = "JOBFILE">PROGRAMPATH</Param>
+				<Param name = "CUSTOMER">CUSTOMER</Param>
+				<Param name = "DUMMY">DUMBDUMB</Param>
+			</Field>
+		</LotInfo>
+	- note above that some fields "DUMMY", "CUSTOMER", and "JOBFILE" are not STDF fields. instead they are special fields with specific use. 
+		- JOBFILE refers to the program path/name APL will load in Unison
+		- CUSTOMER is the customer name used for customer specific behavior such as which NewLotConfig to use, etc...
+		- DUMMY is just a useless example so ignore this.
 
 version beta.2.5.20191006
 -	bug fixes

@@ -17,8 +17,7 @@
 constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
-#define JOBFILE "JOBFILE"
-#define VERSION "beta.2.5.20191006"
+#define VERSION "beta.2.5.20191016"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"
@@ -81,6 +80,24 @@ protected:
 			}
 			return std::string();
 		}
+
+		bool setValue(const std::string& field, const std::string& value, bool bAdd = false)
+		{
+			for(unsigned int i = 0; i < m_fvs.size(); i++)
+			{
+				if (m_fvs[i].field.compare(field) == 0)
+				{
+					m_fvs[i].value = value;
+					return true;
+				}
+			}
+			if (bAdd)
+			{
+				add(field, value);
+				return true;
+			}
+			return false;
+		}
 	};
 
 	struct CONFIG
@@ -102,6 +119,7 @@ protected:
 		// STDF field labels 
 		CFieldValuePair mir;
 		CFieldValuePair sdr;
+		CFieldValuePair fields;
 
 		// resources
 		CUtil::CLog m_Log;
@@ -140,6 +158,10 @@ protected:
 		std::string	szZipSTDFExt;
 		bool		bRenameSTDF;
 		std::string	szRenameSTDFFormat;
+		bool 		bTimeStampIsEndLot;
+
+		// FAModule parameters
+		bool		bFAModule;
 
 		// lotinfo file parameters
 		std::string 	szLotInfoFileName;
@@ -161,7 +183,6 @@ protected:
 		std::string	szNewLotConfigPath;
 
 		// customer/factory parameters
-		std::string	szCustomer;
 		std::string 	szTestSite;
 		std::string	szSupplier;
 
@@ -198,17 +219,19 @@ protected:
 			nServerPort = 54000;
 			szNewLotConfigFile = "NewLotUnison";
 			szNewLotConfigPath = "$LTX_UPROD_PATH/newlot-config";
-			szCustomer = "cohu";
 			szSTDFPath = "/tmp";
 			szTestSite = "cohu";
 			szSupplier = "cohu";
 			bZipSTDF = false;
 			szZipSTDFCmd = "/usr/bin/gzip";
 			szZipSTDFExt = ".gz";
+			bTimeStampIsEndLot = true; 
 			bRenameSTDF = false;
 			szRenameSTDFFormat = "QUALCOMM";		
+			bFAModule = false;
 			mir.clear();
 			sdr.clear();
+			fields.clear();
 			
 			// add and set default field/value for MIR fields						
 			mir.add("SETUP_T", "SETUP_T");
@@ -245,7 +268,7 @@ protected:
 			mir.add("FLOW_ID", "ACTIVEFLOWNAME");
 			mir.add("SETUP_ID", "TESTSETUP");
 			mir.add("DSGN_REV", "DESIGNREV");
-			mir.add("ENG_ID ", "ENGRLOTID");
+			mir.add("ENG_ID", "ENGRLOTID");
 			mir.add("ROM_COD", "ROMCODE");
 			mir.add("SERL_NUM", "TESTERSERNUM");
 			mir.add("SUPR_NAM", "SUPERVISOR");	
@@ -265,8 +288,13 @@ protected:
 			sdr.add("LASR_ID", "LASERID");	
 			sdr.add("EXTR_TYP", "EXTRAEQUIPMENTTYPE");	
 			sdr.add("EXTR_ID", "EXTRAEQUIPMENTID");	
-			sdr.add("DIB_ID ", "DIBID");		
+			sdr.add("DIB_ID", "DIBID");		
 			sdr.add("CABL_TYP", "CABLETYPE");
+
+			// add the generic field/value pairs
+			fields.add("JOBFILE", "JOBFILE");
+			fields.add("CUSTOMER", "CUSTOMER");
+			fields.add("DEVICENICKNAME", "DEVICENICKNAME");
 		}
 
 
@@ -291,6 +319,9 @@ protected:
 		std::string szStep;
 		std::string szLotId;
 		std::string szDevice;
+		std::string szCustomer;
+		std::string szDeviceNickName;
+
 		MIR mir;
 		SDR sdr;		
 		LOTINFO()
@@ -306,7 +337,8 @@ protected:
 			szDevice = p.szDevice;
 			mir = p.mir;
 			sdr = p.sdr;
-			
+			szCustomer = p.szCustomer;
+			szDeviceNickName = p.szDeviceNickName;			
 		}
 		
 		LOTINFO& operator=(const LOTINFO& p)
@@ -317,6 +349,8 @@ protected:
 			szDevice = p.szDevice;
 			mir = p.mir;
 			sdr = p.sdr;
+			szCustomer = p.szCustomer;
+			szDeviceNickName = p.szDeviceNickName;			
 		}
 
 		void clear()
@@ -327,6 +361,8 @@ protected:
 			szDevice = "";
 			mir.clear();
 			sdr.clear();
+			szCustomer = "";
+			szDeviceNickName = "";			
 		}
 	};	
 
