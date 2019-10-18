@@ -5,7 +5,7 @@
 
 	<SiteConfiguration name = "ATK3">
 		<Launch>
-			<Param name = "Type">engr</Param> <!-- prod, engr; default:prod -->
+			<Param name = "Type">prod</Param> <!-- prod, engr; default:prod -->
 			<Param name = "Kill Tester Before Launch">true</Param> <!-- true, false; default:false -->
 			<Param name = "Wait Time To Launch">129</Param> <!-- default:120 seconds -->
 			<Param name = "Max Attempt To Launch">9</Param> <!-- default: 3 -->
@@ -13,8 +13,8 @@
 			<Param name = "Wait Time To Unload Program">29</Param> <!-- default: 30 seconds -->
 			<Param name = "Wait Time To FAModule">29</Param> <!-- default: 30 seconds -->
 			<Param name = "Wait Time To Kill Tester">39</Param> <!-- default: 30 seconds -->
-			<Param name = "Force Load">true</Param> <!-- true if APL will always launch OICU and load program; default: false -->
-			<Param name = "NewLot Config Path">/var/home/service/Desktop/Cohu_Debug/APL</Param>
+			<Param name = "Force Load">false</Param> <!-- true if APL will always launch OICU and load program; default: false -->
+			<Param name = "NewLot Config Path">/home/test/PROD/qctpax/Desktop/APL</Param>
 			<Param name = "NewLot Config File">NewLotUnison</Param>
 			<Param name = "Test Site">AMKKR3-S</Param>
 			<Param name = "Supplier">AMKOR</Param>
@@ -26,12 +26,12 @@
 
 		<LotInfo>
 			<File>K3PAx_LotInfo.txt</File> <!-- default: lotinfo.txt -->
-			<Path>/var/home/service/Desktop/Cohu_Debug/APL</Path> <!-- default: /tmp -->
+			<Path>/home/test/PROD/qctpax/Desktop/APL/</Path> <!-- default: /tmp -->
 			<Delete>false</Delete>
 			<STDF>true</STDF> <!-- if true, sends STDF field from lotinfo.txt to unison; default: false-->
 			<Field>
 				<Param name = "LOT_ID">LOTID</Param>
-				<Param name = "PART_TYP">DEVICE_type</Param>
+				<Param name = "PART_TYP">PARTTYPE</Param>
 				<Param name = "OPER_NAM">OPERATORID</Param>
 				<Param name = "DATE_COD">DATECODE</Param>
 				<Param name = "TEST_COD">TESTCODE</Param>
@@ -69,12 +69,12 @@
 		</Binning>
 
 		<Logging state = "true">
-			<Path>/var/home/service/Desktop/Cohu_Debug/APL/log</Path>
+			<Path>/home/test/PROD/qctpax/Desktop/APL/log</Path>
 		</Logging>
 		<STDF>
-			<Path>/opt/ltx_nic/dlog</Path>
+			<Path>/home/test/PROD/qctpax/DATA/STDF</Path> <!--path where STDF file is saved -->
 			<TimeStamp></TimeStamp> 
-			<Rename state = "true" format = "qualcomm" timestamp = "end"/> <!-- timestamp: start, end -->
+			<Rename state = "true" format = "qualcomm" timestamp = "start"/> <!-- timestamp: start, end -->
 			<Compress state = "true" cmd = "/usr/bin/gzip" ext = ".gz" />
 		</STDF>
 		<FAMODULE state = "false" />

@@ -1265,7 +1265,7 @@ void CApp::onWatchSTDF(const std::string& name)
 			if (!stdf.readMIR(ssFullPathSTDF.str(), mir)){ m_Log << "ERROR: Something went wrong extracting MIR from '" << ssFullPathSTDF.str() << "'" << CUtil::CLog::endl; return; }
 
 			// ensure we only process STDF that comes from this tester
-			if (m_szTesterName.compare(mir.NODE_NAM) == 0) 
+			if (m_szTesterName.compare(mir.NODE_NAM) != 0) 
 			{
 				m_Log << "WARNING: This STDF file '" << ssFullPathSTDF.str() << "' is tested on '" << mir.NODE_NAM << "'. Our tester name is '" << m_szTesterName << "'" << CUtil::CLog::endl;
 				return;
