@@ -5,7 +5,7 @@
 
 	<SiteConfiguration name = "ATK3">
 		<Launch>
-			<Param name = "Type">prod</Param> <!-- prod, engr; default:prod -->
+			<Param name = "Type">engr</Param> <!-- prod, engr; default:prod -->
 			<Param name = "Kill Tester Before Launch">true</Param> <!-- true, false; default:false -->
 			<Param name = "Wait Time To Launch">129</Param> <!-- default:120 seconds -->
 			<Param name = "Max Attempt To Launch">9</Param> <!-- default: 3 -->
