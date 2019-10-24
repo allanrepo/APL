@@ -2087,6 +2087,13 @@ bool CApp::setLotInfo()
 	if ( !setLotInformation(EVX_LotActiveLoadBrdName, 	m_lotinfo.sdr.DibId, 	"SDR.LotActiveLoadBrdName")) bRslt = false;
 	if ( !setLotInformation(EVX_LotDIBType, 		m_lotinfo.sdr.DibTyp, 	"SDR.LotDIBType")) bRslt = false;
 
+	// special case if customer is QUALCOMM
+	if (m_lotinfo.szCustomer.compare("QUALCOMM") == 0)
+	{
+		if ( !setLotInformation(EVX_LotEngrLotId, 		m_lotinfo.mir.LotId, 	"MIR.LotEngrLotId")) bRslt = false;
+		if ( !setLotInformation(EVX_LotTestFacility, 		m_CONFIG.szTestSite, 	"MIR.LotTestFacility")) bRslt = false;
+	}
+
 	return bRslt;
 }
 
