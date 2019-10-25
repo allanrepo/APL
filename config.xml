@@ -89,7 +89,7 @@
 			<Param name = "Wait Time To Unload Program">29</Param> <!-- default: 30 seconds -->
 			<Param name = "Wait Time To FAModule">29</Param> <!-- default: 30 seconds -->
 			<Param name = "Wait Time To Kill Tester">39</Param> <!-- default: 30 seconds -->
-			<Param name = "Force Load">false</Param> <!-- true if APL will always launch OICU and load program; default: false -->
+			<Param name = "Force Load">true</Param> <!-- true if APL will always launch OICU and load program; default: false -->
 			<Param name = "NewLot Config Path">/home/localuser/Desktop/APL</Param>
 			<Param name = "NewLot Config File">NewLotUnison</Param>
 			<Param name = "Test Site">AMKKR3-S</Param>

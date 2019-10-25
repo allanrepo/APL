@@ -1,6 +1,6 @@
 //programpath:/var/home/service/Desktop/Cohu_Debug/binChecker_qcom_u1909/Program/BinChecker.una
 programpath:/home/localuser/Desktop/Programs/binChecker_qcom_u1909/Program/BinChecker.una
-lotid:newlot123
+lotid:LOTRICKY123
 parttype:TD90-PB847-6
 operatorid:12345678
 datecode:939
@@ -16,7 +16,9 @@ hostname:k3pax01
 customer:QUALCOMM
 retestcode:3
 DEVICENICKNAme: LIBRE
-
+dibtype: turret
+contactortype: QC
+boardtype: LX
 AutomationNam : APL
 AutomationVer : beta.2.5.20191016
 LoaderApiNam : APL

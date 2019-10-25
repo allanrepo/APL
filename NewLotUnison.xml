@@ -51,7 +51,11 @@
     <Entry Label="LotID"> </Entry>
     <Entry Label="TestTemp"> </Entry>
     <Entry Label="HandlerType"> </Entry>
-    <Entry Label="ProberHandlerID"> </Entry>
+    <Entry Label="ProberHandlerID" Type="Choice">
+		<Value> </Value>
+		<Value>Simulator</Value>
+ 	</Entry>
+
     <Entry Label="LoadBrdId"> </Entry>
     <Entry Label="ActiveLoadBrdName"> </Entry>
     <Entry Label="ContactorId"> </Entry>

@@ -1259,7 +1259,7 @@ void CApp::onWatchSTDF(const std::string& name)
 		{
 			// extract MIR and MRR from this STDF file
 			APL::CSTDF stdf;
-			APL::MRR mrr;
+			APL::MRR mrr; 
 			APL::MIR mir;
 			if (!stdf.readMRR(ssFullPathSTDF.str(), mrr)){ m_Log << "ERROR: Something went wrong extracting MRR from '" << ssFullPathSTDF.str() << "'" << CUtil::CLog::endl; return; }
 			if (!stdf.readMIR(ssFullPathSTDF.str(), mir)){ m_Log << "ERROR: Something went wrong extracting MIR from '" << ssFullPathSTDF.str() << "'" << CUtil::CLog::endl; return; }
@@ -1268,7 +1268,7 @@ void CApp::onWatchSTDF(const std::string& name)
 			if (m_szTesterName.compare(mir.NODE_NAM) != 0) 
 			{
 				m_Log << "WARNING: This STDF file '" << ssFullPathSTDF.str() << "' is tested on '" << mir.NODE_NAM << "'. Our tester name is '" << m_szTesterName << "'" << CUtil::CLog::endl;
-				return;
+//				return;
 			}	
 
 			// if we reach this point, we found a valid STDF file with good MIR and MRR records. let's ignore any incoming select() notification
