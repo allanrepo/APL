@@ -1,6 +1,17 @@
 #include <stdf.h>
 
 /* ------------------------------------------------------------------------------------------
+quickly opens STDF file and search for TSR's backwards. store all TSR found in list
+------------------------------------------------------------------------------------------ */
+/*
+bool readTSRs(const std::string& file, std::list< APL::TSR* > TSRs)
+{
+ 
+	return true;
+}
+*/
+
+/* ------------------------------------------------------------------------------------------
 quickly opens STDF file and find MIR. reads its contents
 ------------------------------------------------------------------------------------------ */
 bool APL::CSTDF::readMIR(const std::string& file, APL::MIR& mir)

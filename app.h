@@ -17,7 +17,7 @@
 constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
-#define VERSION "beta.2.5.20191025"
+#define VERSION "beta.2.5.20191030"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"

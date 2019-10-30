@@ -1291,7 +1291,7 @@ void CApp::onWatchSTDF(const std::string& name)
 			ssNewFileName << m_CONFIG.szSupplier << "_" << m_CONFIG.szTestSite << "_";
 			ssNewFileName << mir.PART_TYP << "_" << mir.JOB_NAM << "_" << mir.LOT_ID << "_";
 			ssNewFileName << ssEndLotTimeStamp.str() << "_" << mir.RTST_COD << "_" << mir.FLOW_ID << "_" << mir.NODE_NAM << "_" << m_lotinfo.szDeviceNickName <<  ".std";
-
+ 
 			// rename the file
 			if (!CUtil::renameFile(ssFullPathSTDF.str(), ssNewFileName.str()))
 			{ 
@@ -1303,6 +1303,11 @@ void CApp::onWatchSTDF(const std::string& name)
 				ssFullPathSTDF.str(std::string());
 				ssFullPathSTDF << ssNewFileName.str();
 			}
+
+			// let's do the summary file here
+			CUtil::CTimer tm;
+			tm.start();
+			m_Log << "summary time: " << tm.stop() << " ms" << CUtil::CLog::endl;
 		}
 	}
 

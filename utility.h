@@ -16,10 +16,50 @@
 
 // linux specific include for dir
 #include <dirent.h>
-
+#include <sys/time.h>
 
 namespace CUtil
 {
+	// simple stop watch class that measures delta time in milliseconds
+	class CTimer
+	{
+	protected:
+		struct timeval m_tv;
+
+	public:
+		CTimer()
+		{
+			start();
+		}
+		virtual ~CTimer(){} 
+		
+		// too lazy, don't bother copying this object
+		CTimer(const CTimer&){} // copy constructor                     
+		const CTimer& operator=(const CTimer&){} // operator '='
+
+		void start()
+		{
+			gettimeofday(&m_tv, NULL);
+		}		 
+
+		long stop()
+		{
+			// measure time now
+			struct timeval now;
+			gettimeofday(&now, NULL);
+
+			// calculate actual delta time (in milliseconds) for this event
+			long nTimeMS = (((long)now.tv_sec - (long)m_tv.tv_sec ) * 1000);
+			nTimeMS += (((long)now.tv_usec - (long)m_tv.tv_usec) / 1000);	
+
+			// set the 'start' time to now
+			m_tv.tv_sec = now.tv_sec;
+			m_tv.tv_usec = now.tv_usec;
+
+			return nTimeMS;
+		}
+	};
+
 	// standard class version
 	class CLog
 	{

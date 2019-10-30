@@ -59,6 +59,7 @@ namespace APL
 	
 		bool readMRR(const std::string& file, APL::MRR& mrr);
 		bool readMIR(const std::string& file, APL::MIR& mir);
+		//bool readTSRs(const std::string& file, std::list< APL::TSR* > TSRs);
 	};
 
 	class CRecord

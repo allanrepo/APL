@@ -20,6 +20,6 @@ dibtype: turret
 contactortype: QC
 boardtype: LX
 AutomationNam : APL
-AutomationVer : beta.2.5.20191016
+AutomationVer : beta.2.5.20191025
 LoaderApiNam : APL
-LoaderApiRev : beta.2.5.20191016
+LoaderApiRev : beta.2.5.20191025
