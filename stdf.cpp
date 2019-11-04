@@ -286,8 +286,6 @@ void APL::MRR::print()
 
 
 	m_Log << "DST: " << (plt->tm_isdst? "in effect" : "not in effect" )<< CUtil::CLog::endl;
-
-// plt->monasctime(plt) << ")" <<CUtil::CLog::endl;
 	m_Log << "DISP_COD: '" << DISP_COD << "'" << CUtil::CLog::endl;
 	m_Log << "USER_DESC: \"" << USER_DESC << "\"" << CUtil::CLog::endl;
 	m_Log << "EXC_DESC: \"" << EXC_DESC << "\"" << CUtil::CLog::endl;

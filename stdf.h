@@ -22,6 +22,7 @@ namespace APL
 	class CSTDF;
 	class CRecord;
 	class MIR;
+	class TSR;
 
 	class CField
 	{
@@ -59,7 +60,8 @@ namespace APL
 	
 		bool readMRR(const std::string& file, APL::MRR& mrr);
 		bool readMIR(const std::string& file, APL::MIR& mir);
-		//bool readTSRs(const std::string& file, std::list< APL::TSR* > TSRs);
+
+		bool readSummary(const std::string& file, std::list< APL::TSR >& mir){ return true; }
 	};
 
 	class CRecord
@@ -143,6 +145,18 @@ namespace APL
 		virtual void print();
 		virtual void clear();		
 	};
+
+	class TSR: public CRecord
+	{
+	public:
+
+	public:
+		TSR(){}
+		virtual ~TSR(){}
+		virtual bool read( std::fstream& fs, const unsigned short len );
+		virtual void print();		
+		virtual void clear();
+	};	
 };
 
 /* ------------------------------------------------------------------------------------------
