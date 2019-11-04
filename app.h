@@ -17,7 +17,7 @@
 constants
 ------------------------------------------------------------------------------------------ */
 #define DELIMITER ':'
-#define VERSION "beta.2.6.20191104"
+#define VERSION "beta.2.7.20191104"
 #define DEVELOPER "allan asis / allan.asis@gmail.com"
 #define MAXCONNECT 20
 #define KILLAPPCMD "kill.app.sh"
@@ -296,6 +296,7 @@ protected:
 			fields.add("JOBFILE", "JOBFILE");
 			fields.add("CUSTOMER", "CUSTOMER");
 			fields.add("DEVICENICKNAME", "DEVICENICKNAME");
+			fields.add("STEP", "STEP");
 		}
 
 

@@ -1708,7 +1708,7 @@ bool CApp::parse(const std::string& name)
 				{
 					m_Log << "ERROR: '" << value << "' program cannot be accessed." << CUtil::CLog::endl;
 					continue;
-				}
+				} 
 				else
 				{
 					m_Log << "'" << value << "' exists. let's try to load it." << CUtil::CLog::endl;
@@ -1720,19 +1720,19 @@ bool CApp::parse(const std::string& name)
 			if (m_CONFIG.fields.getField(field).compare("DEVICENICKNAME") == 0)	{ li.szDeviceNickName = value; }
 			
 			// if we receive "step" field from amkor
-			if (field.compare("STEP") == 0)
+			if (m_CONFIG.fields.getField(field).compare("STEP") == 0)
 			{
 				m_Log << field << " field found, value: '" << value << CUtil::CLog::endl;
 				li.szStep = value;
 			}
 			// if we receive "lotid" field from amkor
-			if (field.compare("LOTID") == 0)
+			if (m_CONFIG.mir.getField(field).compare("LOT_ID") == 0)
 			{
 				m_Log << field << " field found, value: '" << value << CUtil::CLog::endl;
 				li.szLotId = value;
 			}
 			// if we receive "device" field from amkor
-			if (field.compare("DEVICE") == 0)
+			if (m_CONFIG.mir.getField(field).compare("PART_TYP") == 0)
 			{
 				m_Log << field << " field found, value: '" << value << CUtil::CLog::endl;
 				li.szDevice = value;
