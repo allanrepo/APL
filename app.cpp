@@ -1077,6 +1077,7 @@ bool CApp::CONFIG::parse(const std::string& file)
 						s.szStep = CUtil::toUpper(pLotInfo->fetchChild("Step")->fetchChild(i)->fetchText());
 						s.szFlowId = CUtil::toUpper(pLotInfo->fetchChild("Step")->fetchChild(i)->fetchVal("flow_id"));
 						s.nRtstCod = CUtil::toLong(pLotInfo->fetchChild("Step")->fetchChild(i)->fetchVal("rtst_cod"));
+						s.szCmodCod = CUtil::toUpper(pLotInfo->fetchChild("Step")->fetchChild(i)->fetchVal("cmod_cod"));
 						if (s.nRtstCod > 255) m_Log << "ERROR! RTST_COD value found in " << file << " is " <<  s.nRtstCod << ". acceptable values are 0-255." << CUtil::CLog::endl;
 						else steps.push_back(s);
 					}
@@ -1207,7 +1208,7 @@ void CApp::CONFIG::print()
 	m_Log << "Step: " << (bStep? "enabled" : "disabled") << CUtil::CLog::endl;
 	for (unsigned int i = 0; i < steps.size(); i++)
 	{
-		m_Log << "STEP: " << steps[i].szStep << ", flow_id: " << steps[i].szFlowId << ", rtst_cod: " << steps[i].nRtstCod << CUtil::CLog::endl;
+		m_Log << "STEP: " << steps[i].szStep << ", flow_id: " << steps[i].szFlowId << ", rtst_cod: " << steps[i].nRtstCod << ", cmod_cod: " << steps[i].szCmodCod<< CUtil::CLog::endl;
 	}
 	m_Log << "GUI: " << (bPopupServer? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "GUI Server IP: " << szServerIP << CUtil::CLog::endl;
@@ -1305,9 +1306,11 @@ void CApp::onWatchSTDF(const std::string& name)
 			}
 
 			// let's do the summary file here
+			/*
 			CUtil::CTimer tm;
 			tm.start();
 			m_Log << "summary time: " << tm.stop() << " ms" << CUtil::CLog::endl;
+			*/
 		}
 	}
 
@@ -1485,7 +1488,7 @@ bool CApp::updateLotinfoFile(const std::string& name)
 	}
 	else m_Log << m_lotinfo.szStep << " is a valid value" << CUtil::CLog::endl;
 
-	// did lotinfo.txt contain flow_id and rtst_cod already? if yes, does it match the step format? if yes, let's do nothing
+	// did lotinfo.txt contain flow_id already? if yes, does it match the step format? if yes, let's do nothing
 	bool bEditLotInfo = false;
 	if (m_lotinfo.mir.FlowId.compare( pStep->szFlowId ) != 0)
 	{
@@ -1494,6 +1497,7 @@ bool CApp::updateLotinfoFile(const std::string& name)
 	} 
 	else m_Log << m_CONFIG.szLotInfoFileName << " contains FlowId: '" << m_lotinfo.mir.FlowId << "', matching expected value: " << pStep->szFlowId << CUtil::CLog::endl;
 
+	// did lotinfo.txt contain rtst_cod already? if yes, does it match the step format? if yes, let's do nothing
 	if (CUtil::toLong(m_lotinfo.mir.RtstCod) != pStep->nRtstCod )
 	{
 		m_Log << m_CONFIG.szLotInfoFileName << " contains RstCod: '" << m_lotinfo.mir.RtstCod << "' but " << pStep->nRtstCod << " is expected." << CUtil::CLog::endl;
@@ -1501,10 +1505,19 @@ bool CApp::updateLotinfoFile(const std::string& name)
 	}
 	else m_Log << m_CONFIG.szLotInfoFileName << " contains RstCod: '" << m_lotinfo.mir.RtstCod << "', matching expected value: " << pStep->nRtstCod << CUtil::CLog::endl;
 
+	// did lotinfo.txt contain cmod_cod already? if yes, does it match the step format? if yes, let's do nothing
+	if (m_lotinfo.mir.CmodCod.compare( pStep->szCmodCod ) != 0)
+	{
+		m_Log << m_CONFIG.szLotInfoFileName << " contains CmodCod: '" << m_lotinfo.mir.CmodCod << "' but " << pStep->szCmodCod << " is expected." << CUtil::CLog::endl;
+		bEditLotInfo = true;
+	} 
+	else m_Log << m_CONFIG.szLotInfoFileName << " contains CmodCod: '" << m_lotinfo.mir.CmodCod << "', matching expected value: " << pStep->szCmodCod << CUtil::CLog::endl;
+
 	if (bEditLotInfo)
 	{
-		// let's just quickly update our STDF variable flowid and rtstcod with valid STEP formats
+		// let's just quickly update our STDF variable flowid, cmodcod and rtstcod with valid STEP formats
 		m_lotinfo.mir.FlowId = pStep->szFlowId;
+		m_lotinfo.mir.CmodCod = pStep->szCmodCod;
 		std::stringstream n; n << pStep->nRtstCod;
 		m_lotinfo.mir.RtstCod = n.str();
 
@@ -1553,8 +1566,9 @@ bool CApp::updateLotinfoFile(const std::string& name)
 			std::string field, value;
 			if (getFieldValuePair(l, DELIMITER, field, value))
 			{
-				if (field.compare("ACTIVEFLOWNAME") == 0){ continue; } // don't copy existing flowid
-				else if (field.compare("RTSTCODE") == 0){ continue; } // don't copy existing rtstcod
+				if (field.compare( m_CONFIG.mir.getValue("FLOW_ID") ) == 0){ continue; } // don't copy existing flowid
+				else if (field.compare( m_CONFIG.mir.getValue("RTST_COD") ) == 0){ continue; } // don't copy existing rtstcod
+				else if (field.compare( m_CONFIG.mir.getValue("CMOD_COD") ) == 0){ continue; } // don't copy existing cmodcod
 				else{ fs << l << std::endl; }
 			}
 	
@@ -1562,9 +1576,10 @@ bool CApp::updateLotinfoFile(const std::string& name)
 			if (pos == std::string::npos) break;		
 		}	
 
-		// finally we insert the ACTIVEFLOWNAME and RTSTCODE with new flowid and rtstcod value
-		fs << "ACTIVEFLOWNAME" << " " << DELIMITER << " " << pStep->szFlowId << std::endl;
-		fs << "RTSTCODE" << " " << DELIMITER << " " << pStep->nRtstCod << std::endl;
+		// finally we insert the flowid, cmodcod and rtstcod with new flowid, cmodcod and rtstcod value
+		fs << m_CONFIG.mir.getValue("FLOW_ID") << " " << DELIMITER << " " << pStep->szFlowId << std::endl;
+		fs << m_CONFIG.mir.getValue("RTST_COD") << " " << DELIMITER << " " << pStep->nRtstCod << std::endl;
+		fs << m_CONFIG.mir.getValue("CMOD_COD") << " " << DELIMITER << " " << pStep->szCmodCod << std::endl;
 
 		// close file
 		fs.close();

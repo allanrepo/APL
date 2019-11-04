@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <APL_CONF>
-	<CurrentSiteConfiguration>singapore</CurrentSiteConfiguration>
+	<CurrentSiteConfiguration>singapore_ST</CurrentSiteConfiguration>
 	<SiteConfiguration name = "ATK3">
 		<Launch>
 			<Param name = "Type">engr</Param> <!-- prod, engr; default:prod -->
@@ -156,24 +156,87 @@
 		<FAMODULE state = "false" />
 	</SiteConfiguration>
 
+	<SiteConfiguration name = "singapore_ST">
+		<Launch>
+			<Param name = "Type">prod</Param> <!-- prod, engr; default:prod -->
+			<Param name = "Kill Tester Before Launch">true</Param> <!-- true, false; default:false -->
+			<Param name = "Wait Time To Launch">129</Param> <!-- default:120 seconds -->
+			<Param name = "Max Attempt To Launch">9</Param> <!-- default: 3 -->
+			<Param name = "Wait Time To End Lot">29</Param> <!-- default: 30 seconds -->
+			<Param name = "Wait Time To Unload Program">29</Param> <!-- default: 30 seconds -->
+			<Param name = "Wait Time To FAModule">29</Param> <!-- default: 30 seconds -->
+			<Param name = "Wait Time To Kill Tester">39</Param> <!-- default: 30 seconds -->
+			<Param name = "Force Load">true</Param> <!-- true if APL will always launch OICU and load program; default: false -->
+			<Param name = "NewLot Config Path">/home/localuser/Desktop/APL</Param>
+			<Param name = "NewLot Config File">NewLotUnison</Param>
+			<Param name = "Test Site">AMKKR3-S</Param>
+			<Param name = "Supplier">AMKOR</Param>
+		</Launch>
+		<GUI state = "true">
+			<IP>127.0.0.1</IP>
+			<Port>54000</Port>
+		</GUI>
 
-	<SiteConfiguration name = "Amkor1">
 		<LotInfo>
-			<File>lotinfo.txt</File>
-			<Path>/tmp</Path>
+			<File>K3DMDx_LotInfo.txt</File> <!-- default: lotinfo.txt -->
+			<Path>/home/localuser/Desktop/APL</Path> <!-- default: /tmp -->
+			<Delete>false</Delete>
+			<STDF>true</STDF> <!-- if true, sends STDF field from lotinfo.txt to unison; default: false-->
+			<Field>
+				<Param name = "LOT_ID">LotID</Param>
+				<Param name = "PART_TYP">DEVICE</Param>
+				<Param name = "OPER_NAM">OPERATOR</Param>
+				<Param name = "TST_TEMP">TEMPERATURE</Param>
+				<Param name = "PROC_ID">FABRICATIONID</Param>
+				<Param name = "HAND_ID">HANDLERID</Param>
+				<Param name = "JOBFILE">JOBFILE</Param>
+			</Field>
+
+			<Step state = "true">
+				<Param flow_id = "FT1" rtst_cod = "0" cmod_cod = "F" >FT1</Param>
+				<Param flow_id = "FT1" rtst_cod = "1" cmod_cod = "F">1RT1</Param>
+				<Param flow_id = "FT1" rtst_cod = "2" cmod_cod = "F">1RT2</Param>
+				<Param flow_id = "FT1" rtst_cod = "3" cmod_cod = "F">1RT3</Param>
+				<Param flow_id = "FT1" rtst_cod = "4" cmod_cod = "F">1RT4</Param>
+				<Param flow_id = "FT1" rtst_cod = "5" cmod_cod = "F">1RT5</Param>
+				<Param flow_id = "FT2" rtst_cod = "0" cmod_cod = "F">FT2</Param>
+				<Param flow_id = "FT2" rtst_cod = "1" cmod_cod = "F">2RT1</Param>
+				<Param flow_id = "FT2" rtst_cod = "2" cmod_cod = "F">2RT2</Param>
+				<Param flow_id = "FT2" rtst_cod = "3" cmod_cod = "F">2RT3</Param>
+				<Param flow_id = "FT2" rtst_cod = "4" cmod_cod = "F">2RT4</Param>
+				<Param flow_id = "FT2" rtst_cod = "5" cmod_cod = "F">2RT5</Param>
+				<Param flow_id = "QA1" rtst_cod = "0" cmod_cod = "Q">QA1</Param>
+				<Param flow_id = "QA1" rtst_cod = "1" cmod_cod = "Q">1QR1</Param>
+				<Param flow_id = "QA1" rtst_cod = "2" cmod_cod = "Q">1QR2</Param>
+				<Param flow_id = "QA1" rtst_cod = "3" cmod_cod = "Q">1QR3</Param>
+				<Param flow_id = "QA1" rtst_cod = "4" cmod_cod = "Q">1QR4</Param>
+  				<Param flow_id = "QA1" rtst_cod = "5" cmod_cod = "Q">1QR5</Param>
+				<Param flow_id = "QA2" rtst_cod = "0" cmod_cod = "Q">QA2</Param>
+				<Param flow_id = "QA2" rtst_cod = "1" cmod_cod = "Q">2QR1</Param>
+				<Param flow_id = "QA2" rtst_cod = "2" cmod_cod = "Q">2QR2</Param>
+				<Param flow_id = "QA2" rtst_cod = "3" cmod_cod = "Q">2QR3</Param>
+				<Param flow_id = "QA2" rtst_cod = "4" cmod_cod = "Q">2QR4</Param>
+				<Param flow_id = "QA2" rtst_cod = "5" cmod_cod = "Q">2QR5</Param>
+			</Step>
 		</LotInfo>
+
 		<Binning state = "true">
 			<BinType>soft</BinType> <!-- hard, soft -->	
 			<TestType>final</TestType> <!-- final, wafer -->		
-			<SocketType>udp</SocketType>
+			<SocketType>udp</SocketType> <!-- udp, tcp -->
 			<IP>127.0.0.1</IP>
 			<Port>4000</Port>
 		</Binning>
+
 		<Logging state = "true">
-			<Path>/home/localuser/Desktop/</Path>
+			<Path>/home/localuser/Desktop/Log</Path>
 		</Logging>
-	</SiteConfiguration>
-	<SiteConfiguration name = "Amkor">
+		<STDF>
+			<Path>/home/localuser/synchro_sim/localuser_sim/dlog</Path> <!--path where STDF file is saved -->
+			<Rename state = "false" format = "qualcomm" timestamp = "end"/> <!-- timestamp: start, end -->
+			<Compress state = "false" cmd = "/usr/bin/gzip" ext = ".gz" />
+		</STDF>
+		<FAMODULE state = "true" />
 	</SiteConfiguration>
 
 </APL_CONF>

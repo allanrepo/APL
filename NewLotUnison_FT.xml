@@ -52,6 +52,9 @@
     <Entry Label="WaferID"> </Entry>
     <Entry Label="FabricationID"> </Entry>
     <Entry Label="ProberHandlerID"> </Entry>
+
+    <Entry Label="ActiveFlowName"> </Entry>
+    <Entry Label="CommandMode"> </Entry>
 	<Entry Label="LotState" Type="Choice">
 		<Value> </Value>
 		<Value>0</Value>
@@ -85,9 +88,7 @@
     <Entry Label="ProtectionCode"> </Entry>
      Remove this line for "ProtectionCode" -->
 
-<!-- Remove this line for "CommandMode"
-    <Entry Label="CommandMode"> </Entry>
-     Remove this line for "CommandMode" -->
+
 
 <!-- Remove this line for "TcName"
     <Entry Label="TcName"> </Entry>
@@ -157,9 +158,7 @@
     <Entry Label="TestSpecRev"> </Entry>
      Remove this line for "TestSpecRev" -->
 
-<!-- Remove this line for "ActiveFlowName"
-    <Entry Label="ActiveFlowName"> </Entry>
-     Remove this line for "ActiveFlowName" -->
+
 
 <!-- Remove this line for "TestSetup"
     <Entry Label="TestSetup"> </Entry>

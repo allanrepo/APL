@@ -106,6 +106,7 @@ protected:
 		{
 			std::string szStep;
 			std::string szFlowId;
+			std::string szCmodCod;
 			int nRtstCod;
 		};
 
