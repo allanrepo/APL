@@ -186,6 +186,7 @@ protected:
 		// customer/factory parameters
 		std::string 	szTestSite;
 		std::string	szSupplier;
+		std::string	szCustomer;
 
 		// clearing CONFIG doesn't empty parameters, it just sets them to default
 		void clear()
@@ -223,13 +224,14 @@ protected:
 			szSTDFPath = "/tmp";
 			szTestSite = "cohu";
 			szSupplier = "cohu";
+			szCustomer = "";
 			bZipSTDF = false;
 			szZipSTDFCmd = "/usr/bin/gzip";
 			szZipSTDFExt = ".gz";
 			bTimeStampIsEndLot = true; 
 			bRenameSTDF = false;
 			szRenameSTDFFormat = "QUALCOMM";		
-			bFAModule = false;
+			bFAModule = true;
 			mir.clear();
 			sdr.clear();
 			fields.clear();

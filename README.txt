@@ -1,31 +1,59 @@
 RELEASE NOTES:
 
 version xxxxx
--	if lotinfo.txt provided "CUSTOMER" field and its value is "QUALCOMM, APL will now use a NewLotConfig file as what was specified in xml config shown below + '.xml'
--	so with below settings, NewLotConfig file is 'NewLotUnison.xml'
-		<Launch>
-			<Param name = "NewLot Config Path">/var/home/service/Desktop/Cohu_Debug/APL</Param>
-			<Param name = "NewLot Config File">NewLotUnison</Param>
-		</Launch>
+-	bug fixes
+	- fixed bug where APL is not reading <FAMODULE> state in config.xml, thus making it false all the time. (thanks to cedric for catching this bug)
+		- also, FAMODULE is now enabled by default. 
 
--	fixed setLotInformation() to write RTST_CODE. changed EVX_LOT_TYPE from LotLotStatus to LotLotState
+version beta.2.7.20191104
+-	bug fixes
+	- fixed setLotInformation() to write RTST_COD. changed EVX_LOT_TYPE from LotLotStatus to LotLotState
 
--	rename widget app title to "APL Commander 1.0"
-
--	feature that sends lotinfo.txt to FAModule (ST Galileo flow) which is part of uprodtool can now be disabled
+-	update feature
+	- feature that sends lotinfo.txt to FAModule (ST Galileo flow) which is part of uprodtool can now be disabled
 		<SiteConfiguration name = "ATK3">
 				<FAMODULE state = "false" />
 		</SiteConfiguration>
+	- rename widget app title to "APL Commander 1.0"
 
--	lotinfo.txt file can now customize its field/value pair labels. example is MIR.LOT_ID field. if customer/amkor wants APL to set MIR.LOT_ID, it can specify any field as MIR.LOT_ID
-	in lotinfo.txt file. customer can set something like this in lotinfo.txt file 
-	- MyLotId: CUST1234
-	- To tell APL that the value corresponding to field 'MyLotId" refers to MIR.LOT_ID, APL can be configured as shown below:
-		<LotInfo>
-			<Field>
-				<Param name = "LOT_ID">MyLotId</Param>
-			</Field>
-		</LotInfo>
+-	new feature (setting NewLotUnison.xml)
+	- previously, NewLotUnison.xml file, a file that OICU uses to customize its New Lot Input Dialog box, and path are hard coded into APL, 
+	  specifically targetting Uprodtool's NewLotUnison.xml file. with APL now handling other customers too (Qualcomm), APL is updated such that 
+	  you can now specify the path where it will look for the NewLotUnison.XML file. The file name can now also be specified. it can be set in
+	  config.xml as shown below:
+		<Launch>
+			<Param name = "NewLot Config Path">/var/home/service/Desktop/Cohu_Debug/APL</Param> <!-- path to look for the file -->
+			<Param name = "NewLot Config File">NewLotUnison</Param> 
+		</Launch>
+	- for ST, NewLotUnison.xml file name is a special case, as it uses MIR.PROC_ID as suffix. as for others (Qualcomm), it's just a standard filename.
+	  to accomodate both, APL defaults to appending filename with MIR.PROC_ID suffix to meet ST format. this allows APL's latest version not to require
+	  current configuration on testers running ST devices to change.
+	- the path to look for NewLotUnison.xml also defaults to "$LTX_UPROD_PATH/newlot-config", which is the Uprodtool path. again, this is done to avoid
+	  requiring current configuration on testers running ST devices to change.
+	- if lotinfo.txt file contain field/value pair like CUSTOMER: QUALCOMM, APL will then use NewLotUnison.xml file without suffix.
+
+-	new feature (renaming and compressing STDF format)
+	- a requirement from Qualcomm is to rename STDF to match its format requirement. the date stamp they require is end-lot time stamp so the only way to do this 
+	  is to rename STDF file after completion. this feature is disabled by default as other customers (ST) does not require this.
+	- to enable, set in config.xml as below:
+		<STDF>
+			<Path>/home/localuser/synchro_sim/localuser_sim/dlog</Path> <!--path where STDF file is saved -->
+			<Rename state = "true" format = "qualcomm" timestamp = "end"/> <!-- timestamp: start, end -->
+			<Compress state = "true" cmd = "/usr/bin/gzip" ext = ".gz" />
+		</STDF>
+	- note that you can still make APL use start-lot time stamp. in the <Rename> tag, it contains "timestamp" attribute where you can set 'end' or 'start'
+
+-	new feature (lotinfo.txt field label customization
+	- lotinfo.txt file can now customize its field/value pair labels. 
+	- example is MIR.LOT_ID field. if customer/amkor wants APL to set MIR.LOT_ID, it can specify any field as MIR.LOT_ID in lotinfo.txt file. 
+	  customer can set something like this in lotinfo.txt file 
+		- MyLotId: CUST1234
+		- To tell APL that the value corresponding to field 'MyLotId" refers to MIR.LOT_ID, APL can be configured as shown below:
+			<LotInfo>
+				<Field>
+					<Param name = "LOT_ID">MyLotId</Param>
+				</Field>
+			</LotInfo>
 	- below is an example of several MIR and SDR fields that can be set to specific field labels
 		<LotInfo>
 			<Field>
@@ -52,6 +80,70 @@ version xxxxx
 		- JOBFILE refers to the program path/name APL will load in Unison
 		- CUSTOMER is the customer name used for customer specific behavior such as which NewLotConfig to use, etc...
 		- DUMMY is just a useless example so ignore this.
+	- you are not required to set field labels for every STDF fields. APL assigns default to each of the writeable STDF field. Note tha the default
+	  values are based on lotinfo.txt file used for ST in DMDx. this is to ensure that no changes are required on config.xml on testers where ST
+	  devices are tested
+	- the following are default field label for MIR. format is <Param name = "SETUP_T">SETUP_T</Param>
+		SETUP_T: SETUP_T
+		START_T: START_T
+		STAT_NUM: STAT_NUM
+		MODE_COD: TESTMODE
+		RTST_COD: LOTSTATE
+		PROT_COD: PROTECTIONCODE
+		BURN_TIM: BURN_TIM
+		CMOD_COD: COMMANDMODE
+		LOT_ID: LOTID
+		PART_TYP: DEVICE
+		NODE_NAM: NODE_NAM
+		TSTR_TYP: TESTERTYPE
+		JOB_NAM: JOB_NAM
+		JOB_REV: FILENAMEREV
+		SBLOT_ID: SUBLOTID
+		OPER_NAM: OPERATOR
+		EXEC_TYP: SYSTEMNAME
+		EXEC_VER: TARGETNAME
+		TEST_COD: TESTPHASE
+		TST_TEMP: TEMPERATURE
+		USER_TXT: USERTEXT
+		AUX_FILE: AUXDATAFILE
+		PKG_TYP: PACKAGE
+		FAMLY_ID: PRODUCTID
+		DATE_COD: DATECODE
+		FACIL_ID: TESTFACILITY
+		FLOOR_ID: TESTFLOOR
+		PROC_ID: FABRICATIONID
+		OPER_FRQ: OPERFREQ
+		SPEC_NAM: TESTSPECNAME
+		SPEC_VER: TESTSPECREV
+		FLOW_ID: ACTIVEFLOWNAME
+		SETUP_ID: TESTSETUP
+		DSGN_REV: DESIGNREV
+		ENG_ID: ENGRLOTID
+		ROM_COD: ROMCODE
+		SERL_NUM: TESTERSERNUM
+		SUPR_NAM: SUPERVISOR	
+	- the following are default field label for SDR. format is <Param name = "HAND_TYP">PROBERHANDLERTYPE</Param>
+		HAND_TYP: PROBERHANDLERTYPE
+		CARD_ID: CARDID
+		CARD_TYP: CARDTYPE
+		LOAD_ID: BOARDID
+		HAND_ID: PROBERHANDLERID
+		DIB_TYP: DIBTYPE
+		CABL_ID: CABLEID	
+		CONT_TYP: CONTACTORTYPE	
+		LOAD_TYP: BOARDTYPE	
+		CONT_ID: CONTACTORID	
+		LASR_TYP: LASERTYPE	
+		LASR_ID: LASERID	
+		EXTR_TYP: EXTRAEQUIPMENTTYPE	
+		EXTR_ID: EXTRAEQUIPMENTID	
+		DIB_ID: DIBID		
+		CABL_TYP: CABLETYPE
+	- the following are default field label for generic fields. format is <Param name = "JOBFILE">JOBFILE</Param>
+		JOBFILE: JOBFILE
+		CUSTOMER: CUSTOMER
+		DEVICENICKNAME: DEVICENICKNAME
+		STEP: STEP
 
 version beta.2.5.20191006
 -	bug fixes

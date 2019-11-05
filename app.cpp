@@ -694,6 +694,7 @@ void CApp::launch(CTask& task)
 	
 	ssCmd << "UNISON_NEWLOT_CONFIG_FILE=" << m_CONFIG.szNewLotConfigPath << "/" << m_CONFIG.szNewLotConfigFile;
 	if (m_lotinfo.szCustomer.compare("QUALCOMM") == 0) ssCmd << ".xml ";
+	else if (m_lotinfo.szCustomer.empty() && (m_CONFIG.szCustomer.compare("QUALCOMM") == 0) ) ssCmd << ".xml ";
 	else ssCmd << "_" << m_lotinfo.mir.ProcId << ".xml ";
 	ssCmd << "launcher -nodisplay " << (m_CONFIG.bProd? "-prod " : "");
 	ssCmd << (m_lotinfo.szProgramFullPathName.empty()? "": "-load ") << (m_lotinfo.szProgramFullPathName.empty()? "" : m_lotinfo.szProgramFullPathName);
@@ -1122,6 +1123,11 @@ bool CApp::CONFIG::parse(const std::string& file)
 				if (pConfig->fetchChild("STDF")->fetchChild("Compress")->fetchVal("cmd").size()) szZipSTDFCmd = pConfig->fetchChild("STDF")->fetchChild("Compress")->fetchVal("cmd");
 				if (pConfig->fetchChild("STDF")->fetchChild("Compress")->fetchVal("ext").size()) szZipSTDFExt = pConfig->fetchChild("STDF")->fetchChild("Compress")->fetchVal("ext");
 			}		
+		}
+		// lets extract FAModule stuff
+		if (pConfig->fetchChild("FAMODULE"))
+		{
+			bFAModule = CUtil::toUpper(pConfig->fetchChild("FAMODULE")->fetchVal("state")).compare("TRUE") == 0? true: false;
 		}
 
 		// if we found binning node, it means <Binning> is in config which means binning@EOT is enabled
