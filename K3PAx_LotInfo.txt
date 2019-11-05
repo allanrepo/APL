@@ -13,13 +13,13 @@ loadboard:28-2
 dutboard:23-S4-12/23-S4-6/23-S4-7/23-S4-8
 socket:QC5-8/QC5-23/QC5-5/QC5-27
 hostname:k3pax01
-customer:QUALCOMM
+//customer:QUALCOMM
 retestcode:3
 DEVICENICKNAme: LIBRE
 dibtype: turret
 contactortype: QC
 boardtype: LX
 AutomationNam : APL
-AutomationVer : beta.2.5.20191025
+AutomationVer : beta.2.7.20191104
 LoaderApiNam : APL
-LoaderApiRev : beta.2.5.20191025
+LoaderApiRev : beta.2.7.20191104

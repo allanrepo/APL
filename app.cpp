@@ -992,6 +992,7 @@ bool CApp::CONFIG::parse(const std::string& file)
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Wait Time To Kill Tester") == 0){ nKillTesterTimeOutMS = CUtil::toLong( pLaunch->fetchChild(i)->fetchText() ) * 1000; }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("NewLot Config Path") == 0){ szNewLotConfigPath = pLaunch->fetchChild(i)->fetchText(); }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("NewLot Config File") == 0){ szNewLotConfigFile = pLaunch->fetchChild(i)->fetchText(); }					
+				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Customer") == 0){ szCustomer = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()); }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Test Site") == 0){ szTestSite = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()); }					
 				if (pLaunch->fetchChild(i)->fetchVal("name").compare("Supplier") == 0){ szSupplier = CUtil::toUpper(pLaunch->fetchChild(i)->fetchText()); }					
 			}
@@ -1221,6 +1222,7 @@ void CApp::CONFIG::print()
 	m_Log << "Port Server IP: " << nServerPort << CUtil::CLog::endl;
 	m_Log << "New Lot Config Path: " << szNewLotConfigPath << CUtil::CLog::endl;
 	m_Log << "New Lot Config File: " << szNewLotConfigFile << CUtil::CLog::endl;
+	m_Log << "Customer: " << szCustomer << CUtil::CLog::endl;
 	m_Log << "Test Site: " << szTestSite << CUtil::CLog::endl;
 	m_Log << "Supplier: " << szSupplier << CUtil::CLog::endl;
 	m_Log << "Rename STDF: " << (bRenameSTDF? "enabled" : "disabled") << CUtil::CLog::endl;
@@ -2114,8 +2116,14 @@ bool CApp::setLotInfo()
 	if ( !setLotInformation(EVX_LotActiveLoadBrdName, 	m_lotinfo.sdr.DibId, 	"SDR.LotActiveLoadBrdName")) bRslt = false;
 	if ( !setLotInformation(EVX_LotDIBType, 		m_lotinfo.sdr.DibTyp, 	"SDR.LotDIBType")) bRslt = false;
 
-	// special case if customer is QUALCOMM
+	// special case if customer is QUALCOMM (set in lotinfo.txt, which takes precedence)
 	if (m_lotinfo.szCustomer.compare("QUALCOMM") == 0)
+	{
+		if ( !setLotInformation(EVX_LotEngrLotId, 		m_lotinfo.mir.LotId, 	"MIR.LotEngrLotId")) bRslt = false;
+		if ( !setLotInformation(EVX_LotTestFacility, 		m_CONFIG.szTestSite, 	"MIR.LotTestFacility")) bRslt = false;
+	}
+	// if no customer is specified in lotinfo.txt and QUALCOMM is set as customer in config.xml, let's handle it
+	else if (m_lotinfo.szCustomer.empty() && (m_CONFIG.szCustomer.compare("QUALCOMM") == 0) )
 	{
 		if ( !setLotInformation(EVX_LotEngrLotId, 		m_lotinfo.mir.LotId, 	"MIR.LotEngrLotId")) bRslt = false;
 		if ( !setLotInformation(EVX_LotTestFacility, 		m_CONFIG.szTestSite, 	"MIR.LotTestFacility")) bRslt = false;

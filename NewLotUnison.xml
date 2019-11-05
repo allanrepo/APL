@@ -56,6 +56,8 @@
 		<Value>Simulator</Value>
  	</Entry>
 
+    <Entry Label="TestFacility"> </Entry>
+    <Entry Label="EngrLotId"> </Entry>
     <Entry Label="LoadBrdId"> </Entry>
     <Entry Label="ActiveLoadBrdName"> </Entry>
     <Entry Label="ContactorId"> </Entry>

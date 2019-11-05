@@ -51,6 +51,6 @@ ACTIVEFLOWNAME : FT1
 LOTSTATE : 2
 COMMANDMODE : F
 AutomationNam : APL
-AutomationVer : beta.2.6.20191104
+AutomationVer : beta.2.7.20191104
 LoaderApiNam : APL
-LoaderApiRev : beta.2.6.20191104
+LoaderApiRev : beta.2.7.20191104

@@ -6,6 +6,35 @@ version xxxxx
 		- also, FAMODULE is now enabled by default. 
 	- when APL renames STDF (qualcomm requirement), it makes sure STDF's MIR.NODE_NAM matches the tester name before doing so. this was unintenionally disabled. now fixed. 
 
+- 	update feature (STEP value setting also added CMOD_COD)
+	- added another STDF field that corresponds to STEP value - MIR.CMOD_COD. it can now be added as shown below:
+		<LotInfo>
+			<Step state = "true">
+				<Param flow_id = "FT1" rtst_cod = "0" cmod_cod = "F">FT1</Param>
+				<Param flow_id = "FT1" rtst_cod = "1" cmod_cod = "F">Rt1</Param>
+				<Param flow_id = "FT2" rtst_cod = "0" cmod_cod = "F">FT2</Param>
+				<Param flow_id = "QT2" rtst_cod = "2" cmod_cod = "Q">2RT2</Param>
+				<Param flow_id = "QT1" rtst_cod = "3" cmod_cod = "Q">RT3</Param>
+			</Step>
+		</LotInfo>
+
+-	new feature (for Qualcomm, MIR.ENG_ID = MIR.LOT_ID, MIR.FACIL_ID = <Test Site> 
+	- for Qualcomm customer, MIG.ENG_ID = MIR.LOT_ID while MIR.FACIL_ID must be set to test site value which can be specified in config.xml as shown below
+		<Launch>
+			<Param name = "Test Site">AMKKR3-S</Param>
+		</Launch>
+	- in order to achieve this, APL must be informed if device being tested belong to Qualcomm. There are 2 ways to do this:
+		- through lotinfo.txt file CUSTOMER: QUALCOMM
+		- through config.xml 
+			<Launch>
+				<Param name = "Customer">qualcomm</Param>
+			</Launch>
+	- why are there 2 options to do this? because we cannot guarantee Amkor will always fill lotinfo.txt file with CUSTOMER field.
+	- the CUSTOMER field from lotinfo.txt file will always take precedence. the only time CUSTOMER field in config.xml is used is when CUSTOMER field
+	  is not used in lotinfo.txt file.
+	- if neither config.xml nor lotinfo.txt file specify the CUSTOMER, APL will default to none, in which case it will not set MIR.ENG_ID and MIR.FACIL_ID
+	
+
 version beta.2.7.20191104
 -	bug fixes
 	- fixed setLotInformation() to write RTST_COD. changed EVX_LOT_TYPE from LotLotStatus to LotLotState
@@ -43,6 +72,7 @@ version beta.2.7.20191104
 			<Compress state = "true" cmd = "/usr/bin/gzip" ext = ".gz" />
 		</STDF>
 	- note that you can still make APL use start-lot time stamp. in the <Rename> tag, it contains "timestamp" attribute where you can set 'end' or 'start'
+	- APL will only rename incoming completed STDF files in <Path> if the SRTDF's MIR.NODE_NAME matches tester name.
 
 -	new feature (lotinfo.txt field label customization
 	- lotinfo.txt file can now customize its field/value pair labels. 
@@ -169,7 +199,7 @@ version beta.2.4.20191006
 				<Param flow_id = "FT2" rtst_cod = "2">2RT2</Param>
 				<Param flow_id = "FT1" rtst_cod = "3">RT3</Param>
 			</Step>
-		</LotInfo
+		</LotInfo>
 	- APL cannot set RTST_COD and FLOW_ID by itself. STDF fields are governed by uprodtool to ensure STDF contents will always be compliant to ST specification. 
 	  Any STDF field value APL wants to set can only be done by passing the lotinfo.txt file to uprodtool (via FAModule). This function already exist in APL. 
 	  But APL must insert RTST_COD and FLOW_ID values in lotinfo.txt file (if there’s non yet) in order for uprodtool to consider setting them in STDF file. 
