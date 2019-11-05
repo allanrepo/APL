@@ -4,6 +4,7 @@ version xxxxx
 -	bug fixes
 	- fixed bug where APL is not reading <FAMODULE> state in config.xml, thus making it false all the time. (thanks to cedric for catching this bug)
 		- also, FAMODULE is now enabled by default. 
+	- when APL renames STDF (qualcomm requirement), it makes sure STDF's MIR.NODE_NAM matches the tester name before doing so. this was unintenionally disabled. now fixed. 
 
 version beta.2.7.20191104
 -	bug fixes

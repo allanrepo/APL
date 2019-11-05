@@ -1229,6 +1229,7 @@ void CApp::CONFIG::print()
 	m_Log << "Zip STDF: " << (bZipSTDF? "enabled" : "disabled") << CUtil::CLog::endl;
 	m_Log << "Zip STDF Command: " << szZipSTDFCmd << CUtil::CLog::endl;
 	m_Log << "Zip STDF Extension: " << szZipSTDFExt << CUtil::CLog::endl;
+	m_Log << "LotInfo2FAModule: " << (bFAModule? "enabled" : "disabled") << CUtil::CLog::endl;
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -1275,7 +1276,7 @@ void CApp::onWatchSTDF(const std::string& name)
 			if (m_szTesterName.compare(mir.NODE_NAM) != 0) 
 			{
 				m_Log << "WARNING: This STDF file '" << ssFullPathSTDF.str() << "' is tested on '" << mir.NODE_NAM << "'. Our tester name is '" << m_szTesterName << "'" << CUtil::CLog::endl;
-//				return;
+				return;
 			}	
 
 			// if we reach this point, we found a valid STDF file with good MIR and MRR records. let's ignore any incoming select() notification

@@ -233,10 +233,10 @@
 		</Logging>
 		<STDF>
 			<Path>/home/localuser/synchro_sim/localuser_sim/dlog</Path> <!--path where STDF file is saved -->
-			<Rename state = "false" format = "qualcomm" timestamp = "end"/> <!-- timestamp: start, end -->
-			<Compress state = "false" cmd = "/usr/bin/gzip" ext = ".gz" />
+			<Rename state = "true" format = "qualcomm" timestamp = "end"/> <!-- timestamp: start, end -->
+			<Compress state = "true" cmd = "/usr/bin/gzip" ext = ".gz" />
 		</STDF>
-		<FAMODULE state = "true" />
+		<FAMODULE state = "false" />
 	</SiteConfiguration>
 
 </APL_CONF>
