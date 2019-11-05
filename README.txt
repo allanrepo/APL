@@ -1,10 +1,14 @@
 RELEASE NOTES:
 
 version xxxxx
+-	quality of life improvements
+	- rename widget app title to "APL Commander 1.0"
+
 -	bug fixes
 	- fixed bug where APL is not reading <FAMODULE> state in config.xml, thus making it false all the time. (thanks to cedric for catching this bug)
 		- also, FAMODULE is now enabled by default. 
 	- when APL renames STDF (qualcomm requirement), it makes sure STDF's MIR.NODE_NAM matches the tester name before doing so. this was unintenionally disabled. now fixed. 
+	- fixed setLotInformation() to write RTST_COD. changed EVX_LOT_TYPE from LotLotStatus to LotLotState
 
 - 	update feature (STEP value setting also added CMOD_COD)
 	- added another STDF field that corresponds to STEP value - MIR.CMOD_COD. it can now be added as shown below:
@@ -34,17 +38,11 @@ version xxxxx
 	  is not used in lotinfo.txt file.
 	- if neither config.xml nor lotinfo.txt file specify the CUSTOMER, APL will default to none, in which case it will not set MIR.ENG_ID and MIR.FACIL_ID
 	
-
-version beta.2.7.20191104
--	bug fixes
-	- fixed setLotInformation() to write RTST_COD. changed EVX_LOT_TYPE from LotLotStatus to LotLotState
-
--	update feature
+-	update feature (enabling/disabling lotinfo.txt to FAModule)
 	- feature that sends lotinfo.txt to FAModule (ST Galileo flow) which is part of uprodtool can now be disabled
 		<SiteConfiguration name = "ATK3">
 				<FAMODULE state = "false" />
 		</SiteConfiguration>
-	- rename widget app title to "APL Commander 1.0"
 
 -	new feature (setting NewLotUnison.xml)
 	- previously, NewLotUnison.xml file, a file that OICU uses to customize its New Lot Input Dialog box, and path are hard coded into APL, 
