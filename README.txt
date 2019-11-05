@@ -1,6 +1,6 @@
 RELEASE NOTES:
 
-version xxxxx
+version beta.2.11.20191105
 -	quality of life improvements
 	- rename widget app title to "APL Commander 1.0"
 
