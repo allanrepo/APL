@@ -4,7 +4,7 @@
 	<CurrentSiteConfiguration>singapore_qcom</CurrentSiteConfiguration>
 	<SiteConfiguration name = "ATK3">
 		<Launch>
-			<Param name = "Type">engr</Param> <!-- prod, engr; default:prod -->
+			<Param name = "Type">prod</Param> <!-- prod, engr; default:prod -->
 			<Param name = "Kill Tester Before Launch">true</Param> <!-- true, false; default:false -->
 			<Param name = "Wait Time To Launch">129</Param> <!-- default:120 seconds -->
 			<Param name = "Max Attempt To Launch">9</Param> <!-- default: 3 -->
@@ -89,7 +89,7 @@
 			<Param name = "Wait Time To Unload Program">29</Param> <!-- default: 30 seconds -->
 			<Param name = "Wait Time To FAModule">29</Param> <!-- default: 30 seconds -->
 			<Param name = "Wait Time To Kill Tester">39</Param> <!-- default: 30 seconds -->
-			<Param name = "Force Load">true</Param> <!-- true if APL will always launch OICU and load program; default: false -->
+			<Param name = "Force Load">false</Param> <!-- true if APL will always launch OICU and load program; default: false -->
 			<Param name = "NewLot Config Path">/home/localuser/Desktop/APL</Param>
 			<Param name = "NewLot Config File">NewLotUnison</Param>
 			<Param name = "Customer">qualcomm</Param>
@@ -112,7 +112,7 @@
 				<Param name = "OPER_NAM">OPERATORID</Param>
 				<Param name = "DATE_COD">DATECODE</Param>
 				<Param name = "TEST_COD">TESTCODE</Param>
-				<Param name = "TST_TEMP">TEMPERATURE</Param>
+				<Param name = "TST_TEMP">tempeRATURE</Param>
 				<Param name = "JOB_NAM">PROGRAM</Param>
 				<Param name = "RTST_COD">RETESTCODE</Param>
 				<Param name = "NODE_NAM">HOSTNAME</Param>
@@ -150,7 +150,6 @@
 		</Logging>
 		<STDF>
 			<Path>/home/localuser/synchro_sim/localuser_sim/dlog</Path> <!--path where STDF file is saved -->
-			<TimeStamp></TimeStamp> 
 			<Rename state = "true" format = "qualcomm" timestamp = "end"/> <!-- timestamp: start, end -->
 			<Compress state = "true" cmd = "/usr/bin/gzip" ext = ".gz" />
 		</STDF>
