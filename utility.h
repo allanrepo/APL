@@ -23,6 +23,9 @@ namespace CUtil
 	// simple stop watch class that measures delta time in milliseconds
 	class CTimer
 	{
+	private:
+		const CTimer& operator=(const CTimer&){ return *this; } // operator '='
+
 	protected:
 		struct timeval m_tv;
 
@@ -35,7 +38,6 @@ namespace CUtil
 		
 		// too lazy, don't bother copying this object
 		CTimer(const CTimer&){} // copy constructor                     
-		const CTimer& operator=(const CTimer&){} // operator '='
 
 		void start()
 		{

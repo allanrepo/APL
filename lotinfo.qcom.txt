@@ -1,5 +1,6 @@
 //programpath:/var/home/service/Desktop/Cohu_Debug/binChecker_qcom_u1909/Program/BinChecker.una
-programpath:/home/localuser/Desktop/Programs/binChecker_qcom_u1909/Program/BinChecker.una
+//programpath:/home/localuser/Desktop/Programs/binChecker_qcom_u1909/Program/BinChecker.una
+programpath:/home/localuser/Desktop/Programs/binChecker_qcom_u1909_with_sumdlog/Program/BinChecker.una
 lotid:JASON1234
 parttype:TD90-PB847-6
 operatorid:12345678

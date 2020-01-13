@@ -11,6 +11,13 @@
 	#include <wx/app.h>
 #endif 
 
+#define wxID_PROCEED wxID_HIGHEST+1
+#define wxID_OK2 wxID_PROCEED+1
+#define wxID_CANCEL1 wxID_OK2+1
+
+
+class CxAPL;
+
 // ---------------------------------------------------------------------------------
 // declarations
 // ---------------------------------------------------------------------------------
@@ -42,6 +49,17 @@ public:
 
 	virtual void onError(const std::string& msg);
 	virtual void onRecv(const std::string&);
+
+	bool MessageBox();
+};
+
+class wxLoadProgramDialog: public wxDialog
+{
+private:
+	wxPoint m_wxPosition;
+public:
+	wxLoadProgramDialog(const wxString &title, const wxString& msg, const wxSize& size);
+	virtual void OnMove(wxMoveEvent& evt);
 };
 
 

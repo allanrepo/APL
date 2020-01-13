@@ -130,21 +130,17 @@ void CxAPL::onRecv(const std::string& msg)
 	std::string rcv = msg;
 	size_t pos = rcv.find('|');
 	if (pos != std::string::npos) rcv = rcv.substr(0, pos); 	
-
+ 
 	int errnum = 0;
-
 	if (rcv.compare("LOADLOTINFO") == 0)
 	{
-		if (wxMessageBox("Program Is loaded. If you Proceed, APL will RESET the Lot and Reload Program. Please Confirm.", "WARNING!! APL Receive Lotinfo File!", wxYES_NO, NULL) == wxYES)
+		if (MessageBox())
 		{
-			if (wxMessageBox("Please Confirm Again.", "Are you Really Sure?", wxYES_NO, NULL) == wxYES)
+			if ( !send("LOADLOTINFO", &errnum))
 			{
-				if ( !send("LOADLOTINFO", &errnum))
-				{
-					(*m_pLog) << "Error sending message: " << strerror(errnum) << "\n";
-				}
+				(*m_pLog) << "Error sending message: " << strerror(errnum) << "\n";
 			}
-		}		
+		}
 	}
 	else if (rcv.compare("APL_REGISTER") == 0)
 	{
@@ -181,4 +177,91 @@ void CxAPL::OnIdle(wxIdleEvent& evt)
 	m_nFrame++;
 	evt.RequestMore();
 } 
+
+bool CxAPL::MessageBox()
+{
+	// create dialog box
+	wxString t("Received Lotinfo File! Press \"Proceed\" to UNLOAD current test program and LOAD new one. This will also END THE LOT.\nPress \"Cancel\" to ignore this message");
+	wxLoadProgramDialog ProgramLoad("WARNING", t, wxSize(800,600));
+	ProgramLoad.Show(true);
+
+	// return dialog box' return code
+	if (ProgramLoad.ShowModal() == wxID_OK)
+	{
+		wxLoadProgramDialog Confirm("Please Confirm Again.", "Are you Really Sure?", wxSize(400,300));
+		Confirm.Show(true);
+		if (Confirm.ShowModal() == wxID_OK) return true;
+		else return false;
+	}
+	else return false;
+}
+
+
+// ---------------------------------------------------------------------------------
+// customized dialog box for asking operator if they want to ptoceed in processing
+// incoming lotinfo.txt file as it warns them that current test program loaded
+// will be unloaded and current lot under test will end
+// -	'bConfirm' flag can be set to TRUE so it pops a dialog box to ask operator
+//	for confirmation to really proceed
+// ---------------------------------------------------------------------------------
+wxLoadProgramDialog::wxLoadProgramDialog(const wxString &title, const wxString& msg, const wxSize& size)
+:wxDialog(NULL, wxID_ANY, title, wxDefaultPosition, size, wxDEFAULT_DIALOG_STYLE|wxSTAY_ON_TOP)
+{
+	// create our message fonts
+	wxFont font(32, wxFONTFAMILY_MODERN, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
+
+	// create sizer that will contain the message. make this vertical but doesn't really matter as we will only put 1 static test control
+	wxBoxSizer *wxTopSizer = new wxBoxSizer(wxHORIZONTAL);
+
+	// create sizer that will contain buttons. make this horizontal
+	wxBoxSizer *wxBtmSizer = new wxBoxSizer(wxHORIZONTAL);
+
+	// create sizer that will contain the button and message sizers
+	wxBoxSizer *wxDialogSizer = new wxBoxSizer(wxVERTICAL);
+
+	// create static text widget and add its content
+	wxStaticText *wxMessage = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE_HORIZONTAL);
+	wxMessage->SetFont(font);
+	wxMessage->SetLabel(msg);
+	wxMessage->Wrap(size.GetWidth());
+
+	// add static text widget to its sizer
+	// proportion doesn't matter. setting to either 0 or 1 will have same result
+	// wxALIGN_CENTER forces the widget to align vertically, as this sizer is horizontal orientation
+  	wxTopSizer->Add(wxMessage, 0,  wxALIGN_CENTER);
+
+	// create "OK" button and bind it's event handler
+	wxButton *wxBtnOK = new wxButton(this, wxID_OK, wxT("Proceed"), wxDefaultPosition, wxDefaultSize);
+	wxBtnOK->SetFont(font);
+
+	// create "Cancel" button and set its ID as wxID_CANCEL. this button's parent (the dialog widget) will recognize it 
+	// as "end modal" when it's pressed and dialog box closes so we don't need to bind event handler 
+	wxButton *wxBtnCancel = new wxButton(this, wxID_CANCEL, wxT("Cancel"), wxDefaultPosition, wxDefaultSize);
+	wxBtnCancel->SetFont(font);
+
+	// add input buttons to its sizer. proportion is both set to 1 so they both use the biggest size
+	// wxLeft, 50 on cancel button is to give space of 50px between OK and cancel button
+  	wxBtmSizer->Add(wxBtnOK, 0);
+ 	wxBtmSizer->Add(wxBtnCancel, 1, wxLEFT, 20);
+
+	// add button and message sizers in main sizer and set it to this widget
+	wxDialogSizer->Add(wxTopSizer, 1, wxALIGN_CENTER); // proportion = 1 to fill whole row, wxALIGN_CENTER to put the contents of top sizer at center horizontally as dialog size is vertical
+  	wxDialogSizer->Add(wxBtmSizer, 0, wxALIGN_CENTER | wxTOP | wxBOTTOM, 10);
+	SetSizer(wxDialogSizer);
+
+	// make sure this widget is centered and remember its center position so we will keep it in the center through OnMove event handler
+	Centre();
+	GetPosition(&m_wxPosition.x, &m_wxPosition.y);
+
+	// bind event handler for this dialog's drag/move so we can catch it it prevent this dialog from being moved. 
+	// we want it to stay at center of screen
+	Bind(wxEVT_MOVE, &wxLoadProgramDialog::OnMove, this);
+}
+
+
+void wxLoadProgramDialog::OnMove( wxMoveEvent &evt )
+{
+	Move( m_wxPosition.x, m_wxPosition.y);
+	evt.Skip();
+}
 
