@@ -1937,7 +1937,7 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 		// initialize arrays and set to defaults
 		sites = new int[array_size];
 		xCoords = new int[array_size];
-		yCoords = new int[array_size];
+		yCoords = new int[array_size]; 
 
 		if ( m_pProgCtrl->getWaferCoords(array_size, sites, xCoords, yCoords) != EVXA::OK )
 		{
