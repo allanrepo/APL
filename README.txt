@@ -1,9 +1,12 @@
 RELEASE NOTES:
 
-version beta.2.12.20200113
+version beta.2.13.20200114
 -	quality of life improvements
 	-	the pop-up message box that warns operator before proceeding to load new program upon receiving new lotinfo.txt file is now larger and easier to see
 	-	also, the pop-up message will remain at the center and top of the screen so operator will never miss it.
+
+-	update feature
+	-	bin solution for wafer test now appends WAFERID instead of LOTID
 
 
 version beta.2.11.20191105
