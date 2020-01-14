@@ -1965,7 +1965,7 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 	send << m_szTesterName;
 
 	// as per Amkor specs, if wafer test, insert wafer id (lot id) here
-	if (m_CONFIG.nTestType == CONFIG::APL_WAFER) send << "," << (bRetest?"RT":"FT") << "/" <<  m_pProgCtrl->getLotInformation(EVX_LotLotID);
+	if (m_CONFIG.nTestType == CONFIG::APL_WAFER) send << "," << (bRetest?"RT":"FT") << "/" <<  m_pProgCtrl->getLotInformation(EVX_LotWaferID);
 
 	// loop through all loaded sites, start at 1. for unison, site 1 = 1
 	for (int i = 1; i < m_pProgCtrl->getNumberOfLoadedSites(); i++)
@@ -2010,8 +2010,6 @@ void CApp::onEndOfTest(const int array_size, int site[], int serial[], int sw_bi
 	}
 	c.send(send.str());
 	c.disconnect();
-
-//	m_pClientFileDesc->send(send.str());
 }
 
 /* ------------------------------------------------------------------------------------------
