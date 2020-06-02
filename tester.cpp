@@ -46,7 +46,7 @@ bool CTester::connect(const std::string& strTesterName, int nSleep, int nAttempt
     		if(m_pTestHead->getStatus() !=  EVXA::OK) 
 		{ 
 			//if(nSleep) sleep(nSleep); 
-			//m_Log << "Failed to create testheadConnection object." << CUtil::CLog::endl;
+			m_Log << "Failed to create testheadConnection object.: "<< m_pTestHead->getStatusBuffer() << CUtil::CLog::endl;
 			continue; 
 		} 
 		else m_Log << "TestheadConnection object created..." << CUtil::CLog::endl;

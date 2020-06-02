@@ -1,3 +1,9 @@
+TO-DO List:
+- 	log the status buffer from connection functions in CTester::connect(). this is helpful in finding the root cause of APL not able to connect to tester in PAx testers. 
+	you will be able to see the difference in the path where APL looks for tester instance as compared to evxa_demo_program.
+-	figure out the root cause why in PAx testers, APL looks for tester instance in /opt/ltx/release/ltx/FX1/testers instead of /opt/ltx/testers like ecvxa_demo_program does
+
+
 RELEASE NOTES:
 
 version beta.2.13.20200114
